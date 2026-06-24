@@ -1,0 +1,33 @@
+{
+  "name": "praxis-workflow",
+  "version": "0.1.0",
+  "description": "User-level Praxis workflow guidance for Codex workspaces.",
+  "author": {
+    "name": "Local developer"
+  },
+  "license": "UNLICENSED",
+  "keywords": [
+    "praxis",
+    "workflow",
+    "codex",
+    "worktree",
+    "requirements"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Praxis Workflow",
+    "shortDescription": "Enforce Praxis startup gates and project boundaries.",
+    "longDescription": "Praxis Workflow provides shared Codex guidance for Praxis workspaces: load local project configuration, keep project-specific branches in the project registry, use task as the command surface, and require requirement directories plus worktrees before business code changes.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Workflow",
+      "Guidance"
+    ],
+    "defaultPrompt": [
+      "Apply Praxis startup gates in this workspace.",
+      "Check whether this task needs a requirement dir and worktree.",
+      "Explain the Praxis project config boundary."
+    ]
+  }
+}
