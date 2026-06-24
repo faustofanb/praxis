@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "role": "praxis-turn-contract",
+  "purpose": "Keep Praxis workflow behavior stable across fresh turns, follow-up turns and resumes.",
+  "turn_start_checks": [
+    "bind_to_latest_user_message",
+    "classify_intent",
+    "enforce_business_startup_gate",
+    "restore_active_task_state",
+    "reload_thin_entry_sources_when_acting"
+  ],
+  "forbidden": [
+    "ignore_latest_user_message",
+    "edit_business_code_without_requirement_docs_or_worktree",
+    "treat_generated_reports_as_source_config",
+    "act_on_unverified_memory"
+  ],
+  "verdict_values": [
+    "answer-only",
+    "continue",
+    "blocked",
+    "complete"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "name": "praxis-workflow",
-  "version": "0.1.0",
-  "description": "User-level Praxis workflow guidance for Codex workspaces.",
+  "version": "0.2.0+codex.20260624091148",
+  "description": "User-level Praxis workflow package for Codex workspaces.",
   "author": {
     "name": "Local developer"
   },
@@ -16,13 +16,15 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Praxis Workflow",
-    "shortDescription": "Enforce Praxis startup gates and project boundaries.",
-    "longDescription": "Praxis Workflow provides shared Codex guidance for Praxis workspaces: load local project configuration, keep project-specific branches in the project registry, use task as the command surface, and require requirement directories plus worktrees before business code changes.",
+    "shortDescription": "Praxis startup gates, templates, scripts and boundaries.",
+    "longDescription": "Praxis Workflow packages shared Codex guidance, reference rules, thin workspace templates, and helper scripts for Praxis workspaces. It keeps project-specific branches, paths, verification commands, and domain extensions in the local workspace.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
       "Workflow",
-      "Guidance"
+      "Guidance",
+      "Templates",
+      "Scripts"
     ],
     "defaultPrompt": [
       "Apply Praxis startup gates in this workspace.",
