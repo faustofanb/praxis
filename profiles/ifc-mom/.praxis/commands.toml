@@ -1,0 +1,311 @@
+schema_version = 1
+
+[[command]]
+id = "praxis.check"
+argv = "task system -- check"
+writes = []
+outputs = ["structured Praxis consistency report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.profile"
+argv = "task system -- praxis-profile"
+writes = [".praxis/out/profile.json"]
+outputs = ["Praxis core and project adapter profile"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.template-check"
+argv = "task system -- template-check"
+writes = [".praxis/out/template-report.json"]
+outputs = ["Praxis rule and skill template validation report"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.template-render"
+argv = "task system -- template-render rule|skill <slug> <title> <description> <output>"
+writes = ["generated rule or skill file"]
+outputs = ["rendered rule or skill Markdown"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.command-audit"
+argv = "task system -- command-audit"
+writes = [".praxis/out/command-audit.json"]
+outputs = ["Praxis command entry consistency report"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.policy-check"
+argv = "task system -- policy-check"
+writes = [".praxis/out/policy-report.json", ".praxis/out/traces/praxis-trace.jsonl"]
+outputs = ["Praxis policy-as-code fallback report"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.adapter-plan"
+argv = "task system -- adapter-plan"
+writes = [".praxis/out/adapter-plan.json", ".praxis/out/traces/praxis-trace.jsonl"]
+outputs = ["optional adapter plan for orchestration, quality, dependency and build tools"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.trace-summary"
+argv = "task system -- trace-summary"
+writes = [".praxis/out/traces/trace-summary.json"]
+outputs = ["local OpenTelemetry-style trace summary and OTLP configuration"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.code-graph.build"
+argv = "task system -- code-graph build"
+writes = [".praxis/out/code-graph.json", ".praxis/out/traces/praxis-trace.jsonl"]
+outputs = ["Praxis code graph index"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.code-graph.query"
+argv = "task system -- code-graph query [--refresh] <keyword>"
+writes = [".praxis/out/code-graph-query.json", ".praxis/out/traces/praxis-trace.jsonl"]
+outputs = ["ranked code graph matches"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.code-graph.check"
+argv = "task system -- code-graph check"
+writes = []
+outputs = ["code graph validation result"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "docs.init"
+argv = "task req -- init <requirement> <original-request>"
+writes = ["docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/"]
+outputs = ["README.md", "00-原始需求/"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "docs.iter"
+argv = "task req -- iter <requirement> analysis|plan|progress <topic>"
+writes = ["docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/01-需求分析拆解/", "docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/02-任务规划/", "docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/03-开发进度/"]
+outputs = ["stage markdown"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "docs.check"
+argv = "task req -- check <requirement>"
+writes = []
+outputs = ["docs gate report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "docs.index"
+argv = "task req -- index <requirement>"
+writes = ["docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/README.md"]
+outputs = ["updated README index"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "docs.db-plan"
+argv = "task req -- db-plan <requirement>"
+writes = []
+outputs = ["bounded readonly DB investigation plan"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "docs.tolaria-check"
+argv = "task docs -- tolaria-check [<requirement>|--all]"
+writes = [".praxis/out/tolaria/tolaria-check.json"]
+outputs = ["Tolaria metadata gap report"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "docs.tolaria-publish"
+argv = "task docs -- tolaria-publish <requirement>|--all"
+writes = ["docs/types/*.md", "docs/views/*.yml", "docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/04-产出物/Tolaria知识索引.md", ".praxis/out/tolaria/tolaria-publish.json"]
+outputs = ["Tolaria type docs", "saved views", "requirement knowledge indexes"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "context"
+argv = "task context -- <project> <requirement>"
+writes = ["$PRAXIS_DIR/context/<project>-<requirement>.json"]
+outputs = ["main and worker context", "context packet"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "context.brief"
+argv = "task context -- --brief <project> <requirement>"
+writes = ["$PRAXIS_DIR/context/<project>-<requirement>.json"]
+outputs = ["low-noise resume summary", "context packet"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.start"
+argv = "task project -- start <project> <requirement> <original-request>"
+writes = ["docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/", ".worktrees/<project>/<requirement>-dev/"]
+outputs = ["requirement docs", "requirement worktree"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.preflight"
+argv = "task project -- preflight <project> <requirement>"
+writes = []
+outputs = ["preflight report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.verify"
+argv = "task project -- verify <project> <requirement>"
+writes = ["pnpm node_modules in target worktree when frontend dependencies are missing"]
+outputs = ["verification output"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.guard"
+argv = "task project -- guard <project> <requirement>"
+writes = []
+outputs = ["guard report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.change-check"
+argv = "task project -- change-check <project> <requirement>"
+writes = []
+outputs = ["change gate report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.migration-check"
+argv = "task project -- migration-check <project> <requirement>"
+writes = []
+outputs = ["migration source report"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.readiness"
+argv = "task gate -- ready <project> <requirement>"
+writes = ["$PRAXIS_DIR/readiness/<project>-<requirement>.json"]
+outputs = ["delivery readiness audit JSON"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.readiness-all"
+argv = "task gate -- ready-all <requirement>"
+writes = ["$PRAXIS_DIR/readiness/<project>-<requirement>.json"]
+outputs = ["grouped delivery readiness results"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.import-verdict"
+argv = "task gate -- import-verdict quality|delivery <project> <requirement> <agent-output-json>"
+writes = ["$PRAXIS_DIR/verdicts/<project>-<requirement>-<role>.json"]
+outputs = ["normalized role verdict JSON", "verdict validation result"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.delivery-status"
+argv = "task delivery -- status <project> <requirement>"
+writes = []
+outputs = ["read-only delivery closeout status"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.delivery-status-all"
+argv = "task delivery -- status-all <requirement>"
+writes = []
+outputs = ["read-only grouped delivery closeout status"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "project.delivery-precheck-all"
+argv = "task delivery -- precheck-all <requirement>"
+writes = ["$PRAXIS_DIR/delivery-precheck/<requirement>.json"]
+outputs = ["parallel quality and delivery-precheck dispatch packet"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.commit-split"
+argv = "task delivery -- commit-split <project> <requirement> <production-message>"
+writes = ["git commits"]
+outputs = ["production commit", "optional local test commit"]
+risk = "commit"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"
+
+[[command]]
+id = "project.commit-split-all"
+argv = "task delivery -- commit-split-all <requirement> <production-message>"
+writes = ["git commits"]
+outputs = ["grouped production commits", "optional local test commits"]
+risk = "commit"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"
+
+[[command]]
+id = "project.deliver"
+argv = "task delivery -- deliver <project> <requirement>"
+writes = ["feature/<requirement> branch in project main repo"]
+outputs = ["delivery feature branch"]
+risk = "delivery"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"
+
+[[command]]
+id = "project.deliver-all"
+argv = "task delivery -- deliver-all <requirement>"
+writes = ["feature/<requirement> branch in project main repos"]
+outputs = ["grouped delivery feature branches"]
+risk = "delivery"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"
+
+[[command]]
+id = "project.cleanup"
+argv = "task delivery -- cleanup <project> <requirement>"
+writes = ["remove requirement worktree", "remove codex branch", "prune worktrees"]
+outputs = ["cleanup report"]
+risk = "destructive"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"
+
+[[command]]
+id = "project.cleanup-all"
+argv = "task delivery -- cleanup-all <requirement>"
+writes = ["remove requirement worktrees", "remove codex branches", "prune worktrees"]
+outputs = ["grouped cleanup results"]
+risk = "destructive"
+requires_confirmation = true
+confirmation = "explicit-user-closeout-confirmation"

@@ -1,0 +1,2 @@
+description = "Show Praxis Workflow quick reference"
+prompt = "Show a concise Praxis Workflow quick reference for this workspace. Include: startup gate, when to use task project -- start, worktree rule, docs/Tolaria commands, and safe closeout boundary. Report only; change nothing."

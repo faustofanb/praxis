@@ -1,0 +1,26 @@
+schema_version = 1
+
+[[command]]
+id = "etl.init"
+argv = "task etl -- init"
+writes = ["docs/03-etl/"]
+outputs = ["ETL directory skeleton"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "etl.subject"
+argv = "task etl -- subject <app> <system> <top-menu> <topic> --menu-path <path> --requirement <requirement> --menu-code <code> --menu-name <name>"
+writes = ["docs/03-etl/<app>/<system>/<menu-path>/<topic>/", "docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/04-产出物/ETL资产链接.md"]
+outputs = ["numbered ETL asset templates"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "etl.tree"
+argv = "task etl -- tree"
+writes = []
+outputs = ["ETL directory tree"]
+risk = "readonly"
+requires_confirmation = false
+

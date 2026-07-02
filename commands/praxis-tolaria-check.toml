@@ -1,0 +1,2 @@
+description = "Check Tolaria metadata gaps"
+prompt = "Run Tolaria metadata gap checking for docs. Use `rtk task docs -- tolaria-check {{args}}` when RTK is available, otherwise `task docs -- tolaria-check {{args}}`. If no args are supplied, use `--all`. Summarize scanned count, issue count, and the first few issue paths. Do not publish or rewrite docs."

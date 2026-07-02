@@ -1,17 +1,40 @@
 {
   "schemaVersion": 1,
   "role": "praxis-turn-contract",
-  "purpose": "Keep Praxis workflow behavior stable across fresh turns, follow-up turns and resumes.",
+  "purpose": "Keep Praxis workflow behavior stable across first turns, follow-up turns, interruptions, resumes and context compaction.",
+  "input_required": [
+    "latestUserMessage",
+    "activeTaskState",
+    "workspaceState",
+    "loadedPraxisSources"
+  ],
   "turn_start_checks": [
     "bind_to_latest_user_message",
     "classify_intent",
     "enforce_business_startup_gate",
     "restore_active_task_state",
-    "reload_thin_entry_sources_when_acting"
+    "reload_thin_entry_sources_when_acting",
+    "select_project_extension_only_when_relevant",
+    "check_code_graph_freshness_when_used_as_evidence"
+  ],
+  "resume_checks": [
+    "run_minimal_workspace_status_check",
+    "discard_stale_plan_steps_that_conflict_with_latest_request",
+    "confirm_required_evidence_before_final_answer"
+  ],
+  "output_required": [
+    "intent",
+    "nextAction",
+    "loadedSources",
+    "evidence",
+    "verificationOrReason"
   ],
   "forbidden": [
+    "reuse_stale_first_turn_context",
     "ignore_latest_user_message",
+    "skip_task_command_surface_for_actions",
     "edit_business_code_without_requirement_docs_or_worktree",
+    "promote_extension_rules_to_core",
     "treat_generated_reports_as_source_config",
     "act_on_unverified_memory"
   ],

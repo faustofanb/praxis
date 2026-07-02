@@ -1,0 +1,114 @@
+schema_version = 1
+
+[metadata]
+name = "ifc-mom-praxis-adapter"
+description = "IFC MOM project adapter routing for the portable Praxis control plane."
+source = "external:praxis-design/00-设计方案/第零章 提示词.md"
+
+[task.praxis-maintenance]
+project = "docs"
+triggers = ["Praxis", "工作流优化", "规则模板", "skill模板", "平台配置", "过程改进"]
+methodology = ["practice.evidence-first", "organization.anti-formalism", "organization.controlled-evolution"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/07-过程改进与维护.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/09-Praxis重型化路线.md"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md"]
+commands = ["praxis.check", "praxis.profile", "praxis.template-check", "praxis.template-render", "praxis.command-audit"]
+database_investigation = "not-required"
+verification_level = "L0"
+requires_worktree = false
+gates = ["template-contract-valid", "portable-config-boundary", "codex-specific-config-isolated"]
+
+[task.docs]
+project = "docs"
+triggers = ["文档", "需求文档", "规则维护", "流程纠偏", "过程改进"]
+methodology = ["practice.evidence-first", "organization.anti-formalism", "organization.controlled-evolution"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/global/05-需求文档组织规范.md"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-doc-organization/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-tolaria-vault/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md"]
+commands = ["docs.init", "docs.iter", "docs.check", "docs.index", "docs.tolaria-check", "docs.tolaria-publish", "praxis.check", "praxis.profile"]
+database_investigation = "not-required"
+verification_level = "L0"
+requires_worktree = false
+gates = ["original-requirement-preserved", "no-placeholder-docs"]
+
+[task.backend]
+project = "backend"
+triggers = ["接口", "实体", "Mapper", "Service", "Controller", "Flyway", "迁移"]
+methodology = ["practice.evidence-first", "dialectics.risk-tiering", "practice.verify-before-complete", "organization.role-separation"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/projects/backend/"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-migration-script-generation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check", "project.migration-check"]
+database_investigation = "risk-tiered"
+verification_level = "L1"
+requires_worktree = true
+gates = ["worktree-or-exemption", "evidence-before-conclusion", "verification-before-completion"]
+
+[task.web]
+project = "web"
+triggers = ["页面", "表单", "低代码", "列表", "按钮", "弹窗", "前端接口"]
+methodology = ["practice.evidence-first", "dialectics.main-contradiction", "practice.verify-before-complete", "organization.role-separation"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/projects/web/"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-frontend-pattern-search/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check"]
+database_investigation = "optional-risk"
+verification_level = "L1"
+requires_worktree = true
+gates = ["worktree-or-exemption", "web-local-config-sync", "verification-before-completion"]
+
+[task.pda]
+project = "mes-pda"
+triggers = ["PDA", "扫码", "uni-app", "移动端", "H5", "小程序"]
+methodology = ["practice.evidence-first", "dialectics.main-contradiction", "practice.verify-before-complete", "organization.role-separation"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/projects/pda/"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/projects/pda/pda-development/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check"]
+database_investigation = "optional-risk"
+verification_level = "L1"
+requires_worktree = true
+gates = ["worktree-or-exemption", "verification-before-completion"]
+
+[task.big-screen]
+project = "big-screen"
+triggers = ["大屏", "看板", "驾驶舱大屏", "ECharts", "LargeVisualizationScreen", "实时看板"]
+methodology = ["practice.evidence-first", "dialectics.main-contradiction", "practice.verify-before-complete", "organization.role-separation"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/projects/big-screen/"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/projects/big-screen/big-screen-development/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check"]
+database_investigation = "optional-risk"
+verification_level = "L1"
+requires_worktree = true
+gates = ["worktree-or-exemption", "bounded-dashboard-data", "verification-before-completion"]
+
+[task.report]
+project = "backend"
+triggers = ["报表", "统计", "驾驶舱", "MagicAPI", "magic-api", "积木报表", "菜单 SQL", "视图 DDL"]
+methodology = ["practice.evidence-first", "dialectics.main-contradiction", "dialectics.risk-tiering", "practice.verify-before-complete"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/08-轻量ETL报表工作流.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/08a-轻量ETL资产与分层.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/08b-轻量ETL调查与口径治理.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/08c-轻量ETLMagicAPI与积木报表.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/08d-轻量ETL产出物与验收.md"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-tolaria-vault/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-frontend-pattern-search/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["docs.init", "docs.tolaria-check", "docs.tolaria-publish", "etl.init", "etl.subject", "etl.tree", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check"]
+database_investigation = "required"
+verification_level = "L2"
+requires_worktree = true
+gates = ["database-evidence-required", "etl-assets-numbered", "verification-before-completion"]
+
+[task.migration]
+project = "backend"
+triggers = ["SQL", "DDL", "Flyway", "迁移", "菜单授权", "低代码模型", "应用设计"]
+methodology = ["practice.evidence-first", "dialectics.risk-tiering", "history.base-superstructure-consistency", "organization.role-separation"]
+rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/projects/backend/07-数据库迁移与Flyway规范.md"]
+skills = [".praxis/extensions/ifc-mom/skills/global/mom-migration-script-generation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md"]
+commands = ["project.start", "context.brief", "project.preflight", "docs.db-plan", "project.verify", "project.delivery-status"]
+closeout_commands = ["project.readiness"]
+diagnostic_commands = ["context", "project.guard", "project.change-check", "project.migration-check"]
+database_investigation = "required"
+verification_level = "L2"
+requires_worktree = true
+gates = ["database-evidence-required", "migration-intermediate-artifact", "explicit-closeout-confirmation"]

@@ -1,0 +1,16 @@
+schema_version = 1
+id = "ifc-mom"
+name = "IFC MOM Extension"
+description = "Manufacturing, ETL/report, PDA, big-screen, MagicAPI, database and delivery rules layered on top of generic Praxis."
+adapter = ".praxis/extensions/ifc-mom/project-adapter.toml"
+manifest = ".praxis/extensions/ifc-mom/manifest.toml"
+commands = ".praxis/extensions/ifc-mom/commands.toml"
+rules = ".praxis/extensions/ifc-mom/rules"
+skills = ".praxis/extensions/ifc-mom/skills"
+
+[capabilities]
+project_routing = true
+database_investigation = true
+etl_report_workflow = true
+magic_api = true
+manufacturing_domains = true

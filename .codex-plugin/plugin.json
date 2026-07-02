@@ -1,7 +1,7 @@
 {
   "name": "praxis-workflow",
-  "version": "0.2.0+codex.20260624091148",
-  "description": "User-level Praxis workflow package for Codex workspaces.",
+  "version": "0.2.0+codex.20260702023812",
+  "description": "User-level Praxis workflow package with templates, profile sync, and IFC MOM workflow assets.",
   "author": {
     "name": "Local developer"
   },
@@ -16,14 +16,15 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Praxis Workflow",
-    "shortDescription": "Praxis startup gates, templates, scripts and boundaries.",
-    "longDescription": "Praxis Workflow packages shared Codex guidance, reference rules, thin workspace templates, and helper scripts for Praxis workspaces. It keeps project-specific branches, paths, verification commands, and domain extensions in the local workspace.",
+    "shortDescription": "Praxis startup gates, templates, profiles, and sync scripts.",
+    "longDescription": "Praxis Workflow packages shared Codex guidance, reference rules, workspace templates, helper scripts, and syncable project-family profiles. The IFC MOM profile bundles MOM/AOTU workflow rules and skills while project-specific branches, paths, and verification commands stay in the local workspace.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
       "Workflow",
       "Guidance",
       "Templates",
+      "Profiles",
       "Scripts"
     ],
     "defaultPrompt": [

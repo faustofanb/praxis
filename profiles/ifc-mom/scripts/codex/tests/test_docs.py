@@ -1,0 +1,237 @@
+from __future__ import annotations
+
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import task as task_module  # noqa: E402
+from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_requirement_global_index  # noqa: E402
+
+
+class DocsInitTest(unittest.TestCase):
+    def test_docs_init_rejects_missing_raw_requirement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            with self.assertRaises(SystemExit):
+                doc_init(config, "深加工AI无识别", "")
+
+    def test_docs_init_rejects_placeholder_raw_requirement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            with self.assertRaises(SystemExit):
+                doc_init(config, "深加工AI无识别", "用户原始需求")
+
+    def test_docs_init_rejects_non_chinese_or_generic_requirement_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            with self.assertRaises(SystemExit):
+                doc_init(config, "task", "用户要求：这是完整保留的原始需求描述。")
+            with self.assertRaises(SystemExit):
+                doc_init(config, "tmp-123", "用户要求：这是完整保留的原始需求描述。")
+
+    def test_docs_init_preserves_long_raw_requirement_verbatim(self) -> None:
+        raw = """用户要求：
+1. 调整领导驾驶舱 MagicAPI 取数逻辑。
+2. 保留 SQL：
+select id, name
+from mes_demo
+where status = 'FAIL';
+3. 附件未落盘原因：当前对话无法取得截图二进制，请用户补传本地路径。
+"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            req_dir = doc_init(config, "领导驾驶舱取数逻辑", raw)
+            raw_files = sorted((req_dir / "00-原始需求").glob("*.md"))
+            raw_text = raw_files[0].read_text(encoding="utf-8")
+
+        self.assertIn(raw, raw_text)
+        self.assertIn("```text", raw_text)
+        self.assertIn('type: "requirement-original"', raw_text)
+        self.assertIn('requirement: "领导驾驶舱取数逻辑"', raw_text)
+
+    def test_docs_init_readme_uses_control_plane_rule_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            req_dir = doc_init(config, "深加工AI无识别", "用户要求：深加工 AI 无识别预警需要保留原始描述。")
+            readme = (req_dir / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("`AGENTS.md`", readme)
+        self.assertIn('type: "requirement"', readme)
+        self.assertIn("- 当前需求：[[深加工AI无识别]]", readme)
+        self.assertIn("## Tolaria 知识链接", readme)
+        self.assertIn("Tolaria frontmatter、H1、wikilink 和 saved views", readme)
+        self.assertNotIn("`.rule/README.md`", readme)
+        self.assertNotIn("`.skill/README.md`", readme)
+        self.assertNotIn("`.rule/global/05-需求文档组织规范.md`", readme)
+        self.assertNotIn("`.rule/projects/backend/README.md`", readme)
+
+    def test_doc_iter_writes_lightweight_phase_templates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            doc_init(config, "模板优化", "用户要求：模板优化需要验证阶段文件字段。")
+
+            analysis = doc_iter(config, "模板优化", "analysis", "证据化分析")
+            plan = doc_iter(config, "模板优化", "plan", "实施规划")
+            progress = doc_iter(config, "模板优化", "progress", "开发进度")
+
+            analysis_text = analysis.read_text(encoding="utf-8")
+            plan_text = plan.read_text(encoding="utf-8")
+            progress_text = progress.read_text(encoding="utf-8")
+
+        self.assertIn("## 用户原始需求", analysis_text)
+        self.assertIn('type: "requirement-analysis"', analysis_text)
+        self.assertIn('requirement: "模板优化"', analysis_text)
+        self.assertIn("## 证据来源", analysis_text)
+        self.assertIn("来源证据", analysis_text)
+        self.assertIn('type: "requirement-plan"', plan_text)
+        self.assertIn("## 决策", plan_text)
+        self.assertIn('type: "requirement-progress"', progress_text)
+        self.assertIn("## 待验证项", progress_text)
+
+    def test_doc_iter_can_write_explicit_body_without_placeholders(self) -> None:
+        body = """# 证据化分析
+
+## 用户原始需求
+
+用户要求：记录流程演练证据。
+
+## 当前结论
+
+已完成流程验证。
+
+## 证据来源
+
+- 来源证据：task gate -- ready 输出。
+- 源码路径：scripts/codex/task.py。
+- 表字段/接口/页面：不涉及。
+- 样例数据/日志/复现条件：模拟需求流程。
+
+## 明确结论
+
+可直接通过正文创建无占位阶段文件。
+"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            doc_init(config, "正文优化", "用户要求：正文优化需要验证阶段文件正文。")
+
+            analysis = doc_iter(config, "正文优化", "analysis", "证据化分析", body)
+            text = analysis.read_text(encoding="utf-8")
+
+        self.assertEqual(text, body.rstrip() + "\n")
+        self.assertNotIn("待补充", text)
+
+    def test_write_requirement_global_index_collects_requirement_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            req_dir = doc_init(config, "设备采购流程优化", "用户要求：设备采购流程优化需要保留原始描述。")
+            analysis = doc_iter(
+                config,
+                "设备采购流程优化",
+                "analysis",
+                "证据化分析",
+                """# 证据化分析
+
+## 来源证据
+
+- 源码路径：lamp-tpm/TpmPurchaseRequisitionService.java
+- 表字段：tpm_purchase_requisition.status
+
+## 明确结论
+
+涉及设备采购申请和 SAP 接口。
+""",
+            )
+            (req_dir / "README.md").write_text(
+                f"""# 设备采购流程优化
+
+## 基本信息
+
+- 需求名称：设备采购流程优化
+- 目标项目：backend, web
+- 当前状态：已完成
+
+## 最新结论
+
+- 需求分析：`{analysis.relative_to(req_dir).as_posix()}`
+""",
+                encoding="utf-8",
+            )
+
+            index_md, index_json = write_requirement_global_index(config)
+
+            md_text = index_md.read_text(encoding="utf-8")
+            json_text = index_json.read_text(encoding="utf-8")
+
+        self.assertIn("设备采购流程优化", md_text)
+        self.assertIn("backend, web", md_text)
+        self.assertIn("设备采购申请", json_text)
+        self.assertIn("SAP接口", json_text)
+
+    def test_tolaria_check_reports_missing_metadata_without_writing_docs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            req_dir = docs_root / "02-req" / "2026-07" / "2026-07-01-数采表优化"
+            req_dir.mkdir(parents=True)
+            readme = req_dir / "README.md"
+            readme.write_text("# 数采表优化\n\n旧需求正文。\n", encoding="utf-8")
+
+            report_path = tolaria_check(config, ["数采表优化"])
+
+            report_text = report_path.read_text(encoding="utf-8")
+            readme_text = readme.read_text(encoding="utf-8")
+
+        self.assertIn('"target": "数采表优化"', report_text)
+        self.assertIn('"missing_frontmatter"', report_text)
+        self.assertEqual(readme_text, "# 数采表优化\n\n旧需求正文。\n")
+
+    def test_tolaria_publish_writes_types_views_and_requirement_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            req_dir = doc_init(config, "数采表优化", "用户要求：数采表优化需要进入 Tolaria 知识库。")
+
+            index_path = tolaria_publish(config, ["数采表优化"])
+
+            index_text = index_path.read_text(encoding="utf-8")
+            requirement_type = docs_root / "types" / "requirement.md"
+            active_view = docs_root / "views" / "active-requirements.yml"
+            requirement_type_text = requirement_type.read_text(encoding="utf-8")
+            active_view_text = active_view.read_text(encoding="utf-8")
+
+        self.assertIn('type: "tolaria-knowledge-index"', index_text)
+        self.assertIn("[[数采表优化]]", index_text)
+        self.assertIn("type: Type", requirement_type_text)
+        self.assertIn("field: type", active_view_text)
+
+    def test_tolaria_actions_are_available_through_requirement_dispatcher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            doc_init(config, "数采表优化", "用户要求：数采表优化需要发布 Tolaria 索引。")
+
+            check_code = task_module.run_praxis_requirement_action(config, ["tolaria-check", "数采表优化"])
+            publish_code = task_module.run_praxis_requirement_action(config, ["tolaria-publish", "数采表优化"])
+
+            report = docs_root / ".praxis" / "out" / "tolaria" / "tolaria-check.json"
+            index = next((docs_root / "02-req").glob("2026-07/*数采表优化/04-产出物/Tolaria知识索引.md"))
+            report_exists = report.is_file()
+            index_exists = index.is_file()
+
+        self.assertEqual(check_code, 0)
+        self.assertEqual(publish_code, 0)
+        self.assertTrue(report_exists)
+        self.assertTrue(index_exists)
+
+
+if __name__ == "__main__":
+    unittest.main()

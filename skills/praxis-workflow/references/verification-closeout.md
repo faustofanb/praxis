@@ -22,4 +22,7 @@ Final output should include the meaningful evidence for the task:
 - checks skipped and why;
 - any waiver reason and residual risk.
 
+For delivery or closeout work, also include confirmed commits, excluded commits,
+candidate audit evidence and confirmations still required.
+
 Do not claim completion when required evidence is missing. Report the concrete blocker instead.

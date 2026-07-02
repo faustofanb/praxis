@@ -19,6 +19,7 @@ REQUIRED_FILES = (
     ".praxis/core.toml",
     ".praxis/project-adapter.toml",
     ".praxis/contracts/agents/turn.schema.json",
+    ".praxis/contracts/agents/delivery.schema.json",
 )
 
 

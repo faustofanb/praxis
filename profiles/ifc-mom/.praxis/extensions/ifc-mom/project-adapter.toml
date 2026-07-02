@@ -1,0 +1,78 @@
+schema_version = 1
+
+[adapter]
+workspace = "ifc-mom"
+shared_core = ".praxis/core.toml"
+description = "IFC MOM-specific paths, project kinds and rule entrypoints layered on top of the portable Praxis core."
+
+[paths]
+business_requirements = "docs/02-req"
+process_requirements = ".praxis/requirements"
+etl_assets = "docs/03-etl"
+praxis_outputs = ".praxis/out"
+praxis_rules = ".praxis/extensions/ifc-mom/rules/global"
+praxis_skills = ".praxis/extensions/ifc-mom/skills/global"
+
+[path_policy]
+optional_external = ["business_requirements", "etl_assets"]
+
+[project_kinds.java-maven]
+verification = "maven-module-compile"
+candidate_accelerator = "mvnd"
+
+[project_kinds.pnpm-web]
+verification = "changed-source-lint-with-opt-in-package-typecheck"
+candidate_accelerator = "nx"
+
+[project_kinds.pnpm-uniapp]
+verification = "changed-source-lint"
+candidate_accelerator = "nx"
+
+[project_kinds.npm-dashboard]
+verification = "targeted-dashboard-build"
+candidate_accelerator = "dagger"
+
+[project_kinds.docs]
+verification = "manual-doc-review-and-contract-check"
+candidate_accelerator = "conftest"
+
+rule_paths = [
+  "AGENTS.md",
+  ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md",
+  ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/01-入口与自动化.md",
+  ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/06-交付收口.md",
+  ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/07-过程改进与维护.md",
+]
+
+skill_paths = [
+  ".praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md",
+  ".praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md",
+  ".praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md",
+  ".praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md",
+]
+
+[database_policy]
+default_environments = ["LOCAL", "DEV"]
+workspace_local_config = "praxis.projects.toml:[database.local]"
+production_requires_confirmation = true
+large_table_requires_filter = true
+
+[portability]
+copy_as_is = [
+  "praxis.toml",
+  "praxis.projects.toml",
+  ".praxis/core.toml",
+  ".praxis/commands.toml",
+  ".praxis/methodology.toml",
+  ".praxis/profile.toml",
+  ".praxis/platforms/",
+  ".praxis/templates/",
+]
+rewrite_for_new_project = [
+  ".praxis/project-adapter.toml",
+  "AGENTS.md",
+]
+windows_notes = [
+  "Keep paths workspace-relative and use forward slashes in TOML.",
+  "Set PRAXIS_DIR to a Windows-local temp/output directory when runtime packets should not be committed.",
+]

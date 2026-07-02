@@ -1,0 +1,2 @@
+description = "Check the current Praxis workspace"
+prompt = "Run the current workspace Praxis checks using the local command surface. Prefer `rtk task system -- check` when RTK is available, otherwise `task system -- check`. Summarize PASS/FAIL and the first actionable failure only."

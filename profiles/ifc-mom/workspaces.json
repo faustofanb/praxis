@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "ifc-mom": {
+      "workspaces": [
+        {
+          "name": "mom",
+          "path": "/Users/fausto/Desktop/workplace/project/ifc/mom"
+        },
+        {
+          "name": "aotu",
+          "path": "/Users/fausto/Desktop/workplace/project/ifc/aotu"
+        }
+      ]
+    }
+  }
+}

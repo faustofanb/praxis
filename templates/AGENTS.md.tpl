@@ -9,7 +9,8 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 3. Read `.praxis/core.toml`.
 4. Read `.praxis/project-adapter.toml`.
 5. Read `.praxis/contracts/agents/turn.schema.json`.
-6. Read installed extension manifests only when a task matches that extension.
+6. Read `.praxis/contracts/agents/delivery.schema.json` before delivery or closeout work.
+7. Read installed extension manifests only when a task matches that extension.
 
 ## Operating Rules
 
@@ -26,3 +27,4 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - For code-bearing business work, create or restore the requirement directory and project worktree before editing business code.
 - For docs-only business work, create or restore the requirement directory before drafting implementation detail.
 - Answer-only, read-only investigation and pure workflow maintenance may waive the business worktree, but the final answer must state the waiver reason and residual risk.
+- Delivery or closeout work must identify confirmed commits, excluded commits, candidate audit evidence and required confirmations before preparing destructive or remote commands.

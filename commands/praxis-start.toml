@@ -1,0 +1,2 @@
+description = "Start a Praxis business requirement"
+prompt = "Start a Praxis business requirement from the user's arguments. Classify project and requirement name, then use `task project -- start <project> <需求名> <用户原始需求原文>` for code-bearing work or `task req -- init <需求名> <用户原始需求原文>` for docs-only business work. Do not edit business code before the requirement docs and required worktree exist."

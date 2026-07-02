@@ -4,7 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from praxis_sync_profile import sync_profile
 
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +21,7 @@ TEMPLATE_MAP = {
     "core.toml.tpl": ".praxis/core.toml",
     "project-adapter.toml.tpl": ".praxis/project-adapter.toml",
     "turn.schema.json": ".praxis/contracts/agents/turn.schema.json",
+    "delivery.schema.json": ".praxis/contracts/agents/delivery.schema.json",
 }
 
 
@@ -37,6 +42,19 @@ def initialize_workspace(workspace: str | Path, *, name: str = "Praxis Workspace
     return written
 
 
+def initialize_workspace_with_profiles(
+    workspace: str | Path,
+    *,
+    name: str = "Praxis Workspace",
+    profiles: list[str] | None = None,
+    force: bool = False,
+) -> list[str]:
+    written = initialize_workspace(workspace, name=name, force=force)
+    for profile in profiles or []:
+        written.extend(sync_profile(workspace, profile, force=force))
+    return written
+
+
 def render_template(template: str, *, name: str) -> str:
     return template.replace("{{ workspace_name }}", name)
 
@@ -45,10 +63,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("workspace", help="Workspace root to initialize")
     parser.add_argument("--name", default="Praxis Workspace", help="Workspace display name")
+    parser.add_argument("--profile", action="append", default=[], help="Packaged profile to sync")
     parser.add_argument("--force", action="store_true", help="Overwrite existing template files")
     args = parser.parse_args(argv)
 
-    written = initialize_workspace(args.workspace, name=args.name, force=args.force)
+    written = initialize_workspace_with_profiles(
+        args.workspace,
+        name=args.name,
+        profiles=args.profile,
+        force=args.force,
+    )
     if written:
         print("written:")
         for path in written:
