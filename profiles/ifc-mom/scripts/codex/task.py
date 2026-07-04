@@ -13,7 +13,9 @@ Run with:
   task req -- check <需求名>
   task req -- index <需求名>
   task req -- index-all
+  task req -- domain-index
   task req -- db-plan <需求名>
+  task docs -- domain-index
   task docs -- tolaria-check [<需求名>|--all]
   task docs -- tolaria-publish <需求名>|--all
   task etl -- init
@@ -54,7 +56,7 @@ from typing import Any
 
 from momlib.config import load_config
 from momlib.context import context_brief_command, context_command
-from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_requirement_global_index
+from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index
 from momlib.etl import run_etl_action
 from momlib.finish import cleanup_requirement, deliver_requirement, delivery_status, finish_requirement, split_commit_requirement
 from momlib.git_worktree import create_worktree, project_worktree_dirs
@@ -212,6 +214,8 @@ def run_praxis_action(action: str, args: list[str]) -> int:
     config = load_config()
     if action == "req":
         return run_praxis_requirement_action(config, args)
+    if action == "docs":
+        return run_praxis_docs_action(config, args)
     if action == "project":
         return run_praxis_project_action(config, args)
     if action == "context":
@@ -342,7 +346,7 @@ def run_praxis_requirement_action(config: dict, args: list[str]) -> int:
     if args and args[0] == "--":
         args = args[1:]
     if not args:
-        fail("usage: task req -- <init|iter|check|index|index-all|db-plan|tolaria-check|tolaria-publish> ...")
+        fail("usage: task req -- <init|iter|check|index|index-all|domain-index|db-plan|tolaria-check|tolaria-publish> ...")
     action = args[0]
     if action == "init":
         if len(args) < 3:
@@ -378,6 +382,9 @@ def run_praxis_requirement_action(config: dict, args: list[str]) -> int:
     if action == "index-all":
         write_requirement_global_index(config)
         return 0
+    if action == "domain-index":
+        write_domain_index(config)
+        return 0
     if action == "db-plan":
         if len(args) < 2:
             fail("usage: task req -- db-plan <需求名>")
@@ -391,6 +398,30 @@ def run_praxis_requirement_action(config: dict, args: list[str]) -> int:
         tolaria_publish(config, args[1:])
         return 0
     fail(f"unknown praxis req action: {action}")
+
+
+def run_praxis_docs_action(config: dict, args: list[str]) -> int:
+    """Run docs-level knowledge actions."""
+    if args and args[0] == "--":
+        args = args[1:]
+    if not args:
+        fail("usage: task docs -- <domain-index|tolaria-check|tolaria-publish|index-all> ...")
+    action = args[0]
+    if action == "domain-index":
+        write_domain_index(config)
+        return 0
+    if action == "index-all":
+        write_requirement_global_index(config)
+        return 0
+    if action == "tolaria-check":
+        tolaria_check(config, args[1:])
+        return 0
+    if action == "tolaria-publish":
+        if len(args) < 2:
+            fail("usage: task docs -- tolaria-publish <需求名>|--all")
+        tolaria_publish(config, args[1:])
+        return 0
+    fail(f"unknown praxis docs action: {action}")
 
 
 def run_praxis_project_action(config: dict, args: list[str]) -> int:

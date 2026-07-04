@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import task as task_module  # noqa: E402
-from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_requirement_global_index  # noqa: E402
+from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index  # noqa: E402
 
 
 class DocsInitTest(unittest.TestCase):
@@ -176,6 +176,23 @@ where status = 'FAIL';
         self.assertIn("设备采购申请", json_text)
         self.assertIn("SAP接口", json_text)
 
+    def test_write_domain_index_groups_requirements_by_business_aggregate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            doc_init(config, "设备采购SAP接口优化", "用户要求：设备采购申请需要优化 SAP 接口字段映射。")
+
+            index_md, index_json = write_domain_index(config)
+
+            md_text = index_md.read_text(encoding="utf-8")
+            json_text = index_json.read_text(encoding="utf-8")
+            aggregate = Path(tmp_dir) / "01-domain" / "purchase" / "purchase-requisition.md"
+            aggregate_text = aggregate.read_text(encoding="utf-8")
+
+        self.assertIn("purchase / purchase-requisition", md_text)
+        self.assertIn("设备采购SAP接口优化", aggregate_text)
+        self.assertIn('"boundedContext": "purchase"', json_text)
+        self.assertIn('"aggregate": "purchase-requisition"', json_text)
+
     def test_tolaria_check_reports_missing_metadata_without_writing_docs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             docs_root = Path(tmp_dir)
@@ -207,11 +224,17 @@ where status = 'FAIL';
             active_view = docs_root / "views" / "active-requirements.yml"
             requirement_type_text = requirement_type.read_text(encoding="utf-8")
             active_view_text = active_view.read_text(encoding="utf-8")
+            domain_type = docs_root / "types" / "domain-aggregate.md"
+            domain_view = docs_root / "views" / "domain-aggregates.yml"
+            domain_type_text = domain_type.read_text(encoding="utf-8")
+            domain_view_text = domain_view.read_text(encoding="utf-8")
 
         self.assertIn('type: "tolaria-knowledge-index"', index_text)
         self.assertIn("[[数采表优化]]", index_text)
         self.assertIn("type: Type", requirement_type_text)
         self.assertIn("field: type", active_view_text)
+        self.assertIn("Domain Aggregate", domain_type_text)
+        self.assertIn("domain-aggregate", domain_view_text)
 
     def test_tolaria_actions_are_available_through_requirement_dispatcher(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

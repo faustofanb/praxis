@@ -31,6 +31,9 @@ RAW_REQUIREMENT_PLACEHOLDERS = {
 }
 GENERIC_REQUIREMENT_NAMES = {"task", "todo", "tmp", "temp", "demo", "test", "fix", "bug", "需求", "任务"}
 BUSINESS_OBJECT_KEYWORDS = [
+    "金属平衡",
+    "挤压产出",
+    "合金产出",
     "设备采购申请",
     "采购申请",
     "备件领用",
@@ -48,6 +51,15 @@ BUSINESS_OBJECT_KEYWORDS = [
     "库存",
     "报表",
 ]
+BUSINESS_DOMAIN_RULES = [
+    ("purchase", "purchase-requisition", "采购申请", ["设备采购申请", "采购申请"]),
+    ("equipment", "spare-part-requisition", "备件领用", ["备件领用"]),
+    ("mes-extrusion", "metal-balance", "金属平衡", ["金属平衡", "挤压产出", "合金产出"]),
+    ("integration", "sap-interface", "SAP接口", ["SAP接口", "SAP"]),
+    ("reporting", "business-report", "业务报表", ["报表", "驾驶舱"]),
+]
+DOMAIN_GENERATED_START = "<!-- praxis:domain-index:start -->"
+DOMAIN_GENERATED_END = "<!-- praxis:domain-index:end -->"
 TOLARIA_SKIP_DIRS = {".git", ".obsidian", ".tolaria", ".tolaria-rename-txn", ".vscode", "attachments", "附件"}
 TOLARIA_REQUIRED_FIELDS = {"type", "title", "created", "tags"}
 
@@ -63,6 +75,13 @@ def docs_root(config: dict[str, Any]) -> Path:
 def requirement_root(config: dict[str, Any]) -> Path:
     """返回需求文档归档根目录。"""
     root = docs_root(config) / "02-req"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def domain_root(config: dict[str, Any]) -> Path:
+    """返回业务聚合知识沉淀根目录。"""
+    root = docs_root(config) / "01-domain"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -245,6 +264,8 @@ def publish_tolaria_types_and_views(config: dict[str, Any]) -> list[Path]:
         docs / "types" / "etl-asset.md",
         docs / "views" / "active-requirements.yml",
         docs / "views" / "etl-assets.yml",
+        docs / "types" / "domain-aggregate.md",
+        docs / "views" / "domain-aggregates.yml",
     ]
     write_file_if_missing(
         outputs[0],
@@ -332,6 +353,37 @@ filters:
     - field: tags
       op: contains
       value: ifc-mom/etl
+""",
+    )
+    write_file_if_missing(
+        outputs[5],
+        """---
+type: Type
+_icon: boxes
+_color: "#0f766e"
+_order: 25
+_list_properties_display:
+  - bounded_context
+  - aggregate
+_sort: "property:bounded_context:asc"
+---
+
+# Domain Aggregate
+
+业务聚合知识页。需求目录记录交付过程，业务聚合页沉淀长期口径、规则和历史坑点。
+""",
+    )
+    write_file_if_missing(
+        outputs[6],
+        """name: Domain Aggregates
+icon: boxes
+color: "#0f766e"
+sort: "property:bounded_context:asc"
+filters:
+  all:
+    - field: type
+      op: equals
+      value: domain-aggregate
 """,
     )
     return outputs
@@ -449,6 +501,34 @@ def extract_business_objects(text: str) -> list[str]:
     return [keyword for keyword in BUSINESS_OBJECT_KEYWORDS if keyword.replace(" ", "") in normalized]
 
 
+def classify_business_domain(text: str) -> dict[str, str]:
+    """按轻量关键词推断业务域和聚合；人工 frontmatter 可覆盖。"""
+    normalized = text.replace(" ", "").lower()
+    for bounded_context, aggregate, capability, keywords in BUSINESS_DOMAIN_RULES:
+        if any(keyword.replace(" ", "").lower() in normalized for keyword in keywords):
+            return {
+                "boundedContext": bounded_context,
+                "aggregate": aggregate,
+                "capability": capability,
+            }
+    return {
+        "boundedContext": "uncategorized",
+        "aggregate": "general",
+        "capability": "待归类",
+    }
+
+
+def requirement_domain_fields(readme_text: str, combined_text: str) -> dict[str, str]:
+    """读取 README frontmatter 中的业务聚合字段，缺失时用关键词推断。"""
+    fields, _ = parse_frontmatter(readme_text)
+    inferred = classify_business_domain(combined_text)
+    return {
+        "boundedContext": fields.get("bounded_context") or fields.get("boundedContext") or inferred["boundedContext"],
+        "aggregate": fields.get("aggregate") or inferred["aggregate"],
+        "capability": fields.get("capability") or inferred["capability"],
+    }
+
+
 def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str = "") -> Path:
     """创建标准 docs/02-req/YYYY-MM/YYYY-MM-DD-需求名 v2 目录结构和初始文档。"""
     validate_requirement_name(requirement_name)
@@ -461,6 +541,7 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
     req_dir = requirement_dir(config, requirement_name)
     req_dir.mkdir(parents=True, exist_ok=True)
     created_at = timestamp()
+    domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
 
     for child in [
         "00-原始需求/附件",
@@ -482,7 +563,12 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
             requirement_name,
             created_at,
             ["ifc-mom/requirement", "ifc-mom/docs"],
-            {"status": "初始化"},
+            {
+                "status": "初始化",
+                "bounded_context": domain["boundedContext"],
+                "aggregate": domain["aggregate"],
+                "capability": domain["capability"],
+            },
         )
         + f"""# {requirement_name}
 
@@ -492,6 +578,13 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
 - 目标项目：待确认
 - 当前状态：初始化
 - 验证方式：待确认
+
+## 业务聚合
+
+- 限界上下文：{domain["boundedContext"]}
+- 聚合：{domain["aggregate"]}
+- 能力：{domain["capability"]}
+- 复用规则：同一业务目标的连续调整优先追加迭代文件；独立上线或独立验收时再新建需求目录。
 
 ## 原始需求入口
 
@@ -754,13 +847,20 @@ def update_context_index(req_dir: Path, project: str, worktree_path: Path | None
     if existing and "当前状态：初始化" not in existing and "目标项目：待确认" not in existing:
         return
     updated_at = timestamp()
+    domain = classify_business_domain(requirement_name)
     readme.write_text(
         tolaria_frontmatter(
             "requirement",
             requirement_name,
             updated_at,
             ["ifc-mom/requirement", "ifc-mom/docs"],
-            {"status": "已初始化", "project": project},
+            {
+                "status": "已初始化",
+                "project": project,
+                "bounded_context": domain["boundedContext"],
+                "aggregate": domain["aggregate"],
+                "capability": domain["capability"],
+            },
         )
         + f"""# {requirement_name}
 
@@ -770,6 +870,13 @@ def update_context_index(req_dir: Path, project: str, worktree_path: Path | None
 - 目标项目：{project}
 - 当前状态：已初始化
 {worktree_text}- 验证方式：`{verify_command(project, requirement_name)}`
+
+## 业务聚合
+
+- 限界上下文：{domain["boundedContext"]}
+- 聚合：{domain["aggregate"]}
+- 能力：{domain["capability"]}
+- 复用规则：同一业务目标的连续调整优先追加迭代文件；独立上线或独立验收时再新建需求目录。
 
 ## 原始需求入口
 
@@ -823,6 +930,7 @@ def requirement_index_record(root: Path, req_dir: Path) -> dict[str, Any]:
                 if file.name != "README.md":
                     stage_text_parts.append(file.read_text(encoding="utf-8"))
     combined_text = "\n".join(stage_text_parts)
+    domain = requirement_domain_fields(readme_text, combined_text)
     relative = req_dir.relative_to(root).as_posix()
     date = req_dir.name[:10] if re.match(r"^20\d{2}-\d{2}-\d{2}-", req_dir.name) else ""
     title = req_dir.name[11:] if date else req_dir.name
@@ -836,6 +944,7 @@ def requirement_index_record(root: Path, req_dir: Path) -> dict[str, Any]:
         "date": date,
         "project": extract_readme_field(readme_text, "目标项目", "待确认"),
         "status": extract_readme_field(readme_text, "当前状态", "未知"),
+        **domain,
         "businessObjects": extract_business_objects(combined_text),
         "path": relative,
         "latestAnalysis": latest_analysis.relative_to(root).as_posix() if latest_analysis else "",
@@ -857,15 +966,16 @@ def write_requirement_global_index(config: dict[str, Any]) -> tuple[Path, Path]:
     md_lines = [
         "# 需求总索引",
         "",
-        "本文件由 `task req -- index-all` 生成，用于按日期、项目和业务对象快速恢复历史需求。",
+        "本文件由 `task req -- index-all` 生成，用于按日期、项目、业务聚合和业务对象快速恢复历史需求。",
         "",
-        "| 日期 | 需求 | 项目 | 状态 | 业务对象 | 路径 |",
-        "|---|---|---|---|---|---|",
+        "| 日期 | 需求 | 项目 | 状态 | 业务聚合 | 业务对象 | 路径 |",
+        "|---|---|---|---|---|---|---|",
     ]
     for record in records:
         objects = "、".join(record["businessObjects"]) or "-"
+        domain = f"{record['boundedContext']} / {record['aggregate']}"
         md_lines.append(
-            f"| {record['date'] or '-'} | {record['title']} | {record['project']} | {record['status']} | {objects} | `{record['path']}` |"
+            f"| {record['date'] or '-'} | {record['title']} | {record['project']} | {record['status']} | {domain} | {objects} | `{record['path']}` |"
         )
     md_lines.append("")
 
@@ -875,4 +985,107 @@ def write_requirement_global_index(config: dict[str, Any]) -> tuple[Path, Path]:
     index_json.write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Requirement global index updated: {index_md}")
     print(f"Requirement global index JSON updated: {index_json}")
+    return index_md, index_json
+
+
+def replace_generated_block(existing: str, generated: str) -> str:
+    """更新生成区块，保留业务页面上人工维护的沉淀内容。"""
+    block = f"{DOMAIN_GENERATED_START}\n{generated.rstrip()}\n{DOMAIN_GENERATED_END}\n"
+    if DOMAIN_GENERATED_START in existing and DOMAIN_GENERATED_END in existing:
+        before, rest = existing.split(DOMAIN_GENERATED_START, 1)
+        _old, after = rest.split(DOMAIN_GENERATED_END, 1)
+        return before.rstrip() + "\n\n" + block + after.lstrip()
+    return existing.rstrip() + "\n\n" + block
+
+
+def domain_page_template(context: str, aggregate: str) -> str:
+    """生成业务聚合页面的人工沉淀骨架。"""
+    title = f"{context} / {aggregate}"
+    return (
+        tolaria_frontmatter(
+            "domain-aggregate",
+            title,
+            timestamp(),
+            ["ifc-mom/domain", f"ifc-mom/domain/{context}"],
+            {"bounded_context": context, "aggregate": aggregate},
+        )
+        + f"""# {title}
+
+## 业务规则
+
+- 待补充。
+
+## 关键口径
+
+- 待补充。
+
+## 历史坑点
+
+- 待补充。
+"""
+    )
+
+
+def write_domain_page(root: Path, context: str, aggregate: str, records: list[dict[str, Any]]) -> Path:
+    """写入单个业务聚合页面，只替换自动生成的需求清单。"""
+    path = root / context / f"{aggregate}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = path.read_text(encoding="utf-8") if path.is_file() else domain_page_template(context, aggregate)
+    lines = ["## 关联需求", ""]
+    for record in records:
+        lines.append(
+            f"- {record['date'] or '-'} [{record['title']}](../../02-req/{record['path']}/README.md) "
+            f"`{record['status']}`"
+        )
+    path.write_text(replace_generated_block(existing, "\n".join(lines)), encoding="utf-8")
+    return path
+
+
+def write_domain_index(config: dict[str, Any]) -> tuple[Path, Path]:
+    """生成 docs/01-domain 业务聚合索引，需求目录仍保留为交付流水。"""
+    req_root = requirement_root(config)
+    out_root = domain_root(config)
+    records = [
+        requirement_index_record(req_root, req_dir)
+        for req_dir in sorted(req_root.glob("20??-??/20??-??-??-*"))
+        if req_dir.is_dir() and (req_dir / "README.md").is_file()
+    ]
+    records.sort(key=lambda item: (item.get("boundedContext", ""), item.get("aggregate", ""), item.get("date", "")))
+
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for record in records:
+        grouped.setdefault((record["boundedContext"], record["aggregate"]), []).append(record)
+
+    index_records: list[dict[str, Any]] = []
+    for (context, aggregate), group_records in sorted(grouped.items()):
+        page = write_domain_page(out_root, context, aggregate, group_records)
+        index_records.append(
+            {
+                "boundedContext": context,
+                "aggregate": aggregate,
+                "requirementCount": len(group_records),
+                "path": page.relative_to(out_root).as_posix(),
+                "requirements": group_records,
+            }
+        )
+
+    md_lines = [
+        "# 业务聚合索引",
+        "",
+        "本文件由 `task req -- domain-index` 生成；需求目录继续作为交付记录，业务页面用于长期知识沉淀。",
+        "",
+        "| 业务聚合 | 需求数 | 页面 |",
+        "|---|---:|---|",
+    ]
+    for record in index_records:
+        domain = f"{record['boundedContext']} / {record['aggregate']}"
+        md_lines.append(f"| {domain} | {record['requirementCount']} | [{record['path']}]({record['path']}) |")
+    md_lines.append("")
+
+    index_md = out_root / "INDEX.md"
+    index_json = out_root / "index.json"
+    index_md.write_text("\n".join(md_lines), encoding="utf-8")
+    index_json.write_text(json.dumps(index_records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Domain index updated: {index_md}")
+    print(f"Domain index JSON updated: {index_json}")
     return index_md, index_json
