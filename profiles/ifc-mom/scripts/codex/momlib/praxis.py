@@ -638,6 +638,11 @@ def praxis_context_packet(config: dict[str, Any], project: str, requirement_name
             "legacyCommandsAreAliases": profile.get("control_plane", {}).get("legacy_commands_are_aliases", True),
             "commandGroups": profile.get("control_plane", {}).get("command_groups", []),
         },
+        "engineeringControl": {
+            "target": "requirement boundary and acceptance criteria",
+            "observation": "context packet, code graph and evidence",
+            "feedback": "tests, role verdicts and delivery recheck",
+        },
         "facts": {
             "requirementDir": relative(req_dir),
             "projectPath": portable_config_path(project_data.get("path", "")),

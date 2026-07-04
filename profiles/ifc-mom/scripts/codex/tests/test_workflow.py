@@ -1176,6 +1176,14 @@ class WorkflowPolicyTest(unittest.TestCase):
             self.assertEqual(packet["project"], "backend")
             self.assertEqual(packet["requirementName"], "上下文包")
             self.assertEqual(packet["controlPlane"]["primaryCommand"], "task")
+            self.assertEqual(
+                packet["engineeringControl"],
+                {
+                    "target": "requirement boundary and acceptance criteria",
+                    "observation": "context packet, code graph and evidence",
+                    "feedback": "tests, role verdicts and delivery recheck",
+                },
+            )
             self.assertIn("task context -- --brief backend 上下文包", packet["nextCommands"])
             self.assertIn("task gate -- ready backend 上下文包", packet["nextCommands"])
             self.assertNotIn("task gate -- guard backend 上下文包", packet["nextCommands"])
