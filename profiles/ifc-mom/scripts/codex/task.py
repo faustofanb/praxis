@@ -60,7 +60,6 @@ from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, writ
 from momlib.etl import run_etl_action
 from momlib.finish import cleanup_requirement, deliver_requirement, delivery_status, finish_requirement, split_commit_requirement
 from momlib.git_worktree import create_worktree, project_worktree_dirs
-from momlib.names import safe_path_leaf
 from momlib.praxis import (
     PRAXIS_PROPOSALS_FILE,
     PRAXIS_CONTEXT_DIR,
@@ -72,6 +71,7 @@ from momlib.praxis import (
     praxis_formalism_check,
     praxis_index,
     praxis_write_lock,
+    praxis_write_delivery_precheck_packet,
     praxis_write_readiness_report,
     praxis_write_role_handoff,
     praxis_import_verdict_file,
@@ -572,50 +572,6 @@ def run_grouped_action(
     return exit_code
 
 
-def write_delivery_precheck_packet(config: dict, requirement_name: str, extra_args: list[str]) -> Path:
-    """Write the parallel closeout dispatch packet for the main conversation."""
-    _, remaining = split_project_filter(extra_args)
-    if remaining:
-        fail("usage: task delivery -- precheck-all <需求名> [--projects <project,project...>]")
-    projects = delivery_target_projects(config, requirement_name, extra_args)
-    dispatch = [
-        {
-            "role": "quality",
-            "project": project,
-            "command": f"quality: {project}",
-            "expectedVerdictImport": f"task gate -- import-verdict quality {project} {requirement_name} <agent-output-json>",
-        }
-        for project in projects
-    ]
-    dispatch.append(
-        {
-            "role": "delivery-precheck",
-            "project": "all",
-            "command": "delivery-precheck",
-            "checks": [
-                f"task delivery -- status {project} {requirement_name}" for project in projects
-            ],
-        }
-    )
-    packet = {
-        "schemaVersion": 1,
-        "requirementName": requirement_name,
-        "projects": projects,
-        "parallelDispatch": dispatch,
-        "nextCommands": [
-            f"task gate -- ready-all {requirement_name}",
-            f"task delivery -- commit-split-all {requirement_name} <production-message>",
-            f"task delivery -- deliver-all {requirement_name}",
-            f"task delivery -- cleanup-all {requirement_name}",
-        ],
-    }
-    target_dir = PRAXIS_CONTEXT_DIR.parent / "delivery-precheck"
-    target_dir.mkdir(parents=True, exist_ok=True)
-    path = target_dir / f"{safe_path_leaf(requirement_name)}.json"
-    path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Praxis delivery precheck: {path}")
-    return path
-
 def run_praxis_role_action(config: dict, args: list[str]) -> int:
     """Generate machine-readable handoff/lock packets for AI role boundary controls."""
     if len(args) < 4:
@@ -666,7 +622,10 @@ def run_praxis_delivery_action(config: dict, args: list[str]) -> int:
     if action == "precheck-all":
         if len(args) < 2:
             fail("usage: task delivery -- precheck-all <需求名> [--projects <project,project...>]")
-        write_delivery_precheck_packet(config, args[1], args[2:])
+        _, remaining = split_project_filter(args[2:])
+        if remaining:
+            fail("usage: task delivery -- precheck-all <需求名> [--projects <project,project...>]")
+        praxis_write_delivery_precheck_packet(args[1], delivery_target_projects(config, args[1], args[2:]))
         return 0
     if action in {"status-all", "commit-split-all", "deliver-all", "cleanup-all"}:
         if len(args) < 2:

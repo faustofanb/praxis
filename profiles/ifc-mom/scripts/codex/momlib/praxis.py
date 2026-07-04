@@ -13,6 +13,7 @@ from typing import Any
 from .config import load_config
 from .context import verify_command, worker_rule_skill_paths
 from .docs import find_requirement_dir
+from .names import safe_path_leaf
 from .paths import PRAXIS_OUTPUT_DIR, ROOT_DIR
 from . import praxis_contracts
 from .praxis_profile import ADAPTER_FILE, CORE_FILE, praxis_profile_payload
@@ -418,6 +419,15 @@ def safe_packet_name(project: str, requirement_name: str) -> str:
     return f"{project}-{requirement_name.replace('/', '-').replace(':', '-')}.json"
 
 
+def engineering_control_context() -> dict[str, str]:
+    """Return the shared target-observation-feedback contract for AI packets."""
+    return {
+        "target": "requirement boundary and acceptance criteria",
+        "observation": "context packet, code graph and evidence",
+        "feedback": "tests, role verdicts and delivery recheck",
+    }
+
+
 def praxis_handoff_path(project: str, requirement_name: str, role: str) -> Path:
     """Return the default handoff packet path for a role."""
     return PRAXIS_HANDOFF_DIR / f"{safe_packet_name(project, requirement_name).removesuffix('.json')}-{role.strip().lower()}.json"
@@ -638,11 +648,7 @@ def praxis_context_packet(config: dict[str, Any], project: str, requirement_name
             "legacyCommandsAreAliases": profile.get("control_plane", {}).get("legacy_commands_are_aliases", True),
             "commandGroups": profile.get("control_plane", {}).get("command_groups", []),
         },
-        "engineeringControl": {
-            "target": "requirement boundary and acceptance criteria",
-            "observation": "context packet, code graph and evidence",
-            "feedback": "tests, role verdicts and delivery recheck",
-        },
+        "engineeringControl": engineering_control_context(),
         "facts": {
             "requirementDir": relative(req_dir),
             "projectPath": portable_config_path(project_data.get("path", "")),
@@ -726,6 +732,48 @@ def praxis_context_packet(config: dict[str, Any], project: str, requirement_name
     path = PRAXIS_CONTEXT_DIR / safe_packet_name(project, requirement_name)
     path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Praxis context packet: {path}")
+    return path
+
+
+def praxis_write_delivery_precheck_packet(requirement_name: str, projects: list[str]) -> Path:
+    """Write the parallel closeout dispatch packet for the main conversation."""
+    dispatch = [
+        {
+            "role": "quality",
+            "project": project,
+            "command": f"quality: {project}",
+            "expectedVerdictImport": (
+                f"task gate -- import-verdict quality {project} {requirement_name} <agent-output-json>"
+            ),
+        }
+        for project in projects
+    ]
+    dispatch.append(
+        {
+            "role": "delivery-precheck",
+            "project": "all",
+            "command": "delivery-precheck",
+            "checks": [f"task delivery -- status {project} {requirement_name}" for project in projects],
+        }
+    )
+    packet = {
+        "schemaVersion": 1,
+        "requirementName": requirement_name,
+        "engineeringControl": engineering_control_context(),
+        "projects": projects,
+        "parallelDispatch": dispatch,
+        "nextCommands": [
+            f"task gate -- ready-all {requirement_name}",
+            f"task delivery -- commit-split-all {requirement_name} <production-message>",
+            f"task delivery -- deliver-all {requirement_name}",
+            f"task delivery -- cleanup-all {requirement_name}",
+        ],
+    }
+    target_dir = PRAXIS_CONTEXT_DIR.parent / "delivery-precheck"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    path = target_dir / f"{safe_path_leaf(requirement_name)}.json"
+    path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Praxis delivery precheck: {path}")
     return path
 
 
