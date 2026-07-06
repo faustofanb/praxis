@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -51,17 +52,12 @@ BUSINESS_OBJECT_KEYWORDS = [
     "库存",
     "报表",
 ]
-BUSINESS_DOMAIN_RULES = [
-    ("purchase", "purchase-requisition", "采购申请", ["设备采购申请", "采购申请"]),
-    ("equipment", "spare-part-requisition", "备件领用", ["备件领用"]),
-    ("mes-extrusion", "metal-balance", "金属平衡", ["金属平衡", "挤压产出", "合金产出"]),
-    ("integration", "sap-interface", "SAP接口", ["SAP接口", "SAP"]),
-    ("reporting", "business-report", "业务报表", ["报表", "驾驶舱"]),
-]
+BUSINESS_DOMAIN_RULES_FILE = Path(__file__).with_name("business-domain-rules.json")
 DOMAIN_GENERATED_START = "<!-- praxis:domain-index:start -->"
 DOMAIN_GENERATED_END = "<!-- praxis:domain-index:end -->"
 TOLARIA_SKIP_DIRS = {".git", ".obsidian", ".tolaria", ".tolaria-rename-txn", ".vscode", "attachments", "附件"}
 TOLARIA_REQUIRED_FIELDS = {"type", "title", "created", "tags"}
+COMPLETED_STATUSES = {"已完成", "完成", "已关闭", "已取消", "取消"}
 
 
 def docs_root(config: dict[str, Any]) -> Path:
@@ -501,10 +497,22 @@ def extract_business_objects(text: str) -> list[str]:
     return [keyword for keyword in BUSINESS_OBJECT_KEYWORDS if keyword.replace(" ", "") in normalized]
 
 
+@lru_cache(maxsize=1)
+def business_domain_rules() -> list[dict[str, Any]]:
+    """读取业务域字典，避免改代码才能调整聚合归属。"""
+    if not BUSINESS_DOMAIN_RULES_FILE.is_file():
+        return []
+    return json.loads(BUSINESS_DOMAIN_RULES_FILE.read_text(encoding="utf-8"))
+
+
 def classify_business_domain(text: str) -> dict[str, str]:
     """按轻量关键词推断业务域和聚合；人工 frontmatter 可覆盖。"""
     normalized = text.replace(" ", "").lower()
-    for bounded_context, aggregate, capability, keywords in BUSINESS_DOMAIN_RULES:
+    for rule in business_domain_rules():
+        bounded_context = str(rule.get("boundedContext", "")).strip()
+        aggregate = str(rule.get("aggregate", "")).strip()
+        capability = str(rule.get("capability", "")).strip()
+        keywords = [str(keyword) for keyword in rule.get("keywords", [])]
         if any(keyword.replace(" ", "").lower() in normalized for keyword in keywords):
             return {
                 "boundedContext": bounded_context,
@@ -529,6 +537,35 @@ def requirement_domain_fields(readme_text: str, combined_text: str) -> dict[str,
     }
 
 
+def active_domain_requirements(config: dict[str, Any], domain: dict[str, str], current_dir: Path) -> list[dict[str, Any]]:
+    """查找同业务聚合下未完成需求，用于提示复用目录。"""
+    if domain["boundedContext"] == "uncategorized":
+        return []
+    root = requirement_root(config)
+    matches = []
+    for req_dir in sorted(root.glob("20??-??/20??-??-??-*"), reverse=True):
+        if req_dir == current_dir or not (req_dir / "README.md").is_file():
+            continue
+        record = requirement_index_record(root, req_dir)
+        if record["status"] in COMPLETED_STATUSES:
+            continue
+        if record["boundedContext"] == domain["boundedContext"] and record["aggregate"] == domain["aggregate"]:
+            matches.append(record)
+    return matches
+
+
+def print_reuse_suggestion(config: dict[str, Any], domain: dict[str, str], current_dir: Path) -> None:
+    """提示同聚合未完成需求，仍允许显式创建新需求目录。"""
+    matches = active_domain_requirements(config, domain, current_dir)
+    if not matches:
+        return
+    root = requirement_root(config)
+    print("建议复用已有需求目录：")
+    for record in matches[:3]:
+        print(f"- {record['title']}：`{root / record['path']}`")
+    print("如属同一业务目标，优先使用 `task req -- iter <需求名> analysis|plan|progress <主题>` 追加迭代。")
+
+
 def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str = "") -> Path:
     """创建标准 docs/02-req/YYYY-MM/YYYY-MM-DD-需求名 v2 目录结构和初始文档。"""
     validate_requirement_name(requirement_name)
@@ -539,9 +576,10 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
         fail("用户原始需求不能使用占位词或助手摘要；请完整粘贴用户原始描述、SQL、脚本、接口示例和附件留档状态")
 
     req_dir = requirement_dir(config, requirement_name)
-    req_dir.mkdir(parents=True, exist_ok=True)
     created_at = timestamp()
     domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
+    print_reuse_suggestion(config, domain, req_dir)
+    req_dir.mkdir(parents=True, exist_ok=True)
 
     for child in [
         "00-原始需求/附件",

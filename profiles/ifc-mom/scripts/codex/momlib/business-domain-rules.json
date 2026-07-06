@@ -1,0 +1,32 @@
+[
+  {
+    "boundedContext": "purchase",
+    "aggregate": "purchase-requisition",
+    "capability": "采购申请",
+    "keywords": ["设备采购申请", "采购申请"]
+  },
+  {
+    "boundedContext": "equipment",
+    "aggregate": "spare-part-requisition",
+    "capability": "备件领用",
+    "keywords": ["备件领用"]
+  },
+  {
+    "boundedContext": "mes-extrusion",
+    "aggregate": "metal-balance",
+    "capability": "金属平衡",
+    "keywords": ["金属平衡", "挤压产出", "合金产出"]
+  },
+  {
+    "boundedContext": "integration",
+    "aggregate": "sap-interface",
+    "capability": "SAP接口",
+    "keywords": ["SAP接口", "SAP"]
+  },
+  {
+    "boundedContext": "reporting",
+    "aggregate": "business-report",
+    "capability": "业务报表",
+    "keywords": ["报表", "驾驶舱"]
+  }
+]

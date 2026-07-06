@@ -3,13 +3,15 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import task as task_module  # noqa: E402
-from momlib.docs import doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index  # noqa: E402
+from momlib.docs import classify_business_domain, doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index  # noqa: E402
 
 
 class DocsInitTest(unittest.TestCase):
@@ -192,6 +194,23 @@ where status = 'FAIL';
         self.assertIn("设备采购SAP接口优化", aggregate_text)
         self.assertIn('"boundedContext": "purchase"', json_text)
         self.assertIn('"aggregate": "purchase-requisition"', json_text)
+
+    def test_domain_dictionary_drives_business_classification(self) -> None:
+        domain = classify_business_domain("用户要求：挤压合金产出和金属平衡口径需要统一。")
+
+        self.assertEqual(domain["boundedContext"], "mes-extrusion")
+        self.assertEqual(domain["aggregate"], "metal-balance")
+
+    def test_docs_init_suggests_reusing_active_requirement_in_same_aggregate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            existing = doc_init(config, "设备采购流程优化", "用户要求：设备采购申请字段需要优化。")
+
+            with redirect_stdout(StringIO()) as output:
+                doc_init(config, "设备采购字段调整", "用户要求：设备采购申请字段继续调整。")
+
+        self.assertIn("建议复用已有需求目录", output.getvalue())
+        self.assertIn(existing.name, output.getvalue())
 
     def test_tolaria_check_reports_missing_metadata_without_writing_docs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
