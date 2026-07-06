@@ -97,6 +97,9 @@ class ContextCommandTest(unittest.TestCase):
         self.assertIn("数据口径结论必须回到真实库确认", text)
         self.assertIn("新需求使用 04-产出物/SQL/", text)
         self.assertIn("正式 Flyway 迁移目录只能在收尾环节", text)
+        self.assertIn("task system -- code-graph check", text)
+        self.assertIn("失败或过期时先运行 task system -- code-graph build", text)
+        self.assertIn("不得仅因图谱过期直接降级为源码 grep", text)
         self.assertIn("证据化分析文件", text)
 
         main_section = text.split("角色 Agent 子任务上下文", maxsplit=1)[0]

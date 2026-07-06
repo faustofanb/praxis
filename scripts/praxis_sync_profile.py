@@ -12,6 +12,16 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_ROOT = PLUGIN_ROOT / "profiles"
 PROFILE_METADATA_FILES = {"workspaces.json"}
+PROFILE_IGNORED_PARTS = {"__pycache__"}
+PROFILE_IGNORED_SUFFIXES = {".pyc"}
+
+
+def _should_sync(relative_path: Path) -> bool:
+    return (
+        relative_path.as_posix() not in PROFILE_METADATA_FILES
+        and not any(part in PROFILE_IGNORED_PARTS for part in relative_path.parts)
+        and relative_path.suffix not in PROFILE_IGNORED_SUFFIXES
+    )
 
 
 def sync_profile(
@@ -29,7 +39,7 @@ def sync_profile(
     written: list[str] = []
     for source_path in sorted(path for path in source_root.rglob("*") if path.is_file()):
         relative_path = source_path.relative_to(source_root)
-        if relative_path.as_posix() in PROFILE_METADATA_FILES:
+        if not _should_sync(relative_path):
             continue
         target_path = root / relative_path
         if target_path.exists() and not force:

@@ -215,6 +215,7 @@ def test_sync_profile_copies_ifc_mom_assets_without_project_facts(tmp_path: Path
     assert "scripts/codex/task.py" in written
     assert "scripts/codex/momlib/finish.py" in written
     assert "workspaces.json" not in written
+    assert not any("__pycache__" in path or path.endswith(".pyc") for path in written)
     assert not (tmp_path / "workspaces.json").exists()
     assert (tmp_path / "praxis.projects.toml").read_text(encoding="utf-8") == original_projects
 
