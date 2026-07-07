@@ -41,6 +41,31 @@ class ContextCommandTest(unittest.TestCase):
         self.assertNotIn("Graph" + "ify", text)
         self.assertNotIn("角色 Agent 子任务上下文", text)
 
+    def test_context_commands_print_next_actions(self) -> None:
+        config = {
+            "projects": {
+                "docs": {"path": "/tmp/docs"},
+                "backend": {
+                    "path": "ifc-mom-column-max",
+                    "defaultBranch": "local",
+                },
+            }
+        }
+
+        with redirect_stdout(io.StringIO()) as brief_output:
+            context_brief_command(config, "backend", "氧化上下梁识别问题")
+        with redirect_stdout(io.StringIO()) as full_output:
+            context_command(config, "backend", "氧化上下梁识别问题")
+
+        brief_text = brief_output.getvalue()
+        full_text = full_output.getvalue()
+        for text in (brief_text, full_text):
+            self.assertIn("nextActions:", text)
+            self.assertIn("task context -- backend 氧化上下梁识别问题", text)
+            self.assertIn("task project -- preflight backend 氧化上下梁识别问题", text)
+        self.assertIn("[推荐] 恢复完整上下文", brief_text)
+        self.assertIn("[推荐] 执行工作区预检", full_text)
+
     def test_context_command_splits_main_control_and_worker_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {

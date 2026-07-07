@@ -29,6 +29,19 @@ def verify_command(project: str, requirement_name: str | None = None) -> str:
     return praxis_contracts.praxis_usage(f"project verify {project}{suffix}")
 
 
+def print_next_actions(project: str, requirement_name: str, recommended: str) -> None:
+    """打印用户可选择的下一步动作。"""
+    actions = [
+        ("恢复完整上下文", praxis_contracts.praxis_usage(f"context {project} {requirement_name}")),
+        ("执行工作区预检", praxis_contracts.praxis_usage(f"project preflight {project} {requirement_name}")),
+        ("进入收口聚合", praxis_contracts.praxis_usage(f"gate ready {project} {requirement_name}")),
+    ]
+    print("nextActions:")
+    for label, command in actions:
+        marker = "[推荐] " if label == recommended else ""
+        print(f"  - {marker}{label}: {command}")
+
+
 def context_brief_command(config: dict[str, Any], project: str, requirement_name: str) -> None:
     """打印低噪声恢复摘要；完整角色协议只在 full context 中展开。"""
     project_config(config, project)
@@ -41,6 +54,7 @@ def context_brief_command(config: dict[str, Any], project: str, requirement_name
     print(f"  推荐验证: {verify_command(project, requirement_name)}")
     print(f"  收口聚合: {praxis_contracts.praxis_usage(f'gate ready {project} {requirement_name}')}")
     print(f"  完整上下文: {praxis_contracts.praxis_usage(f'context {project} {requirement_name}')}")
+    print_next_actions(project, requirement_name, "恢复完整上下文")
 
 
 def worker_rule_skill_paths(project: str) -> list[str]:
@@ -172,3 +186,4 @@ def context_command(config: dict[str, Any], project: str, requirement_name: str)
     print()
     print("验证命令:")
     print(f"  {verify_command(project, requirement_name)}")
+    print_next_actions(project, requirement_name, "执行工作区预检")
