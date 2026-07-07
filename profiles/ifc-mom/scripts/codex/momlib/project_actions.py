@@ -49,7 +49,7 @@ def run_project(config: dict[str, Any], name: str, args: list[str]) -> None:
 
     run_command = project.get("run")
     if not run_command:
-        fail(f"project has no run command: {name}")
+        fail(f"工作流缺口: project has no run command: {name}")
     run_exit(shlex.split(run_command), repo_dir)
 
 

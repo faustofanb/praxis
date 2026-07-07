@@ -5,7 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import call, patch
 
@@ -1046,6 +1046,16 @@ class WorkflowPolicyTest(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 1)
 
+    def test_missing_project_run_command_reports_workflow_gap(self) -> None:
+        config = {"projects": {"docs": {"kind": "docs", "path": "."}}}
+
+        with redirect_stderr(io.StringIO()) as error:
+            with self.assertRaises(SystemExit) as exc:
+                project_actions.run_project(config, "docs", [])
+
+        self.assertEqual(exc.exception.code, 1)
+        self.assertIn("工作流缺口", error.getvalue())
+
     def test_workflow_git_subprocesses_disable_fsmonitor(self) -> None:
         env = process.command_env(["git", "status"])
 
@@ -1077,19 +1087,35 @@ class WorkflowPolicyTest(unittest.TestCase):
 
     def test_standalone_verify_scripts_disable_git_fsmonitor(self) -> None:
         completed = __import__("subprocess").CompletedProcess(["git", "status"], 0, stdout="")
-        with patch.object(verify.subprocess, "run", return_value=completed) as run:
+        with patch.object(process.subprocess, "run", return_value=completed) as run:
             verify.capture(["git", "status"], Path("/tmp"))
 
+        command = run.call_args.args[0]
         env = run.call_args.kwargs["env"]
+        self.assertEqual(command[0], "/usr/bin/git")
         self.assertEqual(env["GIT_CONFIG_KEY_0"], "core.fsmonitor")
         self.assertEqual(env["GIT_CONFIG_VALUE_0"], "false")
 
-        with patch.object(backend_run.subprocess, "run", return_value=completed) as run:
+        with patch.object(process.subprocess, "run", return_value=completed) as run:
             backend_run.capture(["git", "status"], Path("/tmp"))
 
+        command = run.call_args.args[0]
         env = run.call_args.kwargs["env"]
+        self.assertEqual(command[0], "/usr/bin/git")
         self.assertEqual(env["GIT_CONFIG_KEY_0"], "core.fsmonitor")
         self.assertEqual(env["GIT_CONFIG_VALUE_0"], "false")
+
+    def test_workflow_commands_only_run_through_process_wrapper(self) -> None:
+        scripts_dir = Path(__file__).resolve().parents[1]
+        offenders = []
+        for path in scripts_dir.rglob("*.py"):
+            relative = path.relative_to(scripts_dir).as_posix()
+            if relative.startswith("tests/") or relative == "momlib/process.py":
+                continue
+            if "subprocess.run(" in path.read_text(encoding="utf-8"):
+                offenders.append(relative)
+
+        self.assertEqual(offenders, [])
 
     def test_praxis_runtime_evaluation_recommends_hybrid_stack(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

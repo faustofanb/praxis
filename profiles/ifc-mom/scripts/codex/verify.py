@@ -10,16 +10,16 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 import tomllib
 import argparse
 import datetime as dt
 from pathlib import Path
+from subprocess import PIPE
 from typing import Any
 
 from momlib.paths import CONFIG_FILE, LEGACY_CONFIG_FILE, ROOT_DIR
-from momlib.process import command_env
+from momlib.process import command_env, run_command
 
 
 FRONTEND_CLASSIFIER = ROOT_DIR / "scripts" / "codex" / "frontend_changed.ts"
@@ -68,7 +68,7 @@ def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> Non
     EXECUTED_COMMANDS.append(command)
     print()
     print("+ " + " ".join(command))
-    completed = subprocess.run(command, cwd=cwd, env=env or command_env(command))
+    completed = run_command(command, cwd, env=env or command_env(command))
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)
 
@@ -99,13 +99,12 @@ def ensure_pnpm_dependencies(repo_dir: Path, force: bool = False) -> None:
 
 def capture(command: list[str], cwd: Path) -> str:
     """执行命令并返回 stdout；命令失败时抛出异常。"""
-    completed = subprocess.run(
+    completed = run_command(
         command,
         cwd=cwd,
-        env=command_env(command),
         check=True,
         text=True,
-        stdout=subprocess.PIPE,
+        stdout=PIPE,
     )
     return completed.stdout
 
@@ -233,12 +232,12 @@ def classify_frontend(repo_dir: Path, kind: str, files: list[str]) -> dict[str, 
     """调用 Bun/TypeScript 分类器，返回前端/PDA 验证范围。"""
     # Python 只负责调用；具体分类规则在 frontend_changed.ts 中维护。
     payload = json.dumps({"kind": kind, "files": files}, ensure_ascii=False)
-    completed = subprocess.run(
+    completed = run_command(
         ["bun", "run", str(FRONTEND_CLASSIFIER)],
         cwd=repo_dir,
         input=payload,
         text=True,
-        stdout=subprocess.PIPE,
+        stdout=PIPE,
     )
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)

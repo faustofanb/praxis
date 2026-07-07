@@ -8,15 +8,15 @@
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 import tomllib
 import argparse
 from pathlib import Path
+from subprocess import PIPE
 from typing import Any
 
 from momlib.paths import CONFIG_FILE, LEGACY_CONFIG_FILE, ROOT_DIR
-from momlib.process import command_env
+from momlib.process import run_command
 
 
 BOOT_MODULE = "lamp-support/lamp-boot-server"
@@ -46,13 +46,12 @@ def repo_dir_for(project_name: str) -> Path:
 
 def capture(command: list[str], cwd: Path) -> str:
     """执行命令并返回 stdout；命令失败时抛出异常。"""
-    completed = subprocess.run(
+    completed = run_command(
         command,
         cwd=cwd,
-        env=command_env(command),
         check=True,
         text=True,
-        stdout=subprocess.PIPE,
+        stdout=PIPE,
     )
     return completed.stdout
 
@@ -108,7 +107,7 @@ def run_mvn(repo_dir: Path, *args: str) -> None:
     """打印并执行 Maven 命令，失败时透传退出码。"""
     print()
     print("+ mvn " + " ".join(args))
-    completed = subprocess.run(["mvn", *args], cwd=repo_dir)
+    completed = run_command(["mvn", *args], repo_dir)
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)
 
@@ -151,7 +150,7 @@ def run_boot_jar(repo_dir: Path) -> None:
     command = ["java", *java_opts, "-jar", str(boot_jar), *spring_args]
     print()
     print("+ " + " ".join(command))
-    completed = subprocess.run(command, cwd=repo_dir)
+    completed = run_command(command, repo_dir)
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)
 

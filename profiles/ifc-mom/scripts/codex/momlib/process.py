@@ -61,23 +61,28 @@ def command_env(command: list[str]) -> dict[str, str] | None:
 
 def run_exit(command: list[str], cwd: Path) -> None:
     """Run a command and use its exit code as the current script exit code."""
-    completed = subprocess.run(command_argv(command), cwd=cwd, env=command_env(command))
+    completed = run_command(command, cwd)
     raise SystemExit(completed.returncode)
 
 
 def run_checked(command: list[str], cwd: Path) -> None:
     """Run a command that must succeed before the workflow can continue."""
-    completed = subprocess.run(command_argv(command), cwd=cwd, env=command_env(command))
+    completed = run_command(command, cwd)
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)
 
 
+def run_command(command: list[str], cwd: Path, **kwargs: object) -> subprocess.CompletedProcess:
+    """Run a workflow command through the shared command resolver."""
+    env = kwargs.pop("env", None) or command_env(command)
+    return subprocess.run(command_argv(command), cwd=cwd, env=env, **kwargs)
+
+
 def command_succeeds(command: list[str], cwd: Path) -> bool:
     """Run a command quietly and return whether it succeeds."""
-    completed = subprocess.run(
-        command_argv(command),
+    completed = run_command(
+        command,
         cwd=cwd,
-        env=command_env(command),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -85,10 +90,9 @@ def command_succeeds(command: list[str], cwd: Path) -> bool:
 
 
 def capture(command: list[str], cwd: Path) -> str:
-    completed = subprocess.run(
-        command_argv(command),
+    completed = run_command(
+        command,
         cwd=cwd,
-        env=command_env(command),
         check=True,
         text=True,
         stdout=subprocess.PIPE,

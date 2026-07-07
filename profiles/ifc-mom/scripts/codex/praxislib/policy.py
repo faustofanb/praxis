@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import time
 import tomllib
 from pathlib import Path
+from subprocess import PIPE
 from typing import Any
+
+from momlib.process import run_command
 
 
 POLICY_REPORT = ".praxis/out/policy-report.json"
@@ -30,11 +32,12 @@ def _commands(root: Path) -> list[dict[str, Any]]:
 
 
 def _has_git_metadata(root: Path) -> bool:
-    completed = subprocess.run(
+    completed = run_command(
         ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+        root,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=PIPE,
+        stderr=PIPE,
         check=False,
     )
     return completed.returncode == 0
@@ -43,11 +46,12 @@ def _has_git_metadata(root: Path) -> bool:
 def _path_is_committed_or_present(root: Path, relative: str) -> bool:
     if not _has_git_metadata(root):
         return (root / relative).exists()
-    completed = subprocess.run(
+    completed = run_command(
         ["git", "-C", str(root), "ls-files", "--", relative],
+        root,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=PIPE,
+        stderr=PIPE,
         check=False,
     )
     return bool(completed.stdout.strip())
