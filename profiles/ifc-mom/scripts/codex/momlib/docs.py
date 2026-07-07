@@ -112,6 +112,25 @@ def write_file_once(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def recommended_next_steps(requirement_name: str, phase: str) -> str:
+    """生成阶段文件中的推荐下一步。"""
+    recommended = {
+        "analysis": f"task req -- iter {requirement_name} plan <实施规划主题>",
+        "plan": f"task req -- iter {requirement_name} progress <进展主题>",
+        "progress": f"task req -- index {requirement_name}",
+    }.get(phase, f"task req -- check {requirement_name}")
+    actions = [
+        (recommended, "推荐继续推进当前需求流。"),
+        (f"task req -- check {requirement_name}", "检查需求文档占位和证据完整性。"),
+        (f"task req -- index {requirement_name}", "回写 README 最新结论和索引。"),
+    ]
+    lines = ["## 推荐下一步", ""]
+    for index, (command, description) in enumerate(actions):
+        marker = "[推荐] " if index == 0 else ""
+        lines.append(f"- {marker}`{command}`：{description}")
+    return "\n".join(lines) + "\n"
+
+
 def next_sequence(directory: Path) -> int:
     """读取目录内已有编号文件，返回下一个两位序号。"""
     max_seq = 0
@@ -191,10 +210,13 @@ def requirement_domain_fields(readme_text: str, combined_text: str) -> dict[str,
     """读取 README frontmatter 中的业务聚合字段，缺失时用关键词推断。"""
     fields, _ = parse_frontmatter(readme_text)
     inferred = classify_business_domain(combined_text)
+    bounded_context = fields.get("bounded_context") or fields.get("boundedContext") or ""
+    aggregate = fields.get("aggregate") or ""
+    capability = fields.get("capability") or ""
     return {
-        "boundedContext": fields.get("bounded_context") or fields.get("boundedContext") or inferred["boundedContext"],
-        "aggregate": fields.get("aggregate") or inferred["aggregate"],
-        "capability": fields.get("capability") or inferred["capability"],
+        "boundedContext": bounded_context if bounded_context and bounded_context != "uncategorized" else inferred["boundedContext"],
+        "aggregate": aggregate if aggregate and aggregate != "general" else inferred["aggregate"],
+        "capability": capability if capability and capability != "待归类" else inferred["capability"],
     }
 
 
@@ -373,6 +395,7 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
         "# 产出物\n\n按需求选择 SQL、MAGIC-API 脚本草案、前端需求说明、关联信息调查和附件。\n",
     )
 
+    write_domain_index(config)
     print(f"Requirement docs: {req_dir}")
     return req_dir
 
@@ -430,9 +453,7 @@ def doc_iter(config: dict[str, Any], requirement_name: str, phase: str, subject:
 
 - 待补充。
 
-## 下一步
-
-- 待补充。
+{recommended_next_steps(requirement_name, phase)}
 
 ## 与上一轮关系
 
@@ -473,9 +494,7 @@ def doc_iter(config: dict[str, Any], requirement_name: str, phase: str, subject:
 
 - 待补充。
 
-## 下一步
-
-- 待补充。
+{recommended_next_steps(requirement_name, phase)}
 
 ## 与上一轮关系
 
@@ -514,9 +533,7 @@ def doc_iter(config: dict[str, Any], requirement_name: str, phase: str, subject:
 
 - 待补充。
 
-## 下一步
-
-- 待补充。
+{recommended_next_steps(requirement_name, phase)}
 
 ## 与上一轮关系
 

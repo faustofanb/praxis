@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import task as task_module  # noqa: E402
 from momlib.docs import classify_business_domain, doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index  # noqa: E402
+from momlib.workflow_checks import docs_index  # noqa: E402
 
 
 class DocsInitTest(unittest.TestCase):
@@ -98,6 +99,23 @@ where status = 'FAIL';
         self.assertIn("## 决策", plan_text)
         self.assertIn('type: "requirement-progress"', progress_text)
         self.assertIn("## 待验证项", progress_text)
+        for text in (analysis_text, plan_text, progress_text):
+            self.assertIn("## 推荐下一步", text)
+            self.assertIn("- [推荐]", text)
+
+    def test_docs_index_writes_recommended_next_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            doc_init(config, "模板优化", "用户要求：模板优化需要 README 推荐下一步。")
+            doc_iter(config, "模板优化", "analysis", "证据化分析")
+
+            docs_index(config, "模板优化")
+            readme = next(Path(tmp_dir).glob("02-req/2026-07/*模板优化/README.md"))
+            readme_text = readme.read_text(encoding="utf-8")
+
+        self.assertIn("## 推荐下一步", readme_text)
+        self.assertIn("- [推荐]", readme_text)
+        self.assertIn("task req -- iter 模板优化 plan", readme_text)
 
     def test_doc_iter_can_write_explicit_body_without_placeholders(self) -> None:
         body = """# 证据化分析
@@ -195,11 +213,60 @@ where status = 'FAIL';
         self.assertIn('"boundedContext": "purchase"', json_text)
         self.assertIn('"aggregate": "purchase-requisition"', json_text)
 
+    def test_domain_index_reclassifies_default_uncategorized_frontmatter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            req_dir = docs_root / "02-req" / "2026-07" / "2026-07-07-WMS_PDA盘点清单排序规则"
+            req_dir.mkdir(parents=True)
+            (req_dir / "README.md").write_text(
+                """---
+type: "requirement"
+title: "WMS_PDA盘点清单排序规则"
+created: "2026-07-07-0943"
+status: "已初始化"
+bounded_context: "uncategorized"
+aggregate: "general"
+capability: "待归类"
+tags:
+  - "ifc-mom/requirement"
+---
+
+# WMS_PDA盘点清单排序规则
+""",
+                encoding="utf-8",
+            )
+
+            _, index_json = write_domain_index({"projects": {"docs": {"path": tmp_dir}}})
+            json_text = index_json.read_text(encoding="utf-8")
+
+        self.assertIn('"boundedContext": "wms"', json_text)
+        self.assertIn('"aggregate": "wms-pda"', json_text)
+
     def test_domain_dictionary_drives_business_classification(self) -> None:
         domain = classify_business_domain("用户要求：挤压合金产出和金属平衡口径需要统一。")
 
         self.assertEqual(domain["boundedContext"], "mes-extrusion")
         self.assertEqual(domain["aggregate"], "metal-balance")
+
+    def test_domain_dictionary_covers_wms_pda_requirements(self) -> None:
+        domain = classify_business_domain("用户要求：WMS_PDA 盘点清单排序规则需要调整。")
+
+        self.assertEqual(domain["boundedContext"], "wms")
+        self.assertEqual(domain["aggregate"], "wms-pda")
+
+    def test_docs_init_refreshes_domain_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            doc_init(config, "主报表金属平衡氧化数据自动获取", "用户要求：主报表金属平衡氧化数据自动获取。")
+
+            index = Path(tmp_dir) / "01-domain" / "INDEX.md"
+            aggregate = Path(tmp_dir) / "01-domain" / "mes-extrusion" / "metal-balance.md"
+            index_exists = index.is_file()
+            aggregate_exists = aggregate.is_file()
+
+        self.assertTrue(index_exists)
+        self.assertTrue(aggregate_exists)
 
     def test_docs_init_suggests_reusing_active_requirement_in_same_aggregate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

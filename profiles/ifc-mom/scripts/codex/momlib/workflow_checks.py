@@ -171,6 +171,26 @@ def relative_link(req_dir: Path, path: Path | None) -> str:
     return f"`{path.relative_to(req_dir).as_posix()}`"
 
 
+def recommended_next_steps(requirement_name: str, plan: Path | None, progress: Path | None) -> str:
+    """生成 README 索引中的推荐下一步。"""
+    if plan is None:
+        recommended = f"task req -- iter {requirement_name} plan <实施规划主题>"
+    elif progress is None:
+        recommended = f"task req -- iter {requirement_name} progress <进展主题>"
+    else:
+        recommended = f"task req -- check {requirement_name}"
+    actions = [
+        (recommended, "推荐继续推进当前需求流。"),
+        (f"task req -- check {requirement_name}", "检查需求文档占位和证据完整性。"),
+        (f"task req -- index {requirement_name}", "回写 README 最新结论和索引。"),
+    ]
+    lines = ["## 推荐下一步", ""]
+    for index, (command, description) in enumerate(actions):
+        marker = "[推荐] " if index == 0 else ""
+        lines.append(f"- {marker}`{command}`：{description}")
+    return "\n".join(lines)
+
+
 def relative_path_text(req_dir: Path, path: Path | None) -> str:
     """返回适合终端报告的相对路径。"""
     return path.relative_to(req_dir).as_posix() if path else "missing"
@@ -485,6 +505,8 @@ def docs_index(config: dict[str, Any], requirement_name: str) -> int:
 ## 产出物索引
 
 {artifact_lines}
+
+{recommended_next_steps(requirement_name, plan, progress)}
 
 ## 迭代记录
 

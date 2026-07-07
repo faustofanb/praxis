@@ -28,5 +28,29 @@
     "aggregate": "business-report",
     "capability": "业务报表",
     "keywords": ["报表", "驾驶舱"]
+  },
+  {
+    "boundedContext": "wms",
+    "aggregate": "wms-pda",
+    "capability": "WMS PDA",
+    "keywords": ["WMS_PDA", "WMS PDA", "PDA盘点", "生产上架", "包装收货", "标签打印", "库存批次"]
+  },
+  {
+    "boundedContext": "dms",
+    "aggregate": "mold-management",
+    "capability": "模具管理",
+    "keywords": ["DMS模具", "模具Excel", "模具"]
+  },
+  {
+    "boundedContext": "quality",
+    "aggregate": "inspection-plan",
+    "capability": "检验方案",
+    "keywords": ["检验方案", "物料分类"]
+  },
+  {
+    "boundedContext": "integration",
+    "aggregate": "u9-interface",
+    "capability": "U9接口",
+    "keywords": ["U9", "超入库通知"]
   }
 ]
