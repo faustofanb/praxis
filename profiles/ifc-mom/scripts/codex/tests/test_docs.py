@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -11,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import task as task_module  # noqa: E402
-from momlib.docs import classify_business_domain, doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_index, write_requirement_global_index  # noqa: E402
+from momlib.docs import classify_business_domain, doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_candidates, write_domain_index, write_requirement_global_index  # noqa: E402
 from momlib.workflow_checks import docs_index  # noqa: E402
 
 
@@ -278,6 +279,86 @@ tags:
 
         self.assertIn("建议复用已有需求目录", output.getvalue())
         self.assertIn(existing.name, output.getvalue())
+
+    def test_write_domain_candidates_extracts_terms_from_uncategorized_research_docs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            req_dir = docs_root / "02-req" / "2026-07" / "2026-07-07-盘点清单排序规则"
+            research_dir = req_dir / "04-产出物" / "关联信息调查"
+            research_dir.mkdir(parents=True)
+            (req_dir / "README.md").write_text(
+                """---
+type: "requirement"
+title: "盘点清单排序规则"
+bounded_context: "uncategorized"
+aggregate: "general"
+capability: "待归类"
+---
+
+# 盘点清单排序规则
+""",
+                encoding="utf-8",
+            )
+            (research_dir / "01-调查.md").write_text(
+                """# 关联信息调查
+
+WMS_PDA 盘点清单排序规则涉及库存盘点页面、wms_inventory_task 表和 inventory/list 接口。
+""",
+                encoding="utf-8",
+            )
+
+            markdown_path, json_path = write_domain_candidates(config)
+            report = json.loads(json_path.read_text(encoding="utf-8"))
+            markdown = markdown_path.read_text(encoding="utf-8")
+
+        self.assertEqual(report["candidateCount"], 1)
+        self.assertEqual(report["candidates"][0]["title"], "盘点清单排序规则")
+        self.assertIn("WMS_PDA", report["candidates"][0]["terms"])
+        self.assertIn("盘点清单", report["candidates"][0]["terms"])
+        self.assertIn("盘点清单排序规则", markdown)
+
+    def test_domain_candidates_action_is_available_through_docs_dispatcher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            code = task_module.run_praxis_docs_action(config, ["domain-candidates"])
+            report = Path(tmp_dir) / ".praxis" / "out" / "domain-candidates.json"
+            report_exists = report.is_file()
+
+        self.assertEqual(code, 0)
+        self.assertTrue(report_exists)
+
+    def test_doc_iter_refreshes_domain_candidates_from_analysis_body(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            docs_root = Path(tmp_dir)
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+            req_dir = docs_root / "02-req" / "2026-07" / "2026-07-07-盘点清单排序规则"
+            req_dir.mkdir(parents=True)
+            (req_dir / "README.md").write_text(
+                """---
+type: "requirement"
+title: "盘点清单排序规则"
+bounded_context: "uncategorized"
+aggregate: "general"
+capability: "待归类"
+---
+
+# 盘点清单排序规则
+""",
+                encoding="utf-8",
+            )
+
+            doc_iter(
+                config,
+                "盘点清单排序规则",
+                "analysis",
+                "关联信息调查",
+                "WMS_PDA 盘点清单排序规则涉及 inventory/list 接口。",
+            )
+            report = json.loads((docs_root / ".praxis" / "out" / "domain-candidates.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(report["candidateCount"], 1)
+        self.assertIn("WMS_PDA", report["candidates"][0]["terms"])
 
     def test_tolaria_check_reports_missing_metadata_without_writing_docs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

@@ -57,6 +57,38 @@ BUSINESS_DOMAIN_RULES_FILE = Path(__file__).with_name("business-domain-rules.jso
 DOMAIN_GENERATED_START = "<!-- praxis:domain-index:start -->"
 DOMAIN_GENERATED_END = "<!-- praxis:domain-index:end -->"
 COMPLETED_STATUSES = {"已完成", "完成", "已关闭", "已取消", "取消"}
+DOMAIN_CANDIDATE_STOPWORDS = {
+    "用户要求",
+    "原始需求",
+    "需求分析",
+    "关联信息",
+    "调查",
+    "涉及",
+    "需要",
+    "优化",
+    "调整",
+    "当前",
+    "页面",
+    "接口",
+    "字段",
+    "表字段",
+}
+DOMAIN_CANDIDATE_SUFFIXES = [
+    "清单",
+    "规则",
+    "页面",
+    "接口",
+    "字段",
+    "报表",
+    "流程",
+    "申请",
+    "任务",
+    "计划",
+    "单据",
+    "看板",
+    "驾驶舱",
+    "口径",
+]
 
 
 def docs_root(config: dict[str, Any]) -> Path:
@@ -548,6 +580,8 @@ def doc_iter(config: dict[str, Any], requirement_name: str, phase: str, subject:
         rendered,
     )
     print(f"Iteration doc: {path}")
+    write_domain_index(config)
+    write_domain_candidates(config)
     return path
 
 
@@ -805,3 +839,117 @@ def write_domain_index(config: dict[str, Any]) -> tuple[Path, Path]:
     print(f"Domain index updated: {index_md}")
     print(f"Domain index JSON updated: {index_json}")
     return index_md, index_json
+
+
+def requirement_has_default_domain_metadata(readme_text: str) -> bool:
+    """判断需求 README 是否仍使用默认业务聚合元数据。"""
+    fields, _ = parse_frontmatter(readme_text)
+    if not any(key in fields for key in ["bounded_context", "boundedContext", "aggregate", "capability"]):
+        return False
+    return (
+        fields.get("bounded_context", fields.get("boundedContext", "uncategorized")) == "uncategorized"
+        or fields.get("aggregate", "general") == "general"
+        or fields.get("capability", "待归类") == "待归类"
+    )
+
+
+def domain_candidate_text(req_dir: Path) -> str:
+    """收集最能反推业务词的需求调查和分析文档。"""
+    parts = []
+    for relative_dir in ["", "00-原始需求", "01-需求分析拆解", "04-产出物/关联信息调查"]:
+        directory = req_dir / relative_dir if relative_dir else req_dir
+        if not directory.is_dir():
+            continue
+        for file in sorted(directory.glob("*.md")):
+            if file.name == "README.md" and relative_dir:
+                continue
+            parts.append(file.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
+def extract_domain_candidate_terms(text: str) -> list[str]:
+    """从调查文本提取用于补业务字典的候选词。"""
+    counter: dict[str, int] = {}
+    for match in re.finditer(r"[A-Za-z][A-Za-z0-9_/-]{1,}", text):
+        term = match.group(0).strip("_-/")
+        if len(term) >= 2:
+            counter[term] = counter.get(term, 0) + 1
+    for chunk in re.findall(r"[\u4e00-\u9fff]{2,}", text):
+        if chunk not in DOMAIN_CANDIDATE_STOPWORDS and len(chunk) <= 8:
+            counter[chunk] = counter.get(chunk, 0) + 1
+        for suffix in DOMAIN_CANDIDATE_SUFFIXES:
+            end = chunk.find(suffix)
+            if end < 0:
+                continue
+            end += len(suffix)
+            term = chunk[max(0, end - 4) : end]
+            if len(term) >= 2 and term not in DOMAIN_CANDIDATE_STOPWORDS:
+                counter[term] = counter.get(term, 0) + 1
+    return [
+        term
+        for term, _count in sorted(counter.items(), key=lambda item: (-item[1], len(item[0]), item[0]))[:12]
+    ]
+
+
+def write_domain_candidates(config: dict[str, Any]) -> tuple[Path, Path]:
+    """生成待补业务域字典候选报告，不自动修改字典。"""
+    req_root = requirement_root(config)
+    out_dir = docs_root(config) / ".praxis" / "out"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    candidates: list[dict[str, Any]] = []
+    for req_dir in sorted(req_root.glob("20??-??/20??-??-??-*")):
+        readme = req_dir / "README.md"
+        if not req_dir.is_dir() or not readme.is_file():
+            continue
+        readme_text = readme.read_text(encoding="utf-8")
+        record = requirement_index_record(req_root, req_dir)
+        if record["boundedContext"] != "uncategorized" and not requirement_has_default_domain_metadata(readme_text):
+            continue
+        terms = extract_domain_candidate_terms(domain_candidate_text(req_dir))
+        if not terms:
+            continue
+        candidates.append(
+            {
+                "title": record["title"],
+                "path": record["path"],
+                "currentDomain": {
+                    "boundedContext": record["boundedContext"],
+                    "aggregate": record["aggregate"],
+                    "capability": record["capability"],
+                },
+                "terms": terms,
+            }
+        )
+
+    markdown_path = out_dir / "domain-candidates.md"
+    json_path = out_dir / "domain-candidates.json"
+    lines = [
+        "# 业务域候选词报告",
+        "",
+        "本文件由 `task docs -- domain-candidates` 生成，用于从需求调查和分析文档反推待补业务字典；不会自动修改字典。",
+        "",
+        "| 需求 | 当前聚合 | 候选词 | 路径 |",
+        "|---|---|---|---|",
+    ]
+    for item in candidates:
+        domain = f"{item['currentDomain']['boundedContext']} / {item['currentDomain']['aggregate']}"
+        lines.append(f"| {item['title']} | {domain} | {'、'.join(item['terms'])} | `{item['path']}` |")
+    lines.append("")
+    markdown_path.write_text("\n".join(lines), encoding="utf-8")
+    json_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "generatedAt": timestamp(),
+                "candidateCount": len(candidates),
+                "candidates": candidates,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"Domain candidate report updated: {markdown_path}")
+    print(f"Domain candidate report JSON updated: {json_path}")
+    return markdown_path, json_path
