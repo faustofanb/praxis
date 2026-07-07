@@ -162,6 +162,25 @@ def test_codex_command_shortcuts_are_packaged() -> None:
         assert "prompt = " in text
 
 
+def test_step_handoff_guidance_is_packaged() -> None:
+    paths = [
+        PLUGIN_ROOT / "skills" / "praxis-workflow" / "SKILL.md",
+        PLUGIN_ROOT / "templates" / "AGENTS.md.tpl",
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "00-工作流精简索引.md",
+    ]
+
+    for path in paths:
+        assert "推荐下一步" in path.read_text(encoding="utf-8")
+
+
 def test_ifc_mom_profile_packages_workflow_rules_and_skills() -> None:
     profile = PLUGIN_ROOT / "profiles" / "ifc-mom"
     profile_root = profile / ".praxis" / "extensions" / "ifc-mom"

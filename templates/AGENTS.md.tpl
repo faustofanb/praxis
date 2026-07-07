@@ -19,6 +19,7 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - Keep domain or stack-specific rules in extensions.
 - Keep generated reports under `.praxis/out/`.
 - Use project configuration for branch names and project paths.
+- 每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；涉及提交、交付、清理、远程操作、生产数据或扩大范围时，等待用户选择后继续推进。
 
 ## Every Turn Contract
 
