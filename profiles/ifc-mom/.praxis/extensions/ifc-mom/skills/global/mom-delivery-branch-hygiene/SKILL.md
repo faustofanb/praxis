@@ -15,6 +15,7 @@ user-invocable: true
 ## 核心约束
 
 - 实现/修复与提交/交付收尾必须拆开；未获明确确认前不执行 `commit`、`push`、`cherry-pick`、`deliver`、`cleanup`。
+- Codeup HTTPS Git 操作优先使用 `task`/`rtk` 工作流入口；必须手工执行底层 Git 时使用 `rtk git ...` 或 `/usr/bin/git ...`，禁止裸 `git ...`。
 - 需求 worktree 从项目 `defaultBranch` 创建，通常是 `local`。
 - 交付 feature 从 `origin/<upstreamBranch>` 创建，后端/Web 常见为 `develop`，PDA 按场景分支配置。
 - 创建 feature 优先使用 `git switch --no-track -c feature/<需求名> origin/<upstreamBranch>`；创建后立即检查 `git branch -vv --list feature/<需求名>`，误跟踪 `origin/<upstreamBranch>` 时先 unset upstream。

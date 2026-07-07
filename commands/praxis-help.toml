@@ -1,2 +1,2 @@
-description = "Show Praxis Workflow quick reference"
-prompt = "Show a concise Praxis Workflow quick reference for this workspace. Include: startup gate, when to use task project -- start, worktree rule, docs/Tolaria commands, and safe closeout boundary. Report only; change nothing."
+description = "显示 Praxis Workflow 快速参考"
+prompt = "使用中文显示当前工作区的 Praxis Workflow 快速参考。包含：启动门禁、何时使用 task project -- start、worktree 规则、docs/Tolaria 命令和安全收口边界。只报告，不修改。"

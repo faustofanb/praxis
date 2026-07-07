@@ -150,16 +150,17 @@ def test_skill_references_exist_and_are_linked() -> None:
 
 def test_codex_command_shortcuts_are_packaged() -> None:
     commands = {
-        "praxis-help.toml": "Show Praxis Workflow quick reference",
-        "praxis-check.toml": "Check the current Praxis workspace",
-        "praxis-start.toml": "Start a Praxis business requirement",
-        "praxis-tolaria-check.toml": "Check Tolaria metadata gaps",
+        "praxis-help.toml": "显示 Praxis Workflow 快速参考",
+        "praxis-check.toml": "检查当前 Praxis 工作区",
+        "praxis-start.toml": "启动 Praxis 业务需求",
+        "praxis-tolaria-check.toml": "检查 Tolaria 元数据缺口",
     }
 
     for filename, description in commands.items():
         text = (PLUGIN_ROOT / "commands" / filename).read_text(encoding="utf-8")
         assert f'description = "{description}"' in text
         assert "prompt = " in text
+        assert "使用中文" in text
 
 
 def test_step_handoff_guidance_is_packaged() -> None:
@@ -179,6 +180,13 @@ def test_step_handoff_guidance_is_packaged() -> None:
 
     for path in paths:
         assert "推荐下一步" in path.read_text(encoding="utf-8")
+
+
+def test_agent_template_requires_chinese_conversation_and_requirement_docs() -> None:
+    text = (PLUGIN_ROOT / "templates" / "AGENTS.md.tpl").read_text(encoding="utf-8")
+
+    assert "默认使用中文与用户对话" in text
+    assert "需求文档必须使用中文" in text
 
 
 def test_ifc_mom_profile_packages_workflow_rules_and_skills() -> None:
@@ -215,6 +223,23 @@ def test_ifc_mom_profile_documents_engineering_control_layer() -> None:
     assert "工程控制论" in route_text
     assert "软件工程" in route_text
     assert "目标-观测-反馈" in route_text
+
+
+def test_ifc_mom_profile_requires_chinese_conversation_and_requirement_docs() -> None:
+    workflow_index = (
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "00-工作流精简索引.md"
+    ).read_text(encoding="utf-8")
+
+    assert "默认使用中文与用户对话" in workflow_index
+    assert "需求文档、分析、规划、进度和交付说明必须使用中文" in workflow_index
 
 
 def test_sync_profile_copies_ifc_mom_assets_without_project_facts(tmp_path: Path) -> None:
@@ -287,3 +312,12 @@ def test_docs_workflow_uses_tolaria_vault_rules() -> None:
     assert "Tolaria" in tolaria_skill
     assert "Tolaria" in doc_rule
     assert "mom-tolaria-vault/SKILL.md" in manifest
+
+
+def test_docs_tolaria_helpers_are_split_from_large_docs_module() -> None:
+    scripts_root = PLUGIN_ROOT / "profiles" / "ifc-mom" / "scripts" / "codex" / "momlib"
+    docs_text = (scripts_root / "docs.py").read_text(encoding="utf-8")
+
+    assert (scripts_root / "docs_tolaria.py").is_file()
+    assert "def tolaria_check(" not in docs_text
+    assert "def tolaria_publish(" not in docs_text

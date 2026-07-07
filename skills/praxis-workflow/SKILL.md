@@ -9,6 +9,10 @@ description: Use when working in a Praxis workspace, changing Praxis workflow be
 
 Use this skill as the shared Codex entry discipline for Praxis workspaces. It packages reusable workflow rules, thin templates and helper scripts while leaving project-specific paths, branch names, verification commands and domain rules in the current workspace.
 
+## Language Policy
+
+默认使用中文与用户对话。需求文档、分析、规划、进度和交付说明必须使用中文；代码、命令、路径、API 名称、日志片段和用户提供的原始引用可保留原文。用户明确要求其他语言时，以用户要求为准。
+
 ## Step Handoff
 
 每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；若下一步涉及提交、交付、清理、远程操作、生产数据或扩大范围，必须等待用户选择后继续推进。

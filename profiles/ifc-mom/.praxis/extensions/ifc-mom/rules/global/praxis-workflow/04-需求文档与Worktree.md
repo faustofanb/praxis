@@ -73,6 +73,7 @@ task req -- db-plan <需求名>
 **P0**
 
 - 聚合根不是单一 Git 仓库；分支/worktree 操作在具体子仓库执行。
+- Codeup HTTPS Git 操作优先使用 `task`/`rtk` 工作流入口；必须手工执行底层 Git 时使用 `rtk git ...` 或 `/usr/bin/git ...`，禁止裸 `git ...`。
 - 所有代码类需求无论大小，凡涉及业务代码新增、修改、删除或生成，必须创建主任务 worktree。
 - 从 `defaultBranch` 创建（配置于 `.praxis/projects.toml`，PDA/Web/后端通常为 `local`）。
 - 创建或同步需求 worktree 前，目标主项目仓库必须干净；若 `git status --short` 存在任何未提交变更或未跟踪文件，立即暂停任务并报告用户，等待确认处理方式。

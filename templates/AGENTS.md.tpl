@@ -15,6 +15,8 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 ## Operating Rules
 
 - Use `task ...` as the human-facing command surface when this workspace provides it.
+- 默认使用中文与用户对话；用户明确要求其他语言时除外。
+- 需求文档必须使用中文；代码、命令、路径、API 名称和原始引用可保留原文。
 - Keep Praxis core project-neutral.
 - Keep domain or stack-specific rules in extensions.
 - Keep generated reports under `.praxis/out/`.

@@ -74,6 +74,7 @@ class ContextCommandTest(unittest.TestCase):
         self.assertIn("role_agent 必须明确为 requirement/execution/quality/delivery", text)
         self.assertIn("role agent 与主对话使用同一工作区", text)
         self.assertIn("role agent 禁止继续派发 subagent/Agent/worker", text)
+        self.assertIn("必须手工执行时用 rtk git 或 /usr/bin/git，禁止裸 git", text)
         self.assertIn(f"{IFC_MOM}/skills/global/mom-agent-workflow/SKILL.md", text)
         self.assertIn(f"{IFC_MOM}/skills/global/mom-code-quality-compliance/SKILL.md", text)
         self.assertIn(f"{IFC_MOM}/rules/projects/backend/README.md", text)
