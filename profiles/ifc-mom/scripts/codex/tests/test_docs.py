@@ -255,6 +255,17 @@ tags:
         self.assertEqual(domain["boundedContext"], "wms")
         self.assertEqual(domain["aggregate"], "wms-pda")
 
+    def test_docs_init_frontmatter_includes_business_domain_tags(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = {"projects": {"docs": {"path": tmp_dir}}}
+
+            req_dir = doc_init(config, "WMS盘点清单排序", "用户要求：WMS_PDA 盘点清单排序规则需要调整。")
+            readme = (req_dir / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn('  - "domain/wms"', readme)
+        self.assertIn('  - "aggregate/wms-pda"', readme)
+        self.assertIn('  - "object/盘点清单"', readme)
+
     def test_docs_init_refreshes_domain_index(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {"projects": {"docs": {"path": tmp_dir}}}
@@ -316,6 +327,9 @@ WMS_PDA 盘点清单排序规则涉及库存盘点页面、wms_inventory_task �
         self.assertEqual(report["candidates"][0]["title"], "盘点清单排序规则")
         self.assertIn("WMS_PDA", report["candidates"][0]["terms"])
         self.assertIn("盘点清单", report["candidates"][0]["terms"])
+        self.assertIn("domain/wms", report["candidates"][0]["suggestedTags"])
+        self.assertIn("aggregate/wms-pda", report["candidates"][0]["suggestedTags"])
+        self.assertIn("object/盘点清单", report["candidates"][0]["suggestedTags"])
         self.assertIn("盘点清单排序规则", markdown)
 
     def test_domain_candidates_action_is_available_through_docs_dispatcher(self) -> None:

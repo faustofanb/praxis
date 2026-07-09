@@ -238,6 +238,31 @@ def classify_business_domain(text: str) -> dict[str, str]:
     }
 
 
+def tag_value(value: str) -> str:
+    """把业务词转成可用于 Tolaria tag 的短值。"""
+    return re.sub(r"[\s/]+", "-", value.strip()).strip("-")
+
+
+def business_domain_tags(domain: dict[str, str]) -> list[str]:
+    """按主业务域生成可检索标签，主归属仍由 frontmatter 字段决定。"""
+    tags = []
+    if domain["boundedContext"] != "uncategorized":
+        tags.append(f"domain/{tag_value(domain['boundedContext'])}")
+    if domain["aggregate"] != "general":
+        tags.append(f"aggregate/{tag_value(domain['aggregate'])}")
+    if domain["capability"] != "待归类":
+        tags.append(f"capability/{tag_value(domain['capability'])}")
+    return tags
+
+
+def suggested_business_tags(text: str, terms: list[str]) -> list[str]:
+    """从调查词生成多标签候选，不直接修改主业务域。"""
+    domain = classify_business_domain(text)
+    tags = business_domain_tags(domain)
+    tags.extend(f"object/{tag_value(term)}" for term in terms if tag_value(term))
+    return list(dict.fromkeys(tags))
+
+
 def requirement_domain_fields(readme_text: str, combined_text: str) -> dict[str, str]:
     """读取 README frontmatter 中的业务聚合字段，缺失时用关键词推断。"""
     fields, _ = parse_frontmatter(readme_text)
@@ -293,6 +318,12 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
     req_dir = requirement_dir(config, requirement_name)
     created_at = timestamp()
     domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
+    tag_text = f"{requirement_name}\n{raw_body}"
+    requirement_tags = [
+        "ifc-mom/requirement",
+        "ifc-mom/docs",
+        *suggested_business_tags(tag_text, extract_domain_candidate_terms(tag_text)),
+    ]
     print_reuse_suggestion(config, domain, req_dir)
     req_dir.mkdir(parents=True, exist_ok=True)
 
@@ -315,7 +346,7 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
             "requirement",
             requirement_name,
             created_at,
-            ["ifc-mom/requirement", "ifc-mom/docs"],
+            requirement_tags,
             {
                 "status": "初始化",
                 "bounded_context": domain["boundedContext"],
@@ -905,9 +936,11 @@ def write_domain_candidates(config: dict[str, Any]) -> tuple[Path, Path]:
         record = requirement_index_record(req_root, req_dir)
         if record["boundedContext"] != "uncategorized" and not requirement_has_default_domain_metadata(readme_text):
             continue
-        terms = extract_domain_candidate_terms(domain_candidate_text(req_dir))
+        text = domain_candidate_text(req_dir)
+        terms = extract_domain_candidate_terms(text)
         if not terms:
             continue
+        suggested_tags = suggested_business_tags(f"{record['title']}\n{text}\n" + "\n".join(terms), terms)
         candidates.append(
             {
                 "title": record["title"],
@@ -918,6 +951,7 @@ def write_domain_candidates(config: dict[str, Any]) -> tuple[Path, Path]:
                     "capability": record["capability"],
                 },
                 "terms": terms,
+                "suggestedTags": suggested_tags,
             }
         )
 
@@ -928,12 +962,14 @@ def write_domain_candidates(config: dict[str, Any]) -> tuple[Path, Path]:
         "",
         "本文件由 `task docs -- domain-candidates` 生成，用于从需求调查和分析文档反推待补业务字典；不会自动修改字典。",
         "",
-        "| 需求 | 当前聚合 | 候选词 | 路径 |",
-        "|---|---|---|---|",
+        "| 需求 | 当前聚合 | 候选词 | 建议标签 | 路径 |",
+        "|---|---|---|---|---|",
     ]
     for item in candidates:
         domain = f"{item['currentDomain']['boundedContext']} / {item['currentDomain']['aggregate']}"
-        lines.append(f"| {item['title']} | {domain} | {'、'.join(item['terms'])} | `{item['path']}` |")
+        lines.append(
+            f"| {item['title']} | {domain} | {'、'.join(item['terms'])} | {'、'.join(item['suggestedTags'])} | `{item['path']}` |"
+        )
     lines.append("")
     markdown_path.write_text("\n".join(lines), encoding="utf-8")
     json_path.write_text(
