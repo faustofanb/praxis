@@ -83,6 +83,7 @@ from momlib.praxis import (
 from praxislib.project_index import write_project_index_config
 from praxislib.adapters import write_adapter_plan
 from praxislib.code_graph import build_code_graph, code_graph_check, query_code_graph
+from praxislib.codegraph_adapter import run_codegraph
 from praxislib.observability import write_trace_span, write_trace_summary
 from praxislib.policy import write_policy_report
 from momlib.process import fail
@@ -108,6 +109,7 @@ TOP_LEVEL_ACTIONS = {
     "delivery",
     "role",
     "system",
+    "codegraph",
     "docs",
 }
 
@@ -191,6 +193,7 @@ def run_praxis_action(action: str, args: list[str]) -> int:
         "adapter-plan",
         "trace-summary",
         "code-graph",
+        "codegraph",
         "evolve",
         "runtime-eval",
         "command-audit",
@@ -209,7 +212,7 @@ def run_praxis_action(action: str, args: list[str]) -> int:
         if not args:
             fail(
                 "usage: task system -- "
-                "<check|index|init-project-index|project-index|policy-check|adapter-plan|trace-summary|code-graph|praxis-profile|formalism-check|evolve|runtime-eval|command-audit|template-check|template-render>"
+                "<check|index|init-project-index|project-index|policy-check|adapter-plan|trace-summary|code-graph|codegraph|praxis-profile|formalism-check|evolve|runtime-eval|command-audit|template-check|template-render>"
             )
         return run_praxis_system_action(args[0], args[1:])
     config = load_config()
@@ -303,6 +306,8 @@ def run_praxis_system_action(action: str, args: list[str]) -> int:
             write_trace_span(Path.cwd(), command="task system -- code-graph query", status="PASS", attributes={"matches": len(result.get("matches", []))})
             return 0
         return code_graph_check(Path.cwd())
+    if action == "codegraph":
+        return run_codegraph(Path.cwd(), args)
     if action == "praxis-profile":
         path = praxis_profile_report()
         print(f"Praxis profile report: {path}")

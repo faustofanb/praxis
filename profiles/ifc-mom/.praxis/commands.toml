@@ -89,6 +89,54 @@ risk = "readonly"
 requires_confirmation = false
 
 [[command]]
+id = "praxis.codegraph.init"
+argv = "task system -- codegraph init"
+writes = [".codegraph/"]
+outputs = ["CodeGraph local index"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.codegraph.status"
+argv = "task system -- codegraph status"
+writes = []
+outputs = ["CodeGraph index health and statistics"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.codegraph.sync"
+argv = "task system -- codegraph sync"
+writes = [".codegraph/"]
+outputs = ["incremental CodeGraph index update"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.codegraph.explore"
+argv = "task system -- codegraph explore <query>"
+writes = []
+outputs = ["CodeGraph source context, call paths, and impact summary"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.codegraph.query"
+argv = "task system -- codegraph query <symbol>"
+writes = []
+outputs = ["CodeGraph symbol matches"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
+id = "praxis.codegraph.impact"
+argv = "task system -- codegraph impact <symbol>"
+writes = []
+outputs = ["CodeGraph affected code radius"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
 id = "docs.init"
 argv = "task req -- init <requirement> <original-request>"
 writes = ["docs/02-req/YYYY-MM/YYYY-MM-DD-<requirement>/"]
