@@ -12,6 +12,46 @@ Use role-based agents as workflow responsibilities, not as new runtime agent typ
 
 The current direct user conversation is the Main Agent by default. Treat a conversation as a non-main role only when the input explicitly says it is a delegated `role_agent=requirement|execution|quality|delivery` task.
 
+## Codex-Only Model Routing
+
+The default runtime budget is a Codex-only subscription. Do not plan work around
+Claude, Gemini, Opencode, remote paid reviewers, or any non-Codex model unless
+the user explicitly changes the available subscriptions for this task.
+
+Treat "model choice" as a routing and effort decision:
+
+| Lane | Use For | Avoid For |
+| --- | --- | --- |
+| Main Codex | routing, requirement truth, risk decisions, write-lock ownership, final integration, final answer | bulk source reading, long logs, wide grep-style discovery |
+| Explore / low-effort Codex worker | read-only candidate discovery, same-domain examples, config inventory, long-log root-cause extraction | architectural decisions, code edits, release verdicts |
+| Execution Codex worker | scoped implementation with explicit write locks and verification command | ambiguous requirements, shared-contract changes before the contract owner exists |
+| Tester role | focused behavior tests and critical-path assertions | restating implementation details, broad low-signal coverage |
+| Reviewer / Quality role | independent diff, SQL, migration, permission, concurrency and verification review | trivial typo fixes, deterministic formatting, unchanged files |
+| Tool-only path | dbx schema lookup, LSP references, Code Graph query, grep/glob/read, task verify | asking a model to infer facts available from tools |
+
+Default policy: use tools before models, use one Main Codex coordinator, spawn
+Codex workers only when they reduce missed-context risk or isolate independent
+work, and keep non-Codex lanes disabled. If a task is answer-only, deterministic,
+or below the low-risk threshold, record `subagent: waived-small-change` instead
+of spending a worker.
+
+## Cost and Context Guardrails
+
+- Do not duplicate the full main conversation into workers.
+- Do not spawn speculative workers before target project, requirement boundary,
+  数据口径, and read/write sets are known.
+- Prefer `explore` or read-only worker for large discovery; reserve editing
+  workers for known files and known write locks.
+- Prefer tool calls over model calls for schema, references, search, status,
+  validation, and command output.
+- Use a Quality worker only when risk or diff size justifies independence:
+  SQL/migration/report 数据口径, permissions, async/concurrency, shared modules,
+  production delivery, diff over 300 lines, or more than one project.
+- For small single-project changes touching at most three files and no SQL,
+  migration, permission, async, shared module or production-data risk, Main may
+  execute directly and must state the waiver reason.
+
+
 ## Roles
 
 - Main Agent: owns routing, context budget, locks, user confirmations, and final decisions.

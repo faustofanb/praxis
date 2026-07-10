@@ -182,6 +182,44 @@ def test_step_handoff_guidance_is_packaged() -> None:
         assert "推荐下一步" in path.read_text(encoding="utf-8")
 
 
+def test_oh_my_pi_codex_routing_guidance_is_packaged() -> None:
+    skill_text = (PLUGIN_ROOT / "skills" / "praxis-workflow" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    agent_template = (PLUGIN_ROOT / "templates" / "AGENTS.md.tpl").read_text(encoding="utf-8")
+    mom_skill = (
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "skills"
+        / "global"
+        / "mom-agent-workflow"
+        / "SKILL.md"
+    ).read_text(encoding="utf-8")
+    mom_rule = (
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "praxis-workflow"
+        / "02-主对话与Subagent.md"
+    ).read_text(encoding="utf-8")
+
+    assert "Oh My Pi / Codex Runtime Routing" in skill_text
+    assert "Tool-only" in skill_text
+    assert "subagent: waived-small-change" in skill_text
+    assert "Oh My Pi/Codex 默认按单一 Codex 订阅调度" in agent_template
+    assert "Codex-Only Model Routing" in mom_skill
+    assert "Codex 订阅下的模型/算力分配" in mom_rule
+
+
 def test_agent_template_requires_chinese_conversation_and_requirement_docs() -> None:
     text = (PLUGIN_ROOT / "templates" / "AGENTS.md.tpl").read_text(encoding="utf-8")
 

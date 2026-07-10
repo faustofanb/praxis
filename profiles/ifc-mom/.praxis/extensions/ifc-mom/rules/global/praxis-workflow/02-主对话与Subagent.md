@@ -23,6 +23,17 @@
 - 角色参考文件位于 `.skill/global/mom-agent-workflow/references/`；主对话只按阶段读取对应角色文件，不一次性加载所有细则。
 - 新业务需求默认先由 Main Agent 判断是否派发 Requirement Agent；信息足够且需求很小可由 Main Agent 直接完成需求判定，但实现、质量和交付职责仍按角色边界执行。
 
+## Codex 订阅下的模型/算力分配
+
+- 当前默认只有 Codex 订阅时，Main Agent 不规划 Claude、Gemini、Opencode 或其它非 Codex 模型；除非用户明确说明本任务可用其它订阅。
+- “合适模型干合适的事”按运行通道和推理强度分配：Main Codex 做路由、风险、锁、最终集成；低成本只读 worker 做候选定位和长日志提炼；Execution worker 做有写锁的实现；Tester/Quality 只在测试或独立复核确有价值时使用。
+- 先用工具，后用模型：dbx、LSP references、Code Graph、grep/glob/read、`task project -- verify` 能给事实时，不派模型去猜。
+- 不为答疑、确定性配置小改、3 个文件以内且无 SQL/迁移/权限/异步/共享模块/生产数据风险的低风险变更派 worker；记录 `subagent: waived-small-change`，由 Main 直接处理。
+- 只读调查超过 3 个业务文件、日志超过 120 行、diff 超过 300 行、跨两个项目、或涉及 SQL/迁移/报表口径/权限/异步/公共模块时，才默认派对应 worker 或 Quality。
+- 并行只用于独立读写集合：数据库只读调查、同域样例调查、源码候选定位、验证日志提炼可以并发；同一接口契约、同一组件、同一迁移序列必须串行或指定唯一 owner。
+- worker 提示不得继承完整主对话；只传项目、需求目录、目标文件/目录、规则路径、锁、验收标准、最小验证命令和输出契约。
+
+
 ## Subagent 规则
 
 - 代码编写、源码级调查、测试编写和测试执行默认必须先规划 subagent/worker 拆分。

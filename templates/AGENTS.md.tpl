@@ -22,6 +22,7 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - Keep generated reports under `.praxis/out/`.
 - Use project configuration for branch names and project paths.
 - 每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；涉及提交、交付、清理、远程操作、生产数据或扩大范围时，等待用户选择后继续推进。
+- Oh My Pi/Codex 默认按单一 Codex 订阅调度：先用工具取事实，Main Codex 只做路由、风险、锁和最终集成；只读 worker 负责候选定位和长日志摘要；Execution worker 只处理有明确写锁和验证命令的实现；Tester/Quality 只在测试或独立复核确有价值时使用。无 SQL/迁移/权限/异步/共享模块/生产数据风险且 3 个文件以内的小改可记录 `subagent: waived-small-change` 后由 Main 直接处理。
 
 ## Every Turn Contract
 

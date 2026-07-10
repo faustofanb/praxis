@@ -13,6 +13,38 @@ Use this skill as the shared Codex entry discipline for Praxis workspaces. It pa
 
 默认使用中文与用户对话。需求文档、分析、规划、进度和交付说明必须使用中文；代码、命令、路径、API 名称、日志片段和用户提供的原始引用可保留原文。用户明确要求其他语言时，以用户要求为准。
 
+## Oh My Pi / Codex Runtime Routing
+
+Default to a Codex-only budget in Oh My Pi unless the user explicitly names
+another available subscription for the current task. Do not design plans that
+depend on Claude, Gemini, Opencode, remote paid reviewers, or other non-Codex
+models being available.
+
+Use the cheapest reliable lane for each step:
+
+- Tool-only: schema lookup, references, file search, status, validation and
+  command output. Do not ask a model to infer facts that `dbx`, LSP, Code Graph,
+  grep/glob/read or `task ...` can provide.
+- Main Codex: requirement truth, routing, risk decisions, write locks, user
+  confirmations, integration and final answer.
+- Read-only worker / explorer: broad source discovery, same-domain examples,
+  config inventory and long-log root-cause extraction.
+- Execution worker: scoped edits with explicit write locks, known files and a
+  concrete verification command.
+- Tester / Quality worker: behavior tests or independent review only when the
+  risk justifies the extra context and coordination.
+
+Waive worker dispatch for answer-only tasks, deterministic maintenance, or
+small single-project changes touching at most three files without SQL,
+migration, permission, async, shared-module, production-data or delivery risk.
+When waived, record `subagent: waived-small-change`, say why, and keep the main
+conversation tool-first.
+
+Spawn workers only after the target project, requirement boundary, 数据口径 and
+read/write sets are known. Never fork the full main conversation into a worker;
+pass only the target, scope, locks, rules, acceptance criteria, minimal
+verification command and output contract.
+
 ## Step Handoff
 
 每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；若下一步涉及提交、交付、清理、远程操作、生产数据或扩大范围，必须等待用户选择后继续推进。
