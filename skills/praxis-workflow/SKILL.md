@@ -13,6 +13,17 @@ Use this skill as the shared Codex entry discipline for Praxis workspaces. It pa
 
 默认使用中文与用户对话。需求文档、分析、规划、进度和交付说明必须使用中文；代码、命令、路径、API 名称、日志片段和用户提供的原始引用可保留原文。用户明确要求其他语言时，以用户要求为准。
 
+## 快速需求路径
+
+用户要求快速落地时，默认走：项目/业务域定位 -> 复用已有需求与工作树 -> 必要的源码或数据调查 -> 修改代码 -> 语法/解析检查 -> 仅回写必须留档的文件。
+
+- 不默认使用 TDD、完整测试、全局校验、预检、子代理或详细阶段文档。
+- 代码修改仍必须在项目工作树中完成；先恢复同一需求已有工作树，确实是独立工作才新建。
+- 只有用户输入、调查结论、SQL 草案、实施说明、进度等需要作为交付物保留时，才创建或复用需求目录；不要为纯代码小改机械建目录。
+- 新建前按需求名和业务聚合查找未完成需求。连续调整优先沿用同一需求名、目录和工作树；只有独立上线、独立验收或明确切分范围时才新建。
+- 语法/解析失败必须修复；其他验证仅在用户要求或变更风险确实需要时执行，并说明原因。
+
+
 ## Oh My Pi / Codex Runtime Routing
 
 Default to a Codex-only budget in Oh My Pi unless the user explicitly names
@@ -40,10 +51,8 @@ migration, permission, async, shared-module, production-data or delivery risk.
 When waived, record `subagent: waived-small-change`, say why, and keep the main
 conversation tool-first.
 
-Spawn workers only after the target project, requirement boundary, 数据口径 and
-read/write sets are known. Never fork the full main conversation into a worker;
-pass only the target, scope, locks, rules, acceptance criteria, minimal
-verification command and output contract.
+快速路径默认由主对话完成，不派发 worker/subagent。只有用户明确要求并行、
+或主对话无法可靠完成的独立高风险工作，才按既有边界派发。
 
 ## Step Handoff
 
@@ -55,7 +64,7 @@ At the start of an acting turn inside a Praxis workspace:
 
 1. Read the workspace `AGENTS.md`.
 2. Read `praxis.toml`.
-3. Read `praxis.projects.toml`.
+3. Read `praxis.projects.toml`; use each project's `label`, `description`, `aliases`, `path` and `kind` to route the task before reading source.
 4. Read `.praxis/core.toml`.
 5. Read `.praxis/project-adapter.toml`.
 6. Read `.praxis/contracts/agents/turn.schema.json` when present.
@@ -64,6 +73,12 @@ At the start of an acting turn inside a Praxis workspace:
 9. Load extension manifests and rules only when the task matches that extension.
 
 Treat this plugin as shared behavior, not as the source of project facts.
+
+## Project Root And CodeGraph
+
+Do not infer the target repository from the current shell directory. A Praxis workspace can aggregate many backend, frontend and uni-app repositories.
+
+Resolve the target project from `praxis.projects.toml` first. Use the selected project's `path` as the candidate repository, then locate that repository's actual root. Check `.codegraph/` only at that project root. If the selected project has no `.codegraph/`, skip CodeGraph and use normal local search; never create or rebuild the index automatically.
 
 ## Reference Map
 
@@ -103,6 +118,6 @@ Profile sync must not overwrite project registries, branch names, verification c
 
 ## Boundary
 
-Do not treat this plugin as the source for project-specific facts. Read local configuration for project names, paths, `defaultBranch`, `upstreamBranch`, worktree root, verification commands, installed extensions and domain rules.
+Do not treat this plugin as the source for project-specific facts. Read local configuration for project names, labels, descriptions, aliases, paths, `defaultBranch`, `upstreamBranch`, worktree root, verification commands, installed extensions and domain rules.
 
 Do not ask the user to provide `local` as a branch name when the workspace already has `defaultBranch` in `praxis.projects.toml`. A manual branch argument is only appropriate for an explicit diagnostic or override path.

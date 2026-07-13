@@ -632,6 +632,10 @@ def portable_config_path(path_text: Any) -> str:
     return relative(path) if path.is_absolute() else path_text
 
 
+def string_list(value: Any) -> list[str]:
+    return [str(item) for item in value if isinstance(item, str)] if isinstance(value, list) else []
+
+
 def praxis_context_packet(config: dict[str, Any], project: str, requirement_name: str) -> Path:
     """Write the compressed AI context packet used by Praxis-controlled commands."""
     profile = praxis_profile()
@@ -651,6 +655,9 @@ def praxis_context_packet(config: dict[str, Any], project: str, requirement_name
         "engineeringControl": engineering_control_context(),
         "facts": {
             "requirementDir": relative(req_dir),
+            "projectLabel": str(project_data.get("label", "")),
+            "projectDescription": str(project_data.get("description", "")),
+            "projectAliases": string_list(project_data.get("aliases")),
             "projectPath": portable_config_path(project_data.get("path", "")),
             "projectKind": project_data.get("kind", ""),
             "defaultBranch": project_data.get("defaultBranch", ""),

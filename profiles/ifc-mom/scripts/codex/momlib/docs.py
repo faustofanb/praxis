@@ -306,6 +306,21 @@ def print_reuse_suggestion(config: dict[str, Any], domain: dict[str, str], curre
     print("如属同一业务目标，优先使用 `task req -- iter <需求名> analysis|plan|progress <主题>` 追加迭代。")
 
 
+def reuse_requirement_docs(config: dict[str, Any], req_dir: Path, raw_body: str, reason: str) -> Path:
+    """向既有需求追加原始输入，避免连续调整拆成多个目录。"""
+    raw_dir = req_dir / "00-原始需求"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    created_at = timestamp()
+    path = raw_dir / f"{next_sequence(raw_dir):02d}-{created_at}-原始描述.md"
+    write_file_once(
+        path,
+        f"# 原始描述补充\n\n## 记录时间\n\n{created_at}\n\n## 复用原因\n\n{reason}\n\n## 用户原始描述\n\n```text\n{raw_body}\n```\n",
+    )
+    write_domain_index(config)
+    print(f"Requirement docs reused: {req_dir}")
+    return req_dir
+
+
 def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str = "") -> Path:
     """创建标准 docs/02-req/YYYY-MM/YYYY-MM-DD-需求名 v2 目录结构和初始文档。"""
     validate_requirement_name(requirement_name)
@@ -315,16 +330,25 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
     if is_placeholder_raw_requirement(raw_body):
         fail("用户原始需求不能使用占位词或助手摘要；请完整粘贴用户原始描述、SQL、脚本、接口示例和附件留档状态")
 
+    req_dir = find_requirement_dir(config, requirement_name)
+    if req_dir.is_dir():
+        return reuse_requirement_docs(config, req_dir, raw_body, "需求名相同，继续在原需求下迭代。")
+
+    domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
+    matches = active_domain_requirements(config, domain, req_dir)
+    if matches:
+        root = requirement_root(config)
+        reuse_dir = root / matches[0]["path"]
+        return reuse_requirement_docs(config, reuse_dir, raw_body, "同一业务聚合存在未完成需求，默认合并迭代。")
+
     req_dir = requirement_dir(config, requirement_name)
     created_at = timestamp()
-    domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
     tag_text = f"{requirement_name}\n{raw_body}"
     requirement_tags = [
         "ifc-mom/requirement",
         "ifc-mom/docs",
         *suggested_business_tags(tag_text, extract_domain_candidate_terms(tag_text)),
     ]
-    print_reuse_suggestion(config, domain, req_dir)
     req_dir.mkdir(parents=True, exist_ok=True)
 
     for child in [

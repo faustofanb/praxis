@@ -117,6 +117,8 @@ def test_init_workspace_renders_thin_project_templates(tmp_path: Path) -> None:
     assert "praxis.projects.toml" in written
     assert ".praxis/contracts/agents/delivery.schema.json" in written
     projects_text = (tmp_path / "praxis.projects.toml").read_text(encoding="utf-8")
+    assert 'description = "Workspace documentation and requirements."' in projects_text
+    assert 'aliases = ["docs"]' in projects_text
     assert 'defaultBranch = "main"' in projects_text
     assert 'defaultBranch = "local"' not in projects_text
     turn_contract = (tmp_path / ".praxis" / "contracts" / "agents" / "turn.schema.json").read_text(
@@ -182,6 +184,7 @@ def test_step_handoff_guidance_is_packaged() -> None:
         assert "推荐下一步" in path.read_text(encoding="utf-8")
 
 
+
 def test_oh_my_pi_codex_routing_guidance_is_packaged() -> None:
     skill_text = (PLUGIN_ROOT / "skills" / "praxis-workflow" / "SKILL.md").read_text(
         encoding="utf-8"
@@ -225,6 +228,15 @@ def test_agent_template_requires_chinese_conversation_and_requirement_docs() -> 
 
     assert "默认使用中文与用户对话" in text
     assert "需求文档必须使用中文" in text
+
+
+def test_agent_template_routes_codegraph_from_project_index() -> None:
+    text = (PLUGIN_ROOT / "templates" / "AGENTS.md.tpl").read_text(encoding="utf-8")
+
+    assert "praxis.projects.toml" in text
+    assert "description" in text
+    assert ".codegraph/" in text
+    assert "current shell directory" in text
 
 
 def test_ifc_mom_profile_packages_workflow_rules_and_skills() -> None:
@@ -278,6 +290,24 @@ def test_ifc_mom_profile_requires_chinese_conversation_and_requirement_docs() ->
 
     assert "默认使用中文与用户对话" in workflow_index
     assert "需求文档、分析、规划、进度和交付说明必须使用中文" in workflow_index
+
+
+def test_ifc_mom_profile_routes_codegraph_by_selected_project_root() -> None:
+    workflow_index = (
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "00-工作流精简索引.md"
+    ).read_text(encoding="utf-8")
+
+    assert "description" in workflow_index
+    assert "MOM/AOTU 聚合根不是单一 Git 仓库" in workflow_index
+    assert ".codegraph/" in workflow_index
 
 
 def test_sync_profile_copies_ifc_mom_assets_without_project_facts(tmp_path: Path) -> None:

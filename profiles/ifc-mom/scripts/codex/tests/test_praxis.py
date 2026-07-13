@@ -18,7 +18,16 @@ class PraxisCompatibilityTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
             config = {
-                "projects": {"backend": {"path": str(root / "ifc-mom-column-max"), "defaultBranch": "local"}}
+                "projects": {
+                    "backend": {
+                        "label": "Column Backend",
+                        "description": "MOM backend service repository.",
+                        "aliases": ["column", "mes-backend"],
+                        "path": str(root / "ifc-mom-column-max"),
+                        "kind": "java-maven",
+                        "defaultBranch": "local",
+                    }
+                }
             }
             req_dir = root / "docs" / "02-req" / "2026-06" / "example"
             req_dir.mkdir(parents=True)
@@ -80,6 +89,9 @@ class PraxisCompatibilityTest(unittest.TestCase):
                 self.assertEqual(packet["project"], "backend")
                 self.assertEqual(packet["requirementName"], requirement)
                 self.assertEqual(packet["facts"]["requirementDir"], "docs/02-req/2026-06/example")
+                self.assertEqual(packet["facts"]["projectLabel"], "Column Backend")
+                self.assertEqual(packet["facts"]["projectDescription"], "MOM backend service repository.")
+                self.assertEqual(packet["facts"]["projectAliases"], ["column", "mes-backend"])
                 self.assertNotIn(str(root), json.dumps(packet, ensure_ascii=False))
 
 

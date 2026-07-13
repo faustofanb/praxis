@@ -280,15 +280,16 @@ tags:
         self.assertTrue(index_exists)
         self.assertTrue(aggregate_exists)
 
-    def test_docs_init_suggests_reusing_active_requirement_in_same_aggregate(self) -> None:
+    def test_docs_init_reuses_active_requirement_in_same_aggregate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {"projects": {"docs": {"path": tmp_dir}}}
             existing = doc_init(config, "设备采购流程优化", "用户要求：设备采购申请字段需要优化。")
 
             with redirect_stdout(StringIO()) as output:
-                doc_init(config, "设备采购字段调整", "用户要求：设备采购申请字段继续调整。")
+                reused = doc_init(config, "设备采购字段调整", "用户要求：设备采购申请字段继续调整。")
 
-        self.assertIn("建议复用已有需求目录", output.getvalue())
+        self.assertEqual(reused, existing)
+        self.assertIn("Requirement docs reused", output.getvalue())
         self.assertIn(existing.name, output.getvalue())
 
     def test_write_domain_candidates_extracts_terms_from_uncategorized_research_docs(self) -> None:

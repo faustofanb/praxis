@@ -166,6 +166,12 @@ def create_worktree(config: dict[str, Any], name: str, task_name: str, base_bran
     if not project_path:
         fail(f"project has no path: {name}")
 
+    existing = project_worktree_dirs(config, name, task_name, include_feature=False)
+    if existing:
+        path = existing[-1]
+        print(f"Reusing worktree: {path}")
+        return path
+
     if not base_branch:
         base_branch = project.get("defaultBranch")
     if not base_branch:

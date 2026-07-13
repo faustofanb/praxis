@@ -7,7 +7,7 @@ Use this reference when deciding whether data belongs in the plugin or in a work
 These facts are project-specific and must remain local:
 
 - `praxis.projects.toml`;
-- project names and paths;
+- project names, labels, descriptions, aliases and paths;
 - `defaultBranch` and `upstreamBranch`;
 - verification commands;
 - project kind mappings;

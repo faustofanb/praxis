@@ -10,12 +10,13 @@ from .git_worktree import create_worktree
 def start_requirement(config: dict[str, Any], project: str, requirement_name: str, raw_requirement: str = "") -> None:
     """初始化需求文档，并为代码项目创建需求 worktree。"""
     req_dir = doc_init(config, requirement_name, raw_requirement)
+    resolved_requirement_name = req_dir.name[11:] if req_dir.name[:10].count("-") == 2 else requirement_name
     worktree_path = None
     if project != "docs":
-        worktree_path = create_worktree(config, project, requirement_name, None)
+        worktree_path = create_worktree(config, project, resolved_requirement_name, None)
     update_context_index(req_dir, project, worktree_path)
     print()
-    context_command(config, project, requirement_name)
+    context_command(config, project, resolved_requirement_name)
 
 
 def print_verification_hint(project: str, requirement_name: str) -> None:

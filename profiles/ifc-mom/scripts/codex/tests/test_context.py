@@ -66,7 +66,7 @@ class ContextCommandTest(unittest.TestCase):
         self.assertIn("[推荐] 恢复完整上下文", brief_text)
         self.assertIn("[推荐] 执行工作区预检", full_text)
 
-    def test_context_command_splits_main_control_and_worker_context(self) -> None:
+    def test_context_command_uses_fast_path_without_default_subagents_or_checks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {
                 "database": {
@@ -89,32 +89,13 @@ class ContextCommandTest(unittest.TestCase):
                 context_command(config, "backend", "氧化上下梁识别问题")
 
         text = output.getvalue()
-        self.assertIn("主对话控制面", text)
-        self.assertIn("当前用户直接对话默认就是 Main Agent", text)
-        self.assertIn("角色 Agent 子任务上下文", text)
-        self.assertIn("代码编写和测试必须交给 Execution Agent", text)
-        self.assertIn("质量复核交给 Quality Agent", text)
-        self.assertIn("subagent 状态：planned/active/blocked/completed/waived", text)
-        self.assertIn("不要用根目录全局 git status", text)
-        self.assertIn("role_agent 必须明确为 requirement/execution/quality/delivery", text)
-        self.assertIn("role agent 与主对话使用同一工作区", text)
-        self.assertIn("role agent 禁止继续派发 subagent/Agent/worker", text)
-        self.assertIn("所有工作流命令必须优先使用 task project/task gate/task system 等已封装入口", text)
-        self.assertIn("没有对应入口就是工作流缺口，先回报缺口，不得降级裸跑", text)
-        self.assertIn("Git 状态、差异、分支、提交和推送必须走工作流入口", text)
-        self.assertIn("未经用户明确允许，禁止手动执行 git、rtk git 或 /usr/bin/git", text)
-        self.assertIn(f"{IFC_MOM}/skills/global/mom-agent-workflow/SKILL.md", text)
-        self.assertIn(f"{IFC_MOM}/skills/global/mom-code-quality-compliance/SKILL.md", text)
-        self.assertIn(f"{IFC_MOM}/rules/projects/backend/README.md", text)
-        self.assertIn(f"{IFC_MOM}/skills/projects/backend/README.md", text)
-        self.assertIn("先输出简短实施计划", text)
-        self.assertIn("项目 skill；Superpowers 可用时作为辅助", text)
-        self.assertIn("非平凡实现先给短设计", text)
-        self.assertIn("自动规划 subagent/worker 拆分", text)
-        self.assertIn("运行时策略要求用户显式授权才能 spawn", text)
-        self.assertIn("mom-context-budgeting/SKILL.md", text)
-        self.assertIn("回报同域样例、规则、自检和偏离说明", text)
-        self.assertIn("先用 dbx MCP 做真实库只读调查", text)
+        self.assertIn("快速需求控制面", text)
+        self.assertIn("当前主对话直接完成调查和代码修改", text)
+        self.assertIn("同一需求恢复已有工作树", text)
+        self.assertIn("默认只做语法或解析检查", text)
+        self.assertIn("不默认执行 TDD、完整测试、预检、全局校验或收口门禁", text)
+        self.assertIn("按需规则", text)
+        self.assertIn("先用 dbx MCP 做必要的只读调查", text)
         self.assertIn("dbx_list_connections", text)
         self.assertIn("dbx_list_tables", text)
         self.assertIn("dbx_execute_query", text)
@@ -123,20 +104,12 @@ class ContextCommandTest(unittest.TestCase):
         self.assertIn("每次查询前确认 current_database()", text)
         self.assertNotIn("dbx_get_schema_context", text)
         self.assertNotIn("dbx_describe_table", text)
-        self.assertIn("数据口径结论必须回到真实库确认", text)
+        self.assertIn("本次改动需要的表、字段或样例即可", text)
         self.assertIn("新需求使用 04-产出物/SQL/", text)
         self.assertIn("正式 Flyway 迁移目录只能在收尾环节", text)
-        self.assertIn("优先使用 CodeGraph", text)
-        self.assertIn("task system -- codegraph explore", text)
-        self.assertIn("task system -- code-graph check", text)
-        self.assertIn("失败或过期时先运行 task system -- code-graph build", text)
-        self.assertIn("不得仅因图谱过期直接降级为源码 grep", text)
-        self.assertIn("证据化分析文件", text)
-
-        main_section = text.split("角色 Agent 子任务上下文", maxsplit=1)[0]
-        self.assertNotIn(".rule/README.md", main_section)
-        self.assertNotIn(".skill/README.md", main_section)
-        self.assertNotIn(".rule/global/05-需求文档组织规范.md", main_section)
+        self.assertIn("可用 CodeGraph 定位；不可用或过期时直接用源码搜索", text)
+        self.assertIn("不强制新增分析文件", text)
+        self.assertNotIn("自动规划 subagent/worker 拆分", text)
 
         self.assertIn("task project -- verify backend 氧化上下梁识别问题", text)
 
