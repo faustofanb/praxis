@@ -31,7 +31,7 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 
 - Treat each user message as a new turn.
 - Reconcile the latest user request, active task state, workspace state and loaded Praxis sources.
-- Before creating anything, search same-name and same-aggregate active requirements. Continuous work reuses the selected requirement directory and worktree; independent delivery or acceptance creates a new one.
+- Before creating anything, search exact-name active requirements. Same-aggregate results are retrieval candidates only; a different requirement name creates an independent directory and worktree.
 - For code-bearing business work, create or restore the project worktree before editing business code. Create or restore a requirement directory only when documentation output must be retained.
 - For docs-only business work with retained output, create or restore the requirement directory before drafting.
 - Answer-only, read-only investigation and pure workflow maintenance may waive the business worktree, but the final answer must state the waiver reason and residual risk.

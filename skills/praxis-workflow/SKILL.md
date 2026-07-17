@@ -15,12 +15,12 @@ Use this skill as the shared Codex entry discipline for Praxis workspaces. It pa
 
 ## 快速需求路径
 
-用户要求快速落地时，默认走：项目/业务域定位 -> 复用已有需求与工作树 -> 必要的源码或数据调查 -> 修改代码 -> 语法/解析检查 -> 仅回写必须留档的文件。
+用户要求快速落地时，默认走：项目/业务域定位 -> 恢复同名需求或新建独立需求与工作树 -> 必要的源码或数据调查 -> 修改代码 -> 语法/解析检查 -> 仅回写必须留档的文件。
 
 - 不默认使用 TDD、完整测试、全局校验、预检、子代理或详细阶段文档。
 - 代码修改仍必须在项目工作树中完成；先恢复同一需求已有工作树，确实是独立工作才新建。
 - 只有用户输入、调查结论、SQL 草案、实施说明、进度等需要作为交付物保留时，才创建或复用需求目录；不要为纯代码小改机械建目录。
-- 新建前按需求名和业务聚合查找未完成需求。连续调整优先沿用同一需求名、目录和工作树；只有独立上线、独立验收或明确切分范围时才新建。
+- 新建前按需求名查找未完成需求；业务聚合只用于检索候选，不能触发自动复用。只有同名需求可自动恢复，不同需求名默认新建独立目录和工作树。
 - 语法/解析失败必须修复；其他验证仅在用户要求或变更风险确实需要时执行，并说明原因。
 
 
@@ -78,7 +78,7 @@ Treat this plugin as shared behavior, not as the source of project facts.
 
 Do not infer the target repository from the current shell directory. A Praxis workspace can aggregate many backend, frontend and uni-app repositories.
 
-Resolve the target project from `praxis.projects.toml` first. Use the selected project's `path` as the candidate repository, then locate that repository's actual root. Check `.codegraph/` only at that project root. If the selected project has no `.codegraph/`, skip CodeGraph and use normal local search; never create or rebuild the index automatically.
+Resolve the target project from `praxis.projects.toml` first. Use the selected project's `path` as the candidate repository, then locate that repository's actual root. Check CodeGraph only at that project root. If an existing Praxis graph is stale, `task system -- code-graph check` queues one asynchronous refresh while the current task falls back to source search. Never auto-initialize a missing graph.
 
 ## Reference Map
 

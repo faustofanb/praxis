@@ -91,7 +91,7 @@ class ContextCommandTest(unittest.TestCase):
         text = output.getvalue()
         self.assertIn("快速需求控制面", text)
         self.assertIn("当前主对话直接完成调查和代码修改", text)
-        self.assertIn("同一需求恢复已有工作树", text)
+        self.assertIn("同名需求恢复已有目录和工作树", text)
         self.assertIn("默认只做语法或解析检查", text)
         self.assertIn("不默认执行 TDD、完整测试、预检、全局校验或收口门禁", text)
         self.assertIn("按需规则", text)
@@ -108,6 +108,7 @@ class ContextCommandTest(unittest.TestCase):
         self.assertIn("新需求使用 04-产出物/SQL/", text)
         self.assertIn("正式 Flyway 迁移目录只能在收尾环节", text)
         self.assertIn("可用 CodeGraph 定位；不可用或过期时直接用源码搜索", text)
+        self.assertIn("过期图谱会自动排队异步刷新", text)
         self.assertIn("不强制新增分析文件", text)
         self.assertNotIn("自动规划 subagent/worker 拆分", text)
 

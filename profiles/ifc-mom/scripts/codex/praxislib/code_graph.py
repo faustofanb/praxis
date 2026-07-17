@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import subprocess
+import sys
 import time
 import tomllib
 from dataclasses import dataclass
@@ -12,7 +15,16 @@ from typing import Any
 
 CODE_GRAPH_FILE = ".praxis/out/code-graph.json"
 QUERY_REPORT = ".praxis/out/code-graph-query.json"
+REFRESH_LOCK = ".praxis/out/code-graph-refresh.lock"
+REFRESH_LOG = ".praxis/out/code-graph-refresh.log"
 CODE_GRAPH_SCHEMA_VERSION = 2
+REFRESHABLE_ISSUE_PREFIXES = (
+    "missing indexed file:",
+    "obsolete indexed file:",
+    "stale source file:",
+    "changed source file:",
+    "missing source fingerprint:",
+)
 SUPPORTED_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".vue", ".java", ".go", ".rs", ".md", ".toml", ".yaml", ".yml", ".json"}
 SOURCE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".jsx", ".vue", ".java", ".go", ".rs"}
 CONFIG_SUFFIXES = {".md", ".toml", ".yaml", ".yml", ".json"}
@@ -530,13 +542,54 @@ def build_code_graph(root: Path) -> Path:
     }
     output = root / CODE_GRAPH_FILE
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(graph, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary = output.with_name(f".{output.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(json.dumps(graph, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(output)
+    finally:
+        temporary.unlink(missing_ok=True)
     print(f"Praxis code graph: {output}")
     return output
 
 
 def _graph_path(root: Path) -> Path:
     return root / CODE_GRAPH_FILE
+
+
+def schedule_code_graph_refresh(root: Path) -> bool:
+    """Queue one detached refresh worker for a stale graph."""
+    lock = root / REFRESH_LOCK
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return False
+    os.close(descriptor)
+    task_script = Path(__file__).resolve().parents[1] / "task.py"
+    try:
+        with (root / REFRESH_LOG).open("ab") as log:
+            subprocess.Popen(
+                [sys.executable, str(task_script), "system", "code-graph", "refresh-worker"],
+                cwd=root,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+    except OSError:
+        lock.unlink(missing_ok=True)
+        return False
+    # ponytail: forced worker kills can leave this lock; add PID-based stale-lock recovery if that occurs in practice.
+    return True
+
+
+def refresh_code_graph(root: Path) -> int:
+    """Rebuild a graph in the background and release its deduplication lock."""
+    try:
+        build_code_graph(root)
+        return 0
+    finally:
+        (root / REFRESH_LOCK).unlink(missing_ok=True)
 
 
 def code_graph_issues(root: Path) -> list[str]:
@@ -651,5 +704,9 @@ def code_graph_check(root: Path) -> int:
         print("Code graph issues:")
         for issue in issues[:40]:
             print(f"  - {issue}")
-        print("  rebuild: task system -- code-graph build")
+        if any(issue.startswith(REFRESHABLE_ISSUE_PREFIXES) for issue in issues):
+            queued = schedule_code_graph_refresh(root)
+            print(f"  async refresh {'queued' if queued else 'already running'}; use source search for this task")
+        else:
+            print("  rebuild: task system -- code-graph build")
     return 0 if ok else 1

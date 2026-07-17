@@ -13,6 +13,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from praxislib import code_graph as code_graph_module  # noqa: E402
 from praxislib.code_graph import build_code_graph, code_graph_check, query_code_graph  # noqa: E402
 from praxislib.project_index import project_index_summary  # noqa: E402
 
@@ -287,13 +288,56 @@ class CodeGraphTest(unittest.TestCase):
             os.utime(existing, (newer, newer))
             (root / "app" / "new_module.py").write_text("VALUE = 1\n", encoding="utf-8")
 
-            with redirect_stdout(io.StringIO()) as output:
+            with (
+                mock.patch("praxislib.code_graph.schedule_code_graph_refresh", return_value=True, create=True) as refresh,
+                redirect_stdout(io.StringIO()) as output,
+            ):
                 exit_code = code_graph_check(root)
 
         text = output.getvalue()
         self.assertEqual(exit_code, 1)
         self.assertIn("stale source file", text)
         self.assertIn("missing indexed file", text)
+        self.assertIn("async refresh queued", text)
+        refresh.assert_called_once_with(root)
+
+    def test_schedule_code_graph_refresh_starts_one_detached_worker(self) -> None:
+        schedule = getattr(code_graph_module, "schedule_code_graph_refresh", None)
+        self.assertIsNotNone(schedule)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            with mock.patch("praxislib.code_graph.subprocess.Popen") as popen:
+                first = schedule(root)
+                second = schedule(root)
+
+            lock = root / ".praxis" / "out" / "code-graph-refresh.lock"
+            lock_exists = lock.exists()
+
+        self.assertTrue(first)
+        self.assertFalse(second)
+        self.assertTrue(lock_exists)
+        self.assertEqual(popen.call_count, 1)
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_refresh_code_graph_rebuilds_and_releases_lock(self) -> None:
+        refresh = getattr(code_graph_module, "refresh_code_graph", None)
+        self.assertIsNotNone(refresh)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "app").mkdir()
+            (root / "app" / "main.py").write_text("VALUE = 1\n", encoding="utf-8")
+            lock = root / ".praxis" / "out" / "code-graph-refresh.lock"
+            lock.parent.mkdir(parents=True)
+            lock.touch()
+
+            exit_code = refresh(root)
+
+            graph_exists = (root / ".praxis" / "out" / "code-graph.json").is_file()
+            lock_exists = lock.exists()
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(graph_exists)
+        self.assertFalse(lock_exists)
 
     def test_code_graph_check_detects_content_change_with_preserved_mtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -311,7 +355,10 @@ class CodeGraphTest(unittest.TestCase):
             os.utime(source, ns=(original_stat.st_atime_ns, original_stat.st_mtime_ns))
             os.utime(graph_path, (graph_path.stat().st_atime, graph_path.stat().st_mtime + 5))
 
-            with redirect_stdout(io.StringIO()) as output:
+            with (
+                mock.patch("praxislib.code_graph.schedule_code_graph_refresh", return_value=True),
+                redirect_stdout(io.StringIO()) as output,
+            ):
                 exit_code = code_graph_check(root)
 
         text = output.getvalue()

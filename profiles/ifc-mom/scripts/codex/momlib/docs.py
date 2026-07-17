@@ -295,15 +295,15 @@ def active_domain_requirements(config: dict[str, Any], domain: dict[str, str], c
 
 
 def print_reuse_suggestion(config: dict[str, Any], domain: dict[str, str], current_dir: Path) -> None:
-    """提示同聚合未完成需求，仍允许显式创建新需求目录。"""
+    """展示同聚合未完成需求，仅用于检索提示。"""
     matches = active_domain_requirements(config, domain, current_dir)
     if not matches:
         return
     root = requirement_root(config)
-    print("建议复用已有需求目录：")
+    print("同聚合候选仅供检索：")
     for record in matches[:3]:
         print(f"- {record['title']}：`{root / record['path']}`")
-    print("如属同一业务目标，优先使用 `task req -- iter <需求名> analysis|plan|progress <主题>` 追加迭代。")
+    print("不同需求名默认创建独立需求目录；明确继续旧需求时使用 `task req -- iter <旧需求名> ...`。")
 
 
 def reuse_requirement_docs(config: dict[str, Any], req_dir: Path, raw_body: str, reason: str) -> Path:
@@ -335,12 +335,6 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
         return reuse_requirement_docs(config, req_dir, raw_body, "需求名相同，继续在原需求下迭代。")
 
     domain = classify_business_domain(f"{requirement_name}\n{raw_body}")
-    matches = active_domain_requirements(config, domain, req_dir)
-    if matches:
-        root = requirement_root(config)
-        reuse_dir = root / matches[0]["path"]
-        return reuse_requirement_docs(config, reuse_dir, raw_body, "同一业务聚合存在未完成需求，默认合并迭代。")
-
     req_dir = requirement_dir(config, requirement_name)
     created_at = timestamp()
     tag_text = f"{requirement_name}\n{raw_body}"
@@ -349,6 +343,7 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
         "ifc-mom/docs",
         *suggested_business_tags(tag_text, extract_domain_candidate_terms(tag_text)),
     ]
+    print_reuse_suggestion(config, domain, req_dir)
     req_dir.mkdir(parents=True, exist_ok=True)
 
     for child in [
@@ -392,7 +387,7 @@ def doc_init(config: dict[str, Any], requirement_name: str, raw_requirement: str
 - 限界上下文：{domain["boundedContext"]}
 - 聚合：{domain["aggregate"]}
 - 能力：{domain["capability"]}
-- 复用规则：同一业务目标的连续调整优先追加迭代文件；独立上线或独立验收时再新建需求目录。
+- 复用规则：仅同名需求自动复用；业务聚合只用于检索候选，不同需求名默认新建独立需求目录。
 
 ## 原始需求入口
 
@@ -681,7 +676,7 @@ def update_context_index(req_dir: Path, project: str, worktree_path: Path | None
 - 限界上下文：{domain["boundedContext"]}
 - 聚合：{domain["aggregate"]}
 - 能力：{domain["capability"]}
-- 复用规则：同一业务目标的连续调整优先追加迭代文件；独立上线或独立验收时再新建需求目录。
+- 复用规则：仅同名需求自动复用；业务聚合只用于检索候选，不同需求名默认新建独立需求目录。
 
 ## 原始需求入口
 

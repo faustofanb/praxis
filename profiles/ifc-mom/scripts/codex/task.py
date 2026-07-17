@@ -82,7 +82,7 @@ from momlib.praxis import (
 )
 from praxislib.project_index import write_project_index_config
 from praxislib.adapters import write_adapter_plan
-from praxislib.code_graph import build_code_graph, code_graph_check, query_code_graph
+from praxislib.code_graph import build_code_graph, code_graph_check, query_code_graph, refresh_code_graph
 from praxislib.codegraph_adapter import run_codegraph
 from praxislib.observability import write_trace_span, write_trace_summary
 from praxislib.policy import write_policy_report
@@ -285,9 +285,11 @@ def run_praxis_system_action(action: str, args: list[str]) -> int:
         write_trace_summary(Path.cwd())
         return 0
     if action == "code-graph":
-        if not args or args[0] not in {"build", "query", "check"}:
+        if not args or args[0] not in {"build", "query", "check", "refresh-worker"}:
             fail("usage: task system -- code-graph build|query [--refresh] <keyword>|check")
         subaction = args[0]
+        if subaction == "refresh-worker":
+            return refresh_code_graph(Path.cwd())
         if subaction == "build":
             if len(args) != 1:
                 fail("usage: task system -- code-graph build")

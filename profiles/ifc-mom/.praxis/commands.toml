@@ -83,9 +83,9 @@ requires_confirmation = false
 [[command]]
 id = "praxis.code-graph.check"
 argv = "task system -- code-graph check"
-writes = []
-outputs = ["code graph validation result"]
-risk = "readonly"
+writes = [".praxis/out/code-graph.json", ".praxis/out/code-graph-refresh.lock", ".praxis/out/code-graph-refresh.log"]
+outputs = ["code graph validation result and asynchronous refresh status"]
+risk = "state"
 requires_confirmation = false
 
 [[command]]

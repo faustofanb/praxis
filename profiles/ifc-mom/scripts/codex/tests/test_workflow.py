@@ -19,6 +19,43 @@ from momlib import finish, git_worktree, praxis, process, project_actions, requi
 
 
 class WorkflowPolicyTest(unittest.TestCase):
+    def test_start_requirement_rejects_automatic_cross_name_reuse_before_worktree_creation(self) -> None:
+        requested = "形态转换包装收货按新条码联动报工"
+        reused_dir = Path("/docs/02-req/2026-07/2026-07-14-弹簧包装收货入库超收校验")
+        with (
+            patch.object(requirements, "doc_init", return_value=reused_dir),
+            patch.object(requirements, "create_worktree") as create_worktree,
+            patch.object(requirements, "update_context_index"),
+            patch.object(requirements, "context_command"),
+            redirect_stderr(io.StringIO()) as error,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            requirements.start_requirement({}, "wms-pda", requested, "用户要求：形态转换收货联动报工。")
+
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn("禁止自动跨名称复用", error.getvalue())
+        self.assertIn(requested, error.getvalue())
+        self.assertIn("弹簧包装收货入库超收校验", error.getvalue())
+        create_worktree.assert_not_called()
+
+    def test_start_requirement_rejects_worktree_branch_not_bound_to_requested_requirement(self) -> None:
+        requirement_name = "形态转换包装收货按新条码联动报工"
+        req_dir = Path(f"/docs/02-req/2026-07/2026-07-17-{requirement_name}")
+        worktree = Path(f"/worktrees/2026-07-17-{requirement_name}-dev")
+        with (
+            patch.object(requirements, "doc_init", return_value=req_dir),
+            patch.object(requirements, "create_worktree", return_value=worktree),
+            patch.object(requirements, "capture", return_value="codex/20260716-弹簧包装收货入库超收校验", create=True),
+            patch.object(requirements, "update_context_index") as update_context_index,
+            patch.object(requirements, "context_command") as context_command,
+            self.assertRaises(SystemExit) as raised,
+        ):
+            requirements.start_requirement({}, "wms-pda", requirement_name, "用户要求：形态转换收货联动报工。")
+
+        self.assertEqual(raised.exception.code, 1)
+        update_context_index.assert_not_called()
+        context_command.assert_not_called()
+
     def test_run_requires_requirement_name_for_code_project(self) -> None:
         config = {
             "projects": {

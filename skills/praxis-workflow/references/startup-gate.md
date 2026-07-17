@@ -32,8 +32,8 @@ Missing required code worktree is a blocker. Missing requirement docs are not a 
 
 Use this path when the user prioritizes quick delivery:
 
-1. Route to the project and search same-name and same-aggregate active requirements.
-2. Reuse the selected requirement directory and worktree; only then create the missing one.
+1. Route to the project and search same-name requirements; use same-aggregate results only as candidates.
+2. Reuse only an exact-name requirement and worktree. A different name creates an independent requirement and worktree.
 3. Investigate the relevant call path/data source, modify the smallest code surface, and run a syntax or parser check.
 4. Write only the files that are actual retained outputs. Do not create plan/progress/analysis placeholders.
 

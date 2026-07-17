@@ -7,12 +7,14 @@ import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest.mock import call, patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import task as task_module  # noqa: E402
-from momlib.docs import classify_business_domain, doc_init, doc_iter, tolaria_check, tolaria_publish, write_domain_candidates, write_domain_index, write_requirement_global_index  # noqa: E402
+from momlib import requirements  # noqa: E402
+from momlib.docs import classify_business_domain, doc_init, doc_iter, find_requirement_dir, tolaria_check, tolaria_publish, write_domain_candidates, write_domain_index, write_requirement_global_index  # noqa: E402
 from momlib.workflow_checks import docs_index  # noqa: E402
 
 
@@ -280,17 +282,40 @@ tags:
         self.assertTrue(index_exists)
         self.assertTrue(aggregate_exists)
 
-    def test_docs_init_reuses_active_requirement_in_same_aggregate(self) -> None:
+    def test_start_requirement_same_aggregate_different_names_creates_separate_docs_and_worktrees(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = {"projects": {"docs": {"path": tmp_dir}}}
-            existing = doc_init(config, "设备采购流程优化", "用户要求：设备采购申请字段需要优化。")
+            config["projects"]["backend"] = {"path": "backend"}
 
-            with redirect_stdout(StringIO()) as output:
-                reused = doc_init(config, "设备采购字段调整", "用户要求：设备采购申请字段继续调整。")
+            def fake_worktree(_config: dict, _project: str, name: str, _base: str | None) -> Path:
+                return Path(tmp_dir) / f"{find_requirement_dir(config, name).name}-dev"
 
-        self.assertEqual(reused, existing)
-        self.assertIn("Requirement docs reused", output.getvalue())
-        self.assertIn(existing.name, output.getvalue())
+            def fake_capture(command: list[str], _cwd: Path) -> str:
+                name = Path(command[2]).name[11:-4]
+                return f"codex/20260717-{name}"
+
+            with (
+                patch.object(requirements, "create_worktree", side_effect=fake_worktree) as create_worktree,
+                patch.object(requirements, "capture", side_effect=fake_capture, create=True),
+                patch.object(requirements, "update_context_index"),
+                patch.object(requirements, "context_command"),
+                redirect_stdout(StringIO()) as output,
+            ):
+                requirements.start_requirement(config, "backend", "设备采购流程优化", "用户要求：设备采购申请字段需要优化。")
+                requirements.start_requirement(config, "backend", "设备采购字段调整", "用户要求：设备采购申请字段继续调整。")
+
+            first = find_requirement_dir(config, "设备采购流程优化")
+            second = find_requirement_dir(config, "设备采购字段调整")
+
+        self.assertNotEqual(first, second)
+        self.assertIn("同聚合候选仅供检索", output.getvalue())
+        self.assertIn("不同需求名默认创建独立需求目录", output.getvalue())
+        create_worktree.assert_has_calls(
+            [
+                call(config, "backend", "设备采购流程优化", None),
+                call(config, "backend", "设备采购字段调整", None),
+            ]
+        )
 
     def test_write_domain_candidates_extracts_terms_from_uncategorized_research_docs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
