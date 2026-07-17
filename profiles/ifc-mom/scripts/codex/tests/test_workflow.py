@@ -222,6 +222,76 @@ class WorkflowPolicyTest(unittest.TestCase):
             ],
         )
 
+    def test_create_worktree_rejects_path_that_is_not_a_registered_worktree(self) -> None:
+        config = {
+            "projects": {
+                "backend": {
+                    "path": "ifc-mom-column-max",
+                    "defaultBranch": "local",
+                    "upstreamBranch": "develop",
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "cached-worktree"
+            path.mkdir()
+            with (
+                patch.object(git_worktree, "project_dir", return_value=Path("/repo")),
+                patch.object(git_worktree, "project_worktree_dirs", return_value=[]),
+                patch.object(git_worktree, "new_worktree_path", return_value=path),
+                patch.object(git_worktree, "capture", return_value=""),
+                patch.object(git_worktree, "run_checked") as run_checked,
+                redirect_stderr(io.StringIO()) as error,
+                self.assertRaises(SystemExit) as raised,
+            ):
+                git_worktree.create_worktree(config, "backend", "需求", None)
+
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn("已存在但不是已注册 Git worktree", error.getvalue())
+        run_checked.assert_not_called()
+
+    def test_create_worktree_mounts_existing_branch_from_an_earlier_date_without_syncing_base(self) -> None:
+        config = {
+            "projects": {
+                "backend": {
+                    "path": "ifc-mom-column-max",
+                    "defaultBranch": "local",
+                    "upstreamBranch": "develop",
+                }
+            }
+        }
+        commands: list[list[str]] = []
+
+        def fake_run_checked(command: list[str], cwd: Path) -> None:
+            commands.append(command)
+
+        def fake_capture(command: list[str], cwd: Path) -> str:
+            if "for-each-ref" in command:
+                return "codex/20260609-需求"
+            return ""
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "worktree"
+            with (
+                patch.object(git_worktree, "project_dir", return_value=Path("/repo")),
+                patch.object(git_worktree, "project_worktree_dirs", return_value=[]),
+                patch.object(git_worktree, "new_worktree_path", return_value=path),
+                patch.object(git_worktree, "capture", side_effect=fake_capture),
+                patch.object(git_worktree, "run_checked", side_effect=fake_run_checked),
+                patch.object(git_worktree, "branch_today", return_value="20260610"),
+                redirect_stdout(io.StringIO()),
+            ):
+                worktree_path = git_worktree.create_worktree(config, "backend", "需求", None)
+
+        self.assertEqual(worktree_path, path)
+        self.assertEqual(
+            commands,
+            [
+                ["git", "-C", "/repo", "worktree", "prune"],
+                ["git", "-C", "/repo", "worktree", "add", str(path), "codex/20260609-需求"],
+            ],
+        )
+
     def test_create_worktree_aborts_when_main_repo_has_uncommitted_changes(self) -> None:
         config = {
             "projects": {

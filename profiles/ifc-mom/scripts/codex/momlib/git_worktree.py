@@ -178,12 +178,30 @@ def create_worktree(config: dict[str, Any], name: str, task_name: str, base_bran
         base_branch = capture(["git", "-C", str(repo_dir), "branch", "--show-current"], ROOT_DIR)
     if not base_branch:
         fail("cannot determine base branch")
+
+    path = new_worktree_path(config, name, task_name)
+
+    if path.exists():
+        fail(f"目标路径已存在但不是已注册 Git worktree，请先移走或清理后重试: {path}")
+
+    branch_suffix = f"-{safe_branch_leaf(task_name)}"
+    branches = capture(
+        ["git", "-C", str(repo_dir), "for-each-ref", "--format=%(refname:short)", "refs/heads/codex/"],
+        ROOT_DIR,
+    ).splitlines()
+    existing_branches = sorted(branch for branch in branches if branch.endswith(branch_suffix))
+    branch = existing_branches[-1] if existing_branches else f"codex/{branch_today()}{branch_suffix}"
+
+    if existing_branches:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        run_checked(["git", "-C", str(repo_dir), "worktree", "prune"], ROOT_DIR)
+        run_checked(["git", "-C", str(repo_dir), "worktree", "add", str(path), branch], ROOT_DIR)
+        print(f"Mounted existing branch worktree: {path}")
+        return path
+
     assert_main_worktree_clean(repo_dir, name)
     if project.get("defaultBranch") == base_branch:
         sync_default_branch_from_upstream(repo_dir, base_branch, project.get("upstreamBranch"))
-
-    branch = f"codex/{branch_today()}-{safe_branch_leaf(task_name)}"
-    path = new_worktree_path(config, name, task_name)
 
     print(f"Project: {name}")
     print(f"Repo: {repo_dir}")
