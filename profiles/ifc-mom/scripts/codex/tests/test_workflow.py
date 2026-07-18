@@ -1024,33 +1024,6 @@ class WorkflowPolicyTest(unittest.TestCase):
             ],
         )
 
-    def test_praxis_check_validates_heavy_profile(self) -> None:
-        with redirect_stdout(io.StringIO()) as output:
-            exit_code = task_module.run_praxis_action("check", [])
-
-        self.assertEqual(exit_code, 0)
-        text = output.getvalue()
-        self.assertIn("Praxis check: PASS", text)
-        self.assertIn(".praxis/profile.toml", text)
-        self.assertIn(".praxis/core.toml", text)
-        self.assertIn("Praxis profile: PASS", text)
-        self.assertIn("epistemology", text)
-        self.assertIn("organization", text)
-
-    def test_praxis_index_writes_project_fact_index(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            index_path = Path(tmp_dir) / "project-index.json"
-            with patch.object(praxis, "PRAXIS_INDEX_FILE", index_path):
-                actual_path = task_module.praxis_index()
-            data = json.loads(actual_path.read_text(encoding="utf-8"))
-
-        self.assertEqual(data["schemaVersion"], 1)
-        self.assertEqual(data["praxis"]["status"], "complete")
-        self.assertIn("backend", data["projects"])
-        self.assertGreaterEqual(data["counts"]["rules"], 1)
-        self.assertGreaterEqual(data["counts"]["skills"], 1)
-        self.assertIn("Execution", data["roles"])
-
     def test_praxis_req_project_gate_delivery_commands_route_existing_capabilities(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
         with (
@@ -1063,7 +1036,7 @@ class WorkflowPolicyTest(unittest.TestCase):
             patch.object(task_module, "write_execution_compliance_evidence"),
         ):
             self.assertEqual(task_module.run_praxis_action("req", ["init", "重构", "原始需求"]), 0)
-            self.assertEqual(task_module.run_praxis_action("project", ["backend", "verify", "重构"]), 0)
+            self.assertEqual(task_module.run_praxis_action("project", ["verify", "backend", "重构"]), 0)
             self.assertEqual(task_module.run_praxis_action("gate", ["guard", "backend", "重构"]), 0)
             self.assertEqual(task_module.run_praxis_action("delivery", ["finish", "backend", "重构"]), 0)
 
@@ -1103,15 +1076,13 @@ class WorkflowPolicyTest(unittest.TestCase):
 
         verify_project.assert_called_once_with(config, "backend", ["重构"])
 
-    def test_project_command_keeps_legacy_project_first_order(self) -> None:
-        config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "verify_project") as verify_project,
-        ):
-            task_module.main(["project", "backend", "verify", "重构"])
+    def test_main_rejects_removed_legacy_command_groups(self) -> None:
+        with redirect_stderr(io.StringIO()) as error:
+            with self.assertRaises(SystemExit) as exc:
+                task_module.main(["workflow", "check"])
 
-        verify_project.assert_called_once_with(config, "backend", ["重构"])
+        self.assertEqual(exc.exception.code, 1)
+        self.assertIn("unknown task group: workflow", error.getvalue())
 
     def test_project_preflight_action_first_routes_to_preflight(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
@@ -1247,16 +1218,6 @@ class WorkflowPolicyTest(unittest.TestCase):
         report.assert_called_once()
         self.assertIn("/tmp/template-report.json", output.getvalue())
 
-    def test_workflow_alias_is_supported_as_compatibility_fallback(self) -> None:
-        with redirect_stdout(io.StringIO()) as output:
-            with self.assertRaises(SystemExit) as exc:
-                task_module.main(["workflow", "check"])
-
-        self.assertEqual(exc.exception.code, 0)
-        text = output.getvalue()
-        self.assertIn("[compat] legacy workflow command detected", text)
-        self.assertIn("Praxis check: PASS", text)
-
     def test_praxis_context_writes_ai_context_packet(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             docs_root = Path(tmp_dir) / "docs"
@@ -1310,7 +1271,7 @@ class WorkflowPolicyTest(unittest.TestCase):
             patch.object(task_module, "change_check", return_value=0) as change_check,
             patch.object(task_module, "migration_check", return_value=0) as migration_check,
         ):
-            self.assertEqual(task_module.run_praxis_action("project", ["backend", "preflight", "上下文包"]), 0)
+            self.assertEqual(task_module.run_praxis_action("project", ["preflight", "backend", "上下文包"]), 0)
             self.assertEqual(task_module.run_praxis_action("gate", ["guard", "backend", "上下文包"]), 0)
             self.assertEqual(task_module.run_praxis_action("gate", ["change-check", "backend", "上下文包"]), 0)
             self.assertEqual(task_module.run_praxis_action("gate", ["migration-check", "backend", "上下文包"]), 0)

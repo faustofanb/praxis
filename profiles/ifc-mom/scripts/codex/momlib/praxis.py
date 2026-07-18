@@ -51,9 +51,7 @@ def _fallback_profile() -> dict[str, Any]:
         "baseline": "lightweight-structured-layer",
         "control_plane": {
             "primary_command": "task",
-            "legacy_commands_are_aliases": True,
-            "command_groups": ["req", "project", "context", "gate", "delivery", "system"],
-            "runtime_recommendation": "hybrid-python-core-bun-ts-adapters",
+            "command_groups": ["req", "docs", "project", "context", "etl", "gate", "role", "delivery", "system"],
         },
         "layers": {
             layer: {"engineering_name": f"fallback-{layer.replace('_', '-')}"}
@@ -542,7 +540,6 @@ def praxis_write_readiness_report(
         "status": status,
         "controlPlane": {
             "primaryCommand": praxis_profile().get("control_plane", {}).get("primary_command", "task"),
-            "legacyCommandsAreAliases": praxis_profile().get("control_plane", {}).get("legacy_commands_are_aliases", True),
             "commandGroups": praxis_profile().get("control_plane", {}).get("command_groups", []),
         },
         "contextPacket": relative(context_packet),
@@ -634,7 +631,6 @@ def praxis_context_packet(config: dict[str, Any], project: str, requirement_name
         "requirementName": requirement_name,
         "controlPlane": {
             "primaryCommand": profile.get("control_plane", {}).get("primary_command", "task"),
-            "legacyCommandsAreAliases": profile.get("control_plane", {}).get("legacy_commands_are_aliases", True),
             "commandGroups": profile.get("control_plane", {}).get("command_groups", []),
         },
         "engineeringControl": engineering_control_context(),
@@ -767,4 +763,3 @@ def praxis_write_delivery_precheck_packet(requirement_name: str, projects: list[
     path.write_text(json.dumps(packet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Praxis delivery precheck: {path}")
     return path
-

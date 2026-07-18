@@ -63,16 +63,6 @@ class CodeGraphAdapterTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         run.assert_called_once_with(Path.cwd(), ["query", "UserService"])
 
-    def test_task_top_level_codegraph_dispatches(self) -> None:
-        with (
-            patch.object(task_module, "run_codegraph", return_value=0) as run,
-            self.assertRaises(SystemExit) as raised,
-        ):
-            task_module.main(["codegraph", "status"])
-
-        self.assertEqual(raised.exception.code, 0)
-        run.assert_called_once_with(Path.cwd(), ["status"])
-
     def test_command_contract_lists_codegraph_commands(self) -> None:
         commands = praxis_contracts.praxis_commands()
 
@@ -80,6 +70,7 @@ class CodeGraphAdapterTest(unittest.TestCase):
         self.assertIn("system codegraph explore <query>", commands)
         self.assertIn("system codegraph impact <symbol>", commands)
         self.assertFalse(any("code-graph" in command for command in commands))
+        self.assertNotIn("codegraph", task_module.TOP_LEVEL_ACTIONS)
 
 
 if __name__ == "__main__":

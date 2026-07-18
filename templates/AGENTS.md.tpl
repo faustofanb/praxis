@@ -23,7 +23,6 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - Use project configuration for branch names and project paths.
 - Do not infer the target repository from the current shell directory. Resolve the project from `praxis.projects.toml`, then check `.codegraph/` only at that project's actual repository root.
 - If the selected project has a usable `.codegraph/`, CodeGraph may accelerate source understanding; otherwise use normal local search. Do not rebuild an index for a quick task.
-- 每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；涉及提交、交付、清理、远程操作、生产数据或扩大范围时，等待用户选择后继续推进。
 - 快速需求默认由主对话完成：先调查、后改代码，只做语法/解析检查；不默认使用 TDD、全局校验、预检、子代理或阶段文档。
 
 

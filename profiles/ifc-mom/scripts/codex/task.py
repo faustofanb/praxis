@@ -49,7 +49,6 @@ Run with:
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from pathlib import Path
@@ -89,107 +88,21 @@ from momlib.praxis_templates import render_template, write_template_report as te
 
 
 TOP_LEVEL_ACTIONS = {
-    "check",
-    "index",
-    "command-audit",
-    "template-check",
-    "template-render",
     "req",
+    "docs",
+    "project",
+    "context",
+    "etl",
     "gate",
     "delivery",
     "role",
     "system",
-    "codegraph",
-    "docs",
 }
-
-PROJECT_ACTIONS = {
-    "status",
-    "verify",
-    "run",
-    "shell",
-    "worktree",
-    "start",
-    "preflight",
-    "guard",
-    "change-check",
-    "migration-check",
-    "finish",
-    "commit-split",
-    "deliver",
-    "cleanup",
-}
-
-
-def build_parser() -> argparse.ArgumentParser:
-    """创建命令行解析器，只描述入口形态，不承载业务逻辑。"""
-    parser = argparse.ArgumentParser(description="IFC MOM Codex task dispatcher")
-    subparsers = parser.add_subparsers(dest="mode")
-
-    subparsers.add_parser("list", help="list configured projects")
-
-    context_parser = subparsers.add_parser("context", help="print minimal rule/skill context")
-    context_parser.add_argument("--brief", action="store_true", help="print low-noise resume summary")
-    context_parser.add_argument("project")
-    context_parser.add_argument("requirement_name")
-
-    etl_parser = subparsers.add_parser("etl", help="manage ETL asset directories")
-    etl_parser.add_argument("args", nargs=argparse.REMAINDER)
-
-    praxis_parser = subparsers.add_parser("praxis", help="run heavy Praxis checks")
-    praxis_parser.add_argument("action", nargs="?", default="check")
-    praxis_parser.add_argument("args", nargs=argparse.REMAINDER)
-
-    workflow_parser = subparsers.add_parser("workflow", help="compatibility alias to praxis workflow actions")
-    workflow_parser.add_argument("action", nargs="?", default="check")
-    workflow_parser.add_argument("args", nargs=argparse.REMAINDER)
-
-    # 兼容 `<project> <action>` 的短命令：normalize_argv 会补成 project 子命令。
-    project_parser = subparsers.add_parser("project", help=argparse.SUPPRESS)
-    project_parser.add_argument("project")
-    project_parser.add_argument("action", nargs="?", default="status")
-    project_parser.add_argument("args", nargs="*")
-
-    return parser
-
-
-def normalize_argv(argv: list[str]) -> list[str]:
-    """把 `<project> <action>` 归一化为内部 project 子命令。"""
-    if not argv or argv[0] in {"-h", "--help", "list", "context", "etl", "praxis", "workflow", "project", *TOP_LEVEL_ACTIONS}:
-        return argv
-    return ["project", *argv]
-
-
-def normalize_project_args(project: str, action: str, args: list[str]) -> tuple[str, str, list[str]]:
-    """Support both documented `project <action> <project>` and legacy `project <project> <action>`."""
-    if project in PROJECT_ACTIONS:
-        if action == "status":
-            fail(f"usage: task project -- {project} <project> [args...]")
-        return action, project, args
-    return project, action, args
-
 
 def run_praxis_action(action: str, args: list[str]) -> int:
-    """Run heavy Praxis workflow actions."""
+    """Run one canonical Praxis command group."""
     if args and args[0] == "--":
         args = args[1:]
-    if action in {
-        "check",
-        "index",
-        "init-project-index",
-        "project-index",
-        "policy-check",
-        "codegraph",
-        "command-audit",
-        "template-check",
-        "template-render",
-        "list",
-    }:
-        if action == "list":
-            config = load_config()
-            list_projects(config)
-            return 0
-        return run_praxis_system_action(action, args)
     if action == "system":
         if args and args[0] == "--":
             args = args[1:]
@@ -376,9 +289,9 @@ def run_praxis_project_action(config: dict, args: list[str]) -> int:
     """Run Praxis project actions by delegating to existing project handlers."""
     if len(args) < 2:
         fail("usage: task project -- <action> <project> [args...]")
-    project, action, remaining = normalize_project_args(args[0], args[1], args[2:])
+    action, project, remaining = args[0], args[1], args[2:]
     if action in {"status", "verify", "run", "shell", "worktree", "start"}:
-        return run_project_action(config, project, action, remaining, via_praxis=True)
+        return run_project_action(config, project, action, remaining)
     if action == "preflight":
         if not remaining:
             fail("usage: task project -- preflight <project> <需求名>")
@@ -393,7 +306,7 @@ def run_praxis_project_action(config: dict, args: list[str]) -> int:
             fail(f"usage: task project -- {action} {project} <需求名>")
         return run_praxis_delivery_action(config, [action, project, remaining[0], *remaining[1:]])
     if project == "docs":
-        return run_project_action(config, project, action, remaining, via_praxis=True)
+        return run_project_action(config, project, action, remaining)
     fail(f"unknown praxis project action: {action}")
 
 
@@ -626,14 +539,8 @@ def run_praxis_delivery_single_action(config: dict, args: list[str]) -> int:
     fail(f"unknown praxis delivery action: {action}")
 
 
-def run_project_action(config: dict, project: str, action: str, args: list[str], via_praxis: bool = False) -> int:
+def run_project_action(config: dict, project: str, action: str, args: list[str]) -> int:
     """根据 action 分发到对应模块，保持 task.py 入口轻量。"""
-    if not via_praxis:
-        print(
-            "[compat] legacy command detected; recommend "
-            f"task project -- {action} {project} "
-            + (" ".join(args) if args else "")
-        )
     if action == "start":
         if len(args) < 2:
             fail("usage: task project -- start <project> <简短中文需求名> <用户原始需求原文>")
@@ -694,47 +601,18 @@ def run_project_action(config: dict, project: str, action: str, args: list[str],
 
 def main(argv: list[str]) -> None:
     """加载配置并执行用户请求的 Codex 自动化命令。"""
-    if argv and argv[0] in TOP_LEVEL_ACTIONS:
-        raise SystemExit(run_praxis_action(argv[0], argv[1:]))
-    explicit_project_mode = bool(argv and argv[0] == "project")
-
-    parser = build_parser()
-    args = parser.parse_args(normalize_argv(argv))
-    config = load_config()
-
-    if args.mode == "list":
-        list_projects(config)
+    if not argv or argv[0] in {"-h", "--help"}:
+        print(__doc__)
         return
-
-    if args.mode == "context":
-        if args.brief:
-            praxis_context_packet(config, args.project, args.requirement_name)
-            context_brief_command(config, args.project, args.requirement_name)
-        else:
-            praxis_context_packet(config, args.project, args.requirement_name)
-            context_command(config, args.project, args.requirement_name)
+    if argv[0] == "list":
+        list_projects(load_config())
         return
-
-    if args.mode == "etl":
-        run_etl_action(config, args.args)
+    if argv[0] in TOP_LEVEL_ACTIONS:
+        exit_code = run_praxis_action(argv[0], argv[1:])
+        if exit_code:
+            raise SystemExit(exit_code)
         return
-
-    if args.mode == "praxis":
-        print("[compat] legacy praxis command detected; use task <group> ... instead")
-        raise SystemExit(run_praxis_action(args.action, args.args))
-
-    if args.mode == "workflow":
-        print("[compat] legacy workflow command detected; use task system -- check or task <group> -- ...")
-        raise SystemExit(run_praxis_action(args.action, args.args))
-
-    if args.mode != "project":
-        parser.print_help()
-        raise SystemExit(0)
-
-    project, action, remaining = normalize_project_args(args.project, args.action, args.args)
-    exit_code = run_project_action(config, project, action, remaining, via_praxis=explicit_project_mode)
-    if exit_code:
-        raise SystemExit(exit_code)
+    fail(f"unknown task group: {argv[0]}")
 
 
 if __name__ == "__main__":

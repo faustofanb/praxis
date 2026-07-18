@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import subprocess
 import unittest
 from pathlib import Path
@@ -27,38 +26,6 @@ def assert_text_has_no_absolute_workspace_paths(testcase: unittest.TestCase, pat
 
 
 class PraxisEntryDocsTest(unittest.TestCase):
-    def test_readme_is_generic_praxis_entry(self) -> None:
-        text = (ROOT / "README.md").read_text(encoding="utf-8")
-
-        self.assertIn("# Praxis", text)
-        self.assertIn("not first-turn-only", text)
-        self.assertIn("turn contract", text)
-        self.assertIn("latest user request", text)
-        for forbidden in ["IFC MOM Workspace Guide", "Codex 使用方式", "PDA", "MagicAPI", "ETL", "大屏", "制造业"]:
-            self.assertNotIn(forbidden, text)
-
-    def test_agents_is_thin_agent_entry(self) -> None:
-        text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
-
-        self.assertIn("# AGENTS.md", text)
-        self.assertIn("praxis.toml", text)
-        self.assertIn("praxis.projects.toml", text)
-        self.assertIn(".praxis/contracts/agents/turn.schema.json", text)
-        self.assertIn("Every Turn Contract", text)
-        self.assertIn("latest user request", text)
-        self.assertIn("newest request", text)
-        for forbidden in ["后端", "PDA", "MagicAPI", "报表", "大屏", "ifc-mom-column-max"]:
-            self.assertNotIn(forbidden, text)
-
-    def test_turn_contract_is_machine_readable(self) -> None:
-        path = ROOT / ".praxis/contracts/agents/turn.schema.json"
-        payload = json.loads(path.read_text(encoding="utf-8"))
-
-        self.assertEqual(payload["role"], "praxis-turn-contract")
-        self.assertIn("latestUserMessage", payload["input_required"])
-        self.assertIn("bind_to_latest_user_message", payload["turn_start_checks"])
-        self.assertIn("reuse_stale_first_turn_context", payload["forbidden"])
-
     def test_codex_config_has_no_workspace_absolute_paths(self) -> None:
         for path in tracked_files(".codex"):
             assert_text_has_no_absolute_workspace_paths(self, path)

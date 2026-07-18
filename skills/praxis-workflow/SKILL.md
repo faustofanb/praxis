@@ -31,40 +31,6 @@ Use this skill as the shared Codex entry discipline for Praxis workspaces. It pa
 - 浏览器/UI/人工运行时测试、外部联调、完整回归或额外复核只能作为选项报告，得到用户明确许可后才能执行。
 
 
-## Oh My Pi / Codex Runtime Routing
-
-Default to a Codex-only budget in Oh My Pi unless the user explicitly names
-another available subscription for the current task. Do not design plans that
-depend on Claude, Gemini, Opencode, remote paid reviewers, or other non-Codex
-models being available.
-
-Use the cheapest reliable lane for each step:
-
-- Tool-only: schema lookup, references, file search, status, validation and
-  command output. Do not ask a model to infer facts that `dbx`, LSP, Code Graph,
-  grep/glob/read or `task ...` can provide.
-- Main Codex: requirement truth, routing, risk decisions, write locks, user
-  confirmations, integration and final answer.
-- Read-only worker / explorer: broad source discovery, same-domain examples,
-  config inventory and long-log root-cause extraction.
-- Execution worker: scoped edits with explicit write locks, known files and a
-  concrete verification command.
-- Tester / Quality worker: behavior tests or independent review only when the
-  risk justifies the extra context and coordination.
-
-Waive worker dispatch for answer-only tasks, deterministic maintenance, or
-small single-project changes touching at most three files without SQL,
-migration, permission, async, shared-module, production-data or delivery risk.
-When waived, record `subagent: waived-small-change`, say why, and keep the main
-conversation tool-first.
-
-快速路径默认由主对话完成，不派发 worker/subagent。只有用户明确要求并行、
-或主对话无法可靠完成的独立高风险工作，才按既有边界派发。
-
-## Step Handoff
-
-每完成一个可独立确认的工作流步骤，回复末尾必须给出“推荐下一步”和 2-4 个可选工作流动作，标明推荐项；若下一步涉及提交、交付、清理、远程操作、生产数据或扩大范围，必须等待用户选择后继续推进。
-
 ## Load Local Sources First
 
 At the start of an acting turn inside a Praxis workspace:

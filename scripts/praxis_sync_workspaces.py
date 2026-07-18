@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -13,24 +12,9 @@ from typing import Any
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
-
-def _load_sync_profile_module():
-    module_name = "praxis_sync_profile"
-    if module_name in sys.modules:
-        return sys.modules[module_name]
-    spec = importlib.util.spec_from_file_location(module_name, SCRIPT_DIR / "praxis_sync_profile.py")
-    if spec is None or spec.loader is None:
-        raise ImportError("cannot load praxis_sync_profile.py")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-_SYNC_PROFILE = _load_sync_profile_module()
-PROFILE_ROOT = _SYNC_PROFILE.PROFILE_ROOT
-sync_profile = _SYNC_PROFILE.sync_profile
+from praxis_sync_profile import PROFILE_ROOT, sync_profile  # noqa: E402
 
 
 def default_registry_path(profile: str) -> Path:
