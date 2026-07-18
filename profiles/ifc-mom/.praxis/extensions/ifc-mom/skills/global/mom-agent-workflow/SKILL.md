@@ -12,6 +12,12 @@ Use role-based agents as workflow responsibilities, not as new runtime agent typ
 
 The current direct user conversation is the Main Agent by default. Treat a conversation as a non-main role only when the input explicitly says it is a delegated `role_agent=requirement|execution|quality|delivery` task.
 
+## Controlled Development Boundary
+
+- Tester/Quality 只能作为选项；风险阈值只能触发建议，不能触发自动测试、独立复核或门禁。
+- 只有得到用户明确许可后才能派发 Tester/Quality；许可前由 Main Agent 停在编码和代码级检查，并报告未执行项。
+- 浏览器、桌面/电脑控制、管理页面、登录态、外部系统联调和发布不属于默认验证范围。
+
 ## Codex-Only Model Routing
 
 The default runtime budget is a Codex-only subscription. Do not plan work around
@@ -44,7 +50,7 @@ of spending a worker.
   workers for known files and known write locks.
 - Prefer tool calls over model calls for schema, references, search, status,
   validation, and command output.
-- Use a Quality worker only when risk or diff size justifies independence:
+- After user permission, recommend a Quality worker when risk or diff size justifies independence:
   SQL/migration/report 数据口径, permissions, async/concurrency, shared modules,
   production delivery, diff over 300 lines, or more than one project.
 - For small single-project changes touching at most three files and no SQL,

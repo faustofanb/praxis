@@ -15,6 +15,7 @@ user-invocable: true
 
 ## 核心约束
 
+- Tester/Quality 只能作为选项；上下文或风险阈值只能触发建议，得到用户明确许可后才能派发。
 - 主对话先读控制面：`AGENTS.md`、需求 README、最新阶段文件、`task context` 输出。
 - 主对话不批量加载项目规则、源码、长日志、全量 diff；能由 worker 压缩的交给 worker。
 - worker 输出必须结构化，给结论、证据路径、关键摘录、验证结果和剩余风险，不粘贴长日志。
@@ -26,7 +27,7 @@ user-invocable: true
 - 低风险快车道：单项目、3 个文件以内、不涉及 SQL/迁移/真实数据/公共组件/权限/异步/定时任务时，主对话可记录 `subagent: waived-small-change` 并直接推进；默认只读 `task context -- --brief` 与变更相关样例。
 - 源码调查超过 3 个文件或跨模块：派 Execution/Requirement Agent。
 - 测试/构建日志超过 120 行：要求 worker 摘要根因。
-- diff 超过 300 行或跨两个项目：派 Quality Agent 独立复核。
+- diff 超过 300 行或跨两个项目：建议 Quality Agent 独立复核，等待用户许可。
 - 涉及数据库口径、迁移、报表：派或使用数据库调查专门流程。
 - 交付收口、cleanup、feature 分支：派 Delivery Agent 或按 delivery skill 复核；常规收口优先使用 `task gate -- ready` 聚合检查，专项排查才单跑 `guard/change-check/migration-check`。
 

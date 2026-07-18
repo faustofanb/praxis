@@ -184,6 +184,64 @@ def test_step_handoff_guidance_is_packaged() -> None:
         assert "推荐下一步" in path.read_text(encoding="utf-8")
 
 
+def test_workflow_requires_permission_for_non_code_testing_and_review() -> None:
+    boundary_paths = [
+        PLUGIN_ROOT / "skills" / "praxis-workflow" / "SKILL.md",
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "00-工作流精简索引.md",
+    ]
+
+    for path in boundary_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "禁止使用浏览器、桌面控制或电脑控制工具执行测试" in text
+        assert "得到用户明确许可后才能执行" in text
+
+    role_paths = [
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "skills"
+        / "global"
+        / "mom-agent-workflow"
+        / "SKILL.md",
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "rules"
+        / "global"
+        / "praxis-workflow"
+        / "02-主对话与Subagent.md",
+        PLUGIN_ROOT
+        / "profiles"
+        / "ifc-mom"
+        / ".praxis"
+        / "extensions"
+        / "ifc-mom"
+        / "skills"
+        / "global"
+        / "mom-context-budgeting"
+        / "SKILL.md",
+    ]
+
+    for path in role_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "Tester/Quality 只能作为选项" in text
+        assert "得到用户明确许可后才能派发" in text
+
+
 
 def test_oh_my_pi_codex_routing_guidance_is_packaged() -> None:
     skill_text = (PLUGIN_ROOT / "skills" / "praxis-workflow" / "SKILL.md").read_text(
