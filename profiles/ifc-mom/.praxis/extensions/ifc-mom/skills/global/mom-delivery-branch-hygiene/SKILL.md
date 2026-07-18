@@ -23,7 +23,7 @@ user-invocable: true
 - cherry-pick 前必须比较需求 worktree 基座提交与 `origin/<upstreamBranch>`：说明是否依赖 local 上未进入上游的历史提交、预计新增/修改文件、历史修复/测试/上下文是必要依赖还是应拆分重做。
 - 正式交付只使用 `task delivery -- finish` 生成并经复核的显式哈希清单 `.praxis/out/delivery/<project>/<需求名>/confirmed-commits.txt`；不得以“非 `test:` 提交”作为默认筛选。
 - `test:`、`test-support:`、`local-test-support:`、临时验证、实验提交、`src/test`、test-scope `pom.xml` 依赖和非交付文件不得进入 feature，除非用户逐项确认。
-- `commit-split` 前要 Quality PASS；`deliver/cleanup` 前要 Quality 与 Delivery PASS。
+- `commit-split`、`deliver` 和 `cleanup` 前展示目标、变更、验证证据与风险，并等待用户明确确认。
 - 用户明确说“直接收尾”时，不再新增需求文档、分析记录、README 索引等非代码产物；已有文档变更不带入业务 feature，并在最终说明中列出。
 
 ## 执行流程
@@ -50,8 +50,6 @@ user-invocable: true
 ```bash
 task delivery -- finish <project> <需求名>
 task gate -- ready <project> <需求名>
-task gate -- validate-verdict quality <project> <需求名> <json-file>
-task gate -- validate-verdict delivery <project> <需求名> <json-file>
 task delivery -- deliver <project> <需求名>
 task delivery -- cleanup <project> <需求名>
 ```
@@ -62,6 +60,6 @@ task delivery -- cleanup <project> <需求名>
 - 需求基座与 `origin/<upstreamBranch>` 差异、隐含 local 依赖、预计 cherry-pick 文件清单。
 - 显式确认的 cherry-pick 哈希清单、生产提交与排除提交清单。
 - 每个确认提交的 `git show --stat` 复核结论，以及 local-only/test-support 判定。
-- Quality/Delivery verdict 状态。
+- `ready` 结果、代码复核结论和未验证项。
 - `task verify` 是否空跑及替代验证命令。
 - 需要用户确认的具体动作。

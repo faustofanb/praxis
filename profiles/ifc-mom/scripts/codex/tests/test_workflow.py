@@ -472,7 +472,6 @@ class WorkflowPolicyTest(unittest.TestCase):
             ),
             patch.object(finish, "git_lines", side_effect=fake_git_lines),
             patch.object(finish, "git_ref_exists", return_value=True),
-            patch.object(finish, "verdict_summary", side_effect=["PASS quality.json blockers=0", "PASS delivery.json blockers=0"]),
             redirect_stdout(io.StringIO()) as output,
         ):
             finish.delivery_status(config, "backend", "氧化上下梁识别问题")
@@ -483,7 +482,6 @@ class WorkflowPolicyTest(unittest.TestCase):
         self.assertIn("/requirement-worktree", text)
         self.assertIn("Feature branch: feature/氧化上下梁识别问题", text)
         self.assertIn("origin...local 0\t1", text)
-        self.assertIn("quality: PASS quality.json blockers=0", text)
         self.assertIn("Push: user-only; Codex must not push.", text)
 
     def test_delivery_status_reports_unpushed_feature_without_remote_diff_error(self) -> None:
@@ -509,7 +507,6 @@ class WorkflowPolicyTest(unittest.TestCase):
             patch.object(finish, "project_worktree_dirs", side_effect=[[], []]),
             patch.object(finish, "git_lines", side_effect=fake_git_lines),
             patch.object(finish, "git_ref_exists", return_value=False),
-            patch.object(finish, "verdict_summary", side_effect=["MISSING quality.json", "MISSING delivery.json"]),
             redirect_stdout(io.StringIO()) as output,
         ):
             finish.delivery_status(config, "backend", "分层审核优化")
@@ -1066,6 +1063,35 @@ class WorkflowPolicyTest(unittest.TestCase):
 
         doc_iter.assert_called_once_with(config, "需求", "progress", "完成记录", "# 正文\n\n已完成。\n")
 
+    def test_cli_rejects_cross_group_compatibility_aliases(self) -> None:
+        config = {
+            "projects": {
+                "backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"},
+                "docs": {"path": "docs"},
+            }
+        }
+        aliases = [
+            ("project", ["guard", "backend", "需求"]),
+            ("project", ["deliver", "backend", "需求"]),
+            ("project", ["init", "docs", "需求", "原始需求"]),
+            ("req", ["tolaria-check", "需求"]),
+            ("docs", ["index-all"]),
+        ]
+        with (
+            patch.object(task_module, "load_config", return_value=config),
+            patch.object(task_module, "praxis_context_packet"),
+            patch.object(task_module, "guard_check", return_value=0),
+            patch.object(task_module, "deliver_requirement"),
+            patch.object(task_module, "doc_init"),
+            patch.object(task_module, "tolaria_check"),
+            patch.object(task_module, "write_requirement_global_index"),
+        ):
+            for group, args in aliases:
+                with self.subTest(group=group, action=args[0]), redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:
+                        task_module.run_praxis_action(group, args)
+                    self.assertEqual(error.exception.code, 1)
+
     def test_project_command_accepts_documented_action_first_order(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
         with (
@@ -1232,7 +1258,7 @@ class WorkflowPolicyTest(unittest.TestCase):
             with patch.object(task_module, "load_config", return_value=config), redirect_stdout(io.StringIO()) as output:
                 exit_code = task_module.run_praxis_action("context", ["backend", "上下文包"])
 
-            packet_path = task_module.PRAXIS_CONTEXT_DIR / "backend-上下文包.json"
+            packet_path = praxis.PRAXIS_CONTEXT_DIR / "backend-上下文包.json"
             packet = json.loads(packet_path.read_text(encoding="utf-8"))
             self.assertEqual(exit_code, 0)
             self.assertIn("Praxis context packet:", output.getvalue())
@@ -1240,24 +1266,12 @@ class WorkflowPolicyTest(unittest.TestCase):
             self.assertEqual(packet["project"], "backend")
             self.assertEqual(packet["requirementName"], "上下文包")
             self.assertEqual(packet["controlPlane"]["primaryCommand"], "task")
-            self.assertEqual(
-                packet["engineeringControl"],
-                {
-                    "target": "requirement boundary and acceptance criteria",
-                    "observation": "context packet, code graph and evidence",
-                    "feedback": "tests, role verdicts and delivery recheck",
-                },
-            )
             self.assertIn("task context -- --brief backend 上下文包", packet["nextCommands"])
             self.assertIn("task gate -- ready backend 上下文包", packet["nextCommands"])
             self.assertNotIn("task gate -- guard backend 上下文包", packet["nextCommands"])
             self.assertNotIn("task gate -- change-check backend 上下文包", packet["nextCommands"])
-            self.assertEqual(
-                packet["roleVerdicts"]["quality"]["path"],
-                praxis.relative(praxis.PRAXIS_VERDICT_DIR / "backend-上下文包-quality.json"),
-            )
-            self.assertIn("task gate -- validate-verdict quality backend 上下文包", packet["roleVerdicts"]["quality"]["validateCommand"])
-            self.assertIn("task gate -- validate-verdict delivery backend 上下文包", packet["roleVerdicts"]["delivery"]["validateCommand"])
+            self.assertNotIn("roleVerdicts", packet)
+            self.assertIn("explicit-confirmation-before-delivery-actions", packet["evidenceGates"])
             self.assertTrue(packet["facts"]["requirementDir"].endswith("上下文包"))
             packet_path.unlink(missing_ok=True)
 
@@ -1284,14 +1298,14 @@ class WorkflowPolicyTest(unittest.TestCase):
 
     def test_praxis_gate_ready_runs_aggregate_guard_once_and_writes_readiness_report(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
-        readiness_path = task_module.PRAXIS_CONTEXT_DIR.parent / "readiness" / "backend-重构.json"
+        readiness_path = praxis.PRAXIS_CONTEXT_DIR.parent / "readiness" / "backend-重构.json"
         readiness_path.unlink(missing_ok=True)
         with (
             patch.object(task_module, "load_config", return_value=config),
             patch.object(
                 task_module,
                 "praxis_context_packet",
-                return_value=task_module.PRAXIS_CONTEXT_DIR / "backend-重构.json",
+                return_value=praxis.PRAXIS_CONTEXT_DIR / "backend-重构.json",
             ) as context_packet,
             patch.object(task_module, "preflight", return_value=0) as preflight,
             patch.object(task_module, "guard_check", return_value=1) as guard_check,
@@ -1310,88 +1324,13 @@ class WorkflowPolicyTest(unittest.TestCase):
         self.assertEqual(report["results"]["guard"]["exitCode"], 1)
         self.assertNotIn("change-check", report["results"])
         self.assertNotIn("migration-check", report["results"])
-        self.assertEqual(report["contextPacket"], praxis.relative(task_module.PRAXIS_CONTEXT_DIR / "backend-重构.json"))
+        self.assertEqual(report["contextPacket"], praxis.relative(praxis.PRAXIS_CONTEXT_DIR / "backend-重构.json"))
         context_packet.assert_called_once_with(config, "backend", "重构")
         preflight.assert_called_once_with(config, "backend", "重构")
         guard_check.assert_called_once_with(config, "backend", "重构")
         change_check.assert_not_called()
         migration_check.assert_not_called()
         readiness_path.unlink(missing_ok=True)
-
-    def test_praxis_gate_validate_verdict_requires_structured_role_pass(self) -> None:
-        valid_verdict = {
-            "schemaVersion": 1,
-            "role": "Quality",
-            "project": "backend",
-            "requirementName": "重构",
-            "verdict": "PASS",
-            "findings": [],
-            "rules_checked": ["guard", "change-check"],
-            "manual_checks": ["reviewed production diff"],
-            "evidence_checked": ["verification output reviewed"],
-            "compliance_checked": ["backend layering and same-domain examples reviewed"],
-        }
-        invalid_verdict = valid_verdict | {"verdict": "FAIL"}
-        missing_compliance = dict(valid_verdict)
-        missing_compliance.pop("compliance_checked")
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            valid_path = Path(tmp_dir) / "quality-pass.json"
-            invalid_path = Path(tmp_dir) / "quality-fail.json"
-            missing_compliance_path = Path(tmp_dir) / "quality-missing-compliance.json"
-            valid_path.write_text(json.dumps(valid_verdict, ensure_ascii=False), encoding="utf-8")
-            invalid_path.write_text(json.dumps(invalid_verdict, ensure_ascii=False), encoding="utf-8")
-            missing_compliance_path.write_text(json.dumps(missing_compliance, ensure_ascii=False), encoding="utf-8")
-
-            with patch.object(task_module, "load_config", return_value={"projects": {}}), redirect_stdout(io.StringIO()) as output:
-                pass_code = task_module.run_praxis_action(
-                    "gate", ["validate-verdict", "quality", "backend", "重构", str(valid_path)]
-                )
-                fail_code = task_module.run_praxis_action(
-                    "gate", ["validate-verdict", "quality", "backend", "重构", str(invalid_path)]
-                )
-                missing_compliance_code = task_module.run_praxis_action(
-                    "gate", ["validate-verdict", "quality", "backend", "重构", str(missing_compliance_path)]
-                )
-
-        self.assertEqual(pass_code, 0)
-        self.assertEqual(fail_code, 1)
-        self.assertEqual(missing_compliance_code, 1)
-        text = output.getvalue()
-        self.assertIn("compliance_checked must be a non-empty list", text)
-        self.assertIn("Praxis Quality verdict: PASS", text)
-        self.assertIn("Praxis Quality verdict: FAIL", text)
-
-    def test_praxis_gate_import_verdict_normalizes_agent_output_to_default_runtime_path(self) -> None:
-        agent_output = {
-            "schemaVersion": 1,
-            "role": "Quality",
-            "project": "backend",
-            "requirementName": "重构",
-            "verdict": "PASS",
-            "findings": [],
-            "rules_checked": ["code review"],
-            "manual_checks": ["diff reviewed"],
-            "evidence_checked": ["verify output reviewed"],
-            "compliance_checked": ["delivery docs reviewed"],
-        }
-        target_path = praxis.praxis_verdict_path("backend", "重构", "quality")
-        target_path.unlink(missing_ok=True)
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            source_path = Path(tmp_dir) / "agent-output.json"
-            source_path.write_text(json.dumps(agent_output, ensure_ascii=False), encoding="utf-8")
-            with patch.object(task_module, "load_config", return_value={"projects": {}}), redirect_stdout(io.StringIO()) as output:
-                exit_code = task_module.run_praxis_action(
-                    "gate", ["import-verdict", "quality", "backend", "重构", str(source_path)]
-                )
-
-        imported = json.loads(target_path.read_text(encoding="utf-8"))
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(imported["role"], "Quality")
-        self.assertEqual(imported["project"], "backend")
-        self.assertEqual(imported["requirementName"], "重构")
-        self.assertIn("Praxis Quality verdict: PASS", output.getvalue())
-        self.assertIn(str(target_path), output.getvalue())
-        target_path.unlink(missing_ok=True)
 
     def test_praxis_delivery_status_dispatches_readonly_summary(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max"}}}
@@ -1431,7 +1370,7 @@ class WorkflowPolicyTest(unittest.TestCase):
             ]
         )
 
-    def test_praxis_delivery_all_actions_group_projects_and_preserve_verdict_gates(self) -> None:
+    def test_praxis_delivery_all_actions_group_projects_and_return_partial_failure(self) -> None:
         config = {
             "projects": {
                 "backend": {"path": "ifc-mom-column-max"},
@@ -1455,118 +1394,6 @@ class WorkflowPolicyTest(unittest.TestCase):
                 call(config, ["deliver", "web", "分层审核优化"]),
             ]
         )
-
-    def test_praxis_delivery_precheck_all_writes_parallel_dispatch_packet(self) -> None:
-        config = {
-            "projects": {
-                "backend": {"path": "ifc-mom-column-max"},
-                "web": {"path": "ifc-web-mom-max"},
-                "mes-pda": {"path": "ifc-mes-pda"},
-            }
-        }
-        packet_path = task_module.PRAXIS_CONTEXT_DIR.parent / "delivery-precheck" / "分层审核优化.json"
-        packet_path.unlink(missing_ok=True)
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "delivery_target_projects", return_value=["backend", "web", "mes-pda"]),
-            redirect_stdout(io.StringIO()) as output,
-        ):
-            exit_code = task_module.run_praxis_action("delivery", ["precheck-all", "分层审核优化"])
-
-        packet = json.loads(packet_path.read_text(encoding="utf-8"))
-        self.assertEqual(exit_code, 0)
-        self.assertEqual(packet["requirementName"], "分层审核优化")
-        self.assertEqual(packet["engineeringControl"]["target"], "requirement boundary and acceptance criteria")
-        self.assertEqual(packet["engineeringControl"]["observation"], "context packet, code graph and evidence")
-        self.assertEqual(packet["engineeringControl"]["feedback"], "tests, role verdicts and delivery recheck")
-        self.assertEqual([item["project"] for item in packet["parallelDispatch"] if item["role"] == "quality"], ["backend", "web", "mes-pda"])
-        self.assertTrue(any(item["role"] == "delivery-precheck" for item in packet["parallelDispatch"]))
-        self.assertIn("Praxis delivery precheck:", output.getvalue())
-        packet_path.unlink(missing_ok=True)
-
-    def test_praxis_delivery_requires_role_verdicts_before_mutating_actions(self) -> None:
-        config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "praxis_context_packet") as context_packet,
-            patch.object(task_module, "praxis_require_verdict", return_value=1) as require_verdict,
-            patch.object(task_module, "split_commit_requirement") as split_commit_requirement,
-        ):
-            exit_code = task_module.run_praxis_action("delivery", ["commit-split", "backend", "重构", "feat: x"])
-
-        self.assertEqual(exit_code, 1)
-        context_packet.assert_called_once_with(config, "backend", "重构")
-        require_verdict.assert_called_once_with("quality", "backend", "重构")
-        split_commit_requirement.assert_not_called()
-
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "praxis_context_packet"),
-            patch.object(task_module, "praxis_require_verdict", side_effect=[0, 1]) as require_verdict,
-            patch.object(task_module, "deliver_requirement") as deliver_requirement,
-        ):
-            exit_code = task_module.run_praxis_action("delivery", ["deliver", "backend", "重构"])
-
-        self.assertEqual(exit_code, 1)
-        require_verdict.assert_has_calls(
-            [call("quality", "backend", "重构"), call("delivery", "backend", "重构")]
-        )
-        deliver_requirement.assert_not_called()
-
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "praxis_context_packet"),
-            patch.object(task_module, "praxis_require_verdict", side_effect=[0, 0]) as require_verdict,
-            patch.object(task_module, "deliver_requirement") as deliver_requirement,
-        ):
-            exit_code = task_module.run_praxis_action("delivery", ["deliver", "backend", "重构"])
-
-        self.assertEqual(exit_code, 0)
-        require_verdict.assert_has_calls(
-            [call("quality", "backend", "重构"), call("delivery", "backend", "重构")]
-        )
-        deliver_requirement.assert_called_once_with(config, "backend", "重构")
-
-    def test_praxis_role_handoff_and_lock_write_ai_coordination_files(self) -> None:
-        config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
-        praxis_dir = task_module.PRAXIS_CONTEXT_DIR.parent
-        handoff_path = praxis_dir / "handoffs" / "backend-重构-quality.json"
-        lock_path = praxis_dir / "locks" / "backend-重构-execution.json"
-        handoff_path.unlink(missing_ok=True)
-        lock_path.unlink(missing_ok=True)
-        with (
-            patch.object(task_module, "load_config", return_value=config),
-            patch.object(task_module, "praxis_context_packet") as context_packet,
-            redirect_stdout(io.StringIO()) as output,
-        ):
-            handoff_code = task_module.run_praxis_action("role", ["handoff", "quality", "backend", "重构", "复核完成"])
-            lock_code = task_module.run_praxis_action(
-                "role",
-                ["lock", "execution", "backend", "重构", "scripts/codex/task.py", ".rule/global/00-工作流精简索引.md"],
-            )
-
-        handoff = json.loads(handoff_path.read_text(encoding="utf-8"))
-        lock = json.loads(lock_path.read_text(encoding="utf-8"))
-        self.assertEqual(handoff_code, 0)
-        self.assertEqual(lock_code, 0)
-        self.assertIn("Praxis handoff:", output.getvalue())
-        self.assertIn("Praxis lock:", output.getvalue())
-        self.assertEqual(handoff["schemaVersion"], 1)
-        self.assertEqual(handoff["role"], "Quality")
-        self.assertEqual(handoff["summary"], "复核完成")
-        self.assertEqual(handoff["contextPacket"], praxis.relative(task_module.PRAXIS_CONTEXT_DIR / "backend-重构.json"))
-        self.assertEqual(
-            handoff["verdictPath"],
-            praxis.relative(praxis.PRAXIS_VERDICT_DIR / "backend-重构-quality.json"),
-        )
-        self.assertEqual(lock["schemaVersion"], 1)
-        self.assertEqual(lock["role"], "Execution")
-        self.assertEqual(lock["policy"], "single-writer")
-        self.assertEqual(lock["writeScope"], ["scripts/codex/task.py", ".rule/global/00-工作流精简索引.md"])
-        context_packet.assert_has_calls([call(config, "backend", "重构"), call(config, "backend", "重构")])
-        handoff_path.unlink(missing_ok=True)
-        lock_path.unlink(missing_ok=True)
-
 
 if __name__ == "__main__":
     unittest.main()

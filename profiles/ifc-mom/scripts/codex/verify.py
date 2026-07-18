@@ -11,15 +11,15 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tomllib
 import argparse
 import datetime as dt
 from pathlib import Path
 from subprocess import PIPE
 from typing import Any
 
-from momlib.paths import CONFIG_FILE, LEGACY_CONFIG_FILE, ROOT_DIR
-from momlib.process import command_env, run_command
+from momlib.config import load_config, project_config, project_dir
+from momlib.paths import ROOT_DIR
+from momlib.process import capture, command_env, fail, run_command
 
 
 FRONTEND_CLASSIFIER = ROOT_DIR / "scripts" / "codex" / "frontend_changed.ts"
@@ -29,38 +29,6 @@ EXECUTED_COMMANDS: list[list[str]] = []
 def shell_join(command: list[str]) -> str:
     """用于验证证据展示的简易命令拼接。"""
     return " ".join(command)
-
-
-def fail(message: str) -> None:
-    """输出统一错误格式并终止验证脚本。"""
-    print(f"error: {message}", file=sys.stderr)
-    raise SystemExit(1)
-
-
-def load_config() -> dict[str, Any]:
-    """读取聚合工作区项目映射。"""
-    config_file = CONFIG_FILE if CONFIG_FILE.is_file() else LEGACY_CONFIG_FILE
-    with config_file.open("rb") as file:
-        return tomllib.load(file)
-
-
-def project_config(config: dict[str, Any], name: str) -> dict[str, Any]:
-    """按项目短名读取项目配置。"""
-    project = config.get("projects", {}).get(name)
-    if not project:
-        fail(f"unknown project: {name}")
-    return project
-
-
-def project_dir(project: dict[str, Any]) -> Path:
-    """把项目配置中的相对路径解析为真实仓库目录。"""
-    path = project.get("path")
-    if not path:
-        fail("project has no path")
-    repo_dir = ROOT_DIR / path
-    if not repo_dir.is_dir():
-        fail(f"project path not found: {path}")
-    return repo_dir
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> None:
@@ -95,18 +63,6 @@ def ensure_pnpm_dependencies(repo_dir: Path, force: bool = False) -> None:
     else:
         print("pnpm dependencies not installed in this worktree. Running pnpm install first.")
     run(["pnpm", "install"], repo_dir)
-
-
-def capture(command: list[str], cwd: Path) -> str:
-    """执行命令并返回 stdout；命令失败时抛出异常。"""
-    completed = run_command(
-        command,
-        cwd=cwd,
-        check=True,
-        text=True,
-        stdout=PIPE,
-    )
-    return completed.stdout
 
 
 def changed_files(repo_dir: Path) -> list[str]:
@@ -349,7 +305,7 @@ def main(argv: list[str]) -> None:
     EXECUTED_COMMANDS.clear()
     config = load_config()
     project = project_config(config, args.project)
-    repo_dir = Path(args.repo).resolve() if args.repo else project_dir(project)
+    repo_dir = Path(args.repo).resolve() if args.repo else project_dir(config, args.project)
     kind = project.get("kind", "")
     files = changed_files(repo_dir)
     print_changed_files(files)

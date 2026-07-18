@@ -29,7 +29,7 @@ Treat "model choice" as a routing and effort decision:
 | Lane | Use For | Avoid For |
 | --- | --- | --- |
 | Main Codex | routing, requirement truth, risk decisions, write-lock ownership, final integration, final answer | bulk source reading, long logs, wide grep-style discovery |
-| Explore / low-effort Codex worker | read-only candidate discovery, same-domain examples, config inventory, long-log root-cause extraction | architectural decisions, code edits, release verdicts |
+| Explore / low-effort Codex worker | read-only candidate discovery, same-domain examples, config inventory, long-log root-cause extraction | architectural decisions, code edits, final review conclusions |
 | Execution Codex worker | scoped implementation with explicit write locks and verification command | ambiguous requirements, shared-contract changes before the contract owner exists |
 | Tester role | focused behavior tests and critical-path assertions | restating implementation details, broad low-signal coverage |
 | Reviewer / Quality role | independent diff, SQL, migration, permission, concurrency and verification review | trivial typo fixes, deterministic formatting, unchanged files |
@@ -63,7 +63,7 @@ of spending a worker.
 - Main Agent: owns routing, context budget, locks, user confirmations, and final decisions.
 - Requirement Agent: owns requirement preservation, decomposition, evidence, database investigation planning, and acceptance criteria.
 - Execution Agent: owns scoped source investigation, implementation, and local task verification.
-- Quality Agent: owns independent code review, verification-log review, SQL/migration review, and release verdicts.
+- Quality Agent: when explicitly authorized, owns independent code review, verification-log review, and SQL/migration review.
 - Delivery Agent: owns finish/gate-ready/deliver/cleanup readiness, but never bypasses explicit user confirmation.
 
 Read only the role reference needed for the current stage:
@@ -91,8 +91,8 @@ Load these only when the task triggers them:
 | Intake and routing | Main Agent | Task type, project, docs/worktree/database/subagent decision is explicit |
 | Requirement analysis | Requirement Agent | Requirement evidence and acceptance criteria are written or summarized |
 | Planning and implementation | Execution Agent | Write locks, changed files, and verification commands are clear |
-| Review and verification | Quality Agent | `BLOCKER/RISK/NIT/VERDICT` result is available |
-| Delivery closeout | Delivery Agent | Readiness is audited; action execution waits for explicit user confirmation |
+| Review and verification | Main Agent or authorized Quality Agent | Findings and verification evidence are available |
+| Delivery closeout | Main Agent or authorized Delivery Agent | Readiness is audited; action execution waits for explicit user confirmation |
 
 ## Dispatch Template
 

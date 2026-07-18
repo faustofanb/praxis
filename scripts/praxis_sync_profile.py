@@ -12,7 +12,7 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 PROFILE_ROOT = PLUGIN_ROOT / "profiles"
 PROFILE_METADATA_FILES = {"workspaces.json"}
-PROFILE_IGNORED_PARTS = {"__pycache__"}
+PROFILE_IGNORED_PARTS = {".DS_Store", "__pycache__"}
 PROFILE_IGNORED_SUFFIXES = {".pyc"}
 
 

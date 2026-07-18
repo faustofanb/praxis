@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
@@ -11,7 +10,6 @@ from .git_worktree import action_repo_dir, project_worktree_dirs
 from . import praxis_contracts
 from .names import safe_branch_leaf, safe_path_leaf
 from .paths import ROOT_DIR
-from .praxis import praxis_verdict_path
 from .process import capture, command_succeeds, fail, run_checked
 
 
@@ -195,23 +193,6 @@ def current_upstream(repo_dir: Any) -> str:
     return safe_capture(["git", "-C", str(repo_dir), "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"])
 
 
-def verdict_summary(project: str, requirement_name: str, role: str) -> str:
-    """Return a one-line summary of the default Praxis verdict file."""
-    path = praxis_verdict_path(project, requirement_name, role)
-    if not path.is_file():
-        return f"MISSING {path}"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        return f"INVALID {path}: {exc}"
-    verdict = data.get("verdict", "UNKNOWN")
-    findings = data.get("findings")
-    blockers = 0
-    if isinstance(findings, list):
-        blockers = sum(1 for item in findings if isinstance(item, dict) and item.get("severity") == "BLOCKER")
-    return f"{verdict} {path} blockers={blockers}"
-
-
 def delivery_status(config: dict[str, Any], project: str, requirement_name: str) -> None:
     """Print a read-only closeout status summary for one project requirement."""
     repo_dir = project_dir(config, project)
@@ -259,9 +240,6 @@ def delivery_status(config: dict[str, Any], project: str, requirement_name: str)
         print("Feature ahead/behind:")
         print("  remote feature: not pushed")
 
-    print("Verdicts:")
-    print(f"  quality: {verdict_summary(project, requirement_name, 'quality')}")
-    print(f"  delivery: {verdict_summary(project, requirement_name, 'delivery')}")
     print("Push: user-only; Codex must not push.")
 
 
@@ -351,23 +329,10 @@ def finish_requirement(config: dict[str, Any], project: str, requirement_name: s
     print()
     print("Finish scope: 不默认运行编译验证；编译、统一分发或集成验证应在开发阶段完成。")
     print()
-    print("Parallel closeout precheck:")
-    print(f"  {praxis_contracts.praxis_usage(f'delivery precheck-all {requirement_name}')}")
-    print("  # Writes a runtime packet for parallel Quality reviews and Delivery precheck.")
-    print()
-    print("Required Quality Agent review before commit/deliver/cleanup:")
-    print("  - 派发 role_agent=quality 的独立复核任务，复核本次交付变更，不用 guard/change-check/编译/单测替代 code review。")
-    print("  - 至少检查业务口径、事务提交时机、异步边界、异常隔离、幂等、迁移配置、SQL 幂等、测试覆盖和不交付测试文件隔离。")
-    print("  - 输出必须包含 rules_checked、BLOCKER/RISK/NIT、verdict 和 manual_checks。")
-    print("  - verdict=FAIL 或存在 BLOCKER 时，必须先修复，禁止进入 commit/deliver/cleanup。")
-    print()
     print("Readiness command before feature delivery:")
     print(f"  {praxis_contracts.praxis_usage(f'gate ready {project} {requirement_name}')}")
     print(f"  {praxis_contracts.praxis_usage(f'gate ready-all {requirement_name}')}")
-    print()
-    print("Required Delivery Agent readiness before delivery actions:")
-    print("  - 派发 role_agent=delivery 复核 finish/gate ready、提交拆分、feature 基线、upstream 和 cleanup 预期。")
-    print("  - Delivery Agent 只准备和审计命令；commit、push、cherry-pick、deliver、cleanup、删除 worktree/分支仍需用户明确确认。")
+    print("  # Review the changed files and confirmed commit list; delivery actions still require user confirmation.")
     print()
     print(f"Commits not in {default_branch}:")
     if commits:

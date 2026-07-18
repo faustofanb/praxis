@@ -15,7 +15,6 @@ Run with:
   task req -- index-all
   task req -- domain-index
   task req -- db-plan <需求名>
-  task docs -- domain-index
   task docs -- domain-candidates
   task docs -- tolaria-check [<需求名>|--all]
   task docs -- tolaria-publish <需求名>|--all
@@ -26,12 +25,8 @@ Run with:
   task gate -- guard <project> <需求名>
   task gate -- ready <project> <需求名>
   task gate -- ready-all <需求名>
-  task gate -- validate-verdict quality|delivery <project> <需求名> <json-file>
-  task gate -- import-verdict quality|delivery <project> <需求名> <agent-output-json>
-  task role -- handoff|lock <quality|delivery|execution|knowledge> <project> <需求名> <summary|路径...>
   task delivery -- status <project> <需求名>
   task delivery -- status-all <需求名>
-  task delivery -- precheck-all <需求名>
   task delivery -- finish <project> <需求名>
   task delivery -- commit-split-all <需求名> <production-message>
   task delivery -- deliver-all <需求名>
@@ -44,7 +39,7 @@ Run with:
   task system -- template-check
   task system -- template-render rule|skill <slug> <title> <description> <output>
   task project -- preflight <project> <需求名>
-  task project -- status|verify|run|shell|worktree|start|finish|commit-split|deliver|cleanup <project> <args...>
+  task project -- status|verify|run|shell|worktree|start <project> <args...>
 """
 
 from __future__ import annotations
@@ -61,19 +56,11 @@ from momlib.etl import run_etl_action
 from momlib.finish import cleanup_requirement, deliver_requirement, delivery_status, finish_requirement, split_commit_requirement
 from momlib.git_worktree import create_worktree, project_worktree_dirs
 from momlib.praxis import (
-    PRAXIS_CONTEXT_DIR,
     command_audit,
-    safe_packet_name,
     praxis_check,
     praxis_context_packet,
     praxis_index,
-    praxis_write_lock,
-    praxis_write_delivery_precheck_packet,
     praxis_write_readiness_report,
-    praxis_write_role_handoff,
-    praxis_import_verdict_file,
-    praxis_require_verdict,
-    praxis_validate_verdict_file,
 )
 from praxislib.project_index import write_project_index_config
 from praxislib.codegraph_adapter import run_codegraph
@@ -95,7 +82,6 @@ TOP_LEVEL_ACTIONS = {
     "etl",
     "gate",
     "delivery",
-    "role",
     "system",
 }
 
@@ -135,8 +121,6 @@ def run_praxis_action(action: str, args: list[str]) -> int:
     if action == "etl":
         run_etl_action(config, args)
         return 0
-    if action == "role":
-        return run_praxis_role_action(config, args)
     if action == "gate":
         return run_praxis_gate_action(config, args)
     if action == "delivery":
@@ -204,7 +188,7 @@ def run_praxis_requirement_action(config: dict, args: list[str]) -> int:
     if args and args[0] == "--":
         args = args[1:]
     if not args:
-        fail("usage: task req -- <init|iter|check|index|index-all|domain-index|db-plan|tolaria-check|tolaria-publish> ...")
+        fail("usage: task req -- <init|iter|check|index|index-all|domain-index|db-plan> ...")
     action = args[0]
     if action == "init":
         if len(args) < 3:
@@ -247,14 +231,6 @@ def run_praxis_requirement_action(config: dict, args: list[str]) -> int:
         if len(args) < 2:
             fail("usage: task req -- db-plan <需求名>")
         return db_plan(config, args[1])
-    if action == "tolaria-check":
-        tolaria_check(config, args[1:])
-        return 0
-    if action == "tolaria-publish":
-        if len(args) < 2:
-            fail("usage: task docs -- tolaria-publish <需求名>|--all")
-        tolaria_publish(config, args[1:])
-        return 0
     fail(f"unknown praxis req action: {action}")
 
 
@@ -263,16 +239,10 @@ def run_praxis_docs_action(config: dict, args: list[str]) -> int:
     if args and args[0] == "--":
         args = args[1:]
     if not args:
-        fail("usage: task docs -- <domain-index|domain-candidates|tolaria-check|tolaria-publish|index-all> ...")
+        fail("usage: task docs -- <domain-candidates|tolaria-check|tolaria-publish> ...")
     action = args[0]
-    if action == "domain-index":
-        write_domain_index(config)
-        return 0
     if action == "domain-candidates":
         write_domain_candidates(config)
-        return 0
-    if action == "index-all":
-        write_requirement_global_index(config)
         return 0
     if action == "tolaria-check":
         tolaria_check(config, args[1:])
@@ -297,16 +267,6 @@ def run_praxis_project_action(config: dict, args: list[str]) -> int:
             fail("usage: task project -- preflight <project> <需求名>")
         praxis_context_packet(config, project, remaining[0])
         return preflight(config, project, remaining[0])
-    if action in {"guard", "change-check", "migration-check"}:
-        if not remaining:
-            fail(f"usage: task project -- {action} {project} <需求名>")
-        return run_praxis_gate_action(config, [action, project, remaining[0]])
-    if action in {"finish", "commit-split", "deliver", "cleanup"}:
-        if not remaining:
-            fail(f"usage: task project -- {action} {project} <需求名>")
-        return run_praxis_delivery_action(config, [action, project, remaining[0], *remaining[1:]])
-    if project == "docs":
-        return run_project_action(config, project, action, remaining)
     fail(f"unknown praxis project action: {action}")
 
 
@@ -315,7 +275,7 @@ def run_praxis_gate_action(config: dict, args: list[str]) -> int:
     if not args:
         fail(
             "usage: task gate -- "
-            "<ready|ready-all|guard|change-check|migration-check|validate-verdict|import-verdict> ..."
+            "<ready|ready-all|guard|change-check|migration-check> ..."
         )
     action = args[0]
     if action == "ready-all":
@@ -339,20 +299,6 @@ def run_praxis_gate_single_action(config: dict, args: list[str]) -> int:
         }
         praxis_write_readiness_report(project, requirement, context_packet, results)
         return 0 if all(code == 0 for code in results.values()) else 1
-    if action == "validate-verdict":
-        if len(args) < 5:
-            fail(
-                "usage: task gate -- validate-verdict "
-                "quality|delivery <project> <需求名> <json-file>"
-            )
-        return praxis_validate_verdict_file(args[4], args[1], args[2], args[3])
-    if action == "import-verdict":
-        if len(args) < 5:
-            fail(
-                "usage: task gate -- import-verdict "
-                "quality|delivery <project> <需求名> <agent-output-json>"
-            )
-        return praxis_import_verdict_file(args[4], args[1], args[2], args[3])
     if len(args) < 3:
         fail("usage: task gate -- <guard|change-check|migration-check> <project> <需求名>")
     project, requirement = args[1], args[2]
@@ -433,61 +379,11 @@ def run_grouped_action(
     return exit_code
 
 
-def run_praxis_role_action(config: dict, args: list[str]) -> int:
-    """Generate machine-readable handoff/lock packets for AI role boundary controls."""
-    if len(args) < 4:
-        fail(
-            "usage: task role -- "
-            "<handoff|lock> <role> <project> <需求名> <summary|write_scope...>"
-        )
-    action, role, project, requirement = args[0], args[1], args[2], args[3]
-    context_packet = praxis_context_packet(config, project, requirement)
-    if not isinstance(context_packet, Path):
-        context_packet = PRAXIS_CONTEXT_DIR / safe_packet_name(project, requirement)
-    if action == "handoff":
-        if len(args) < 5:
-            fail(
-                "usage: task role -- handoff "
-                "<quality|delivery|execution|knowledge> <project> <需求名> <summary>"
-            )
-        praxis_write_role_handoff(
-            project=project,
-            requirement_name=requirement,
-            role=role,
-            summary=" ".join(args[4:]),
-            context_packet=context_packet,
-        )
-        return 0
-    if action == "lock":
-        if len(args) < 5:
-            fail(
-                "usage: task role -- lock "
-                "<execution|delivery|quality|knowledge> <project> <需求名> <路径1> [路径2...]"
-            )
-        praxis_write_lock(
-            project=project,
-            requirement_name=requirement,
-            role=role,
-            write_scope=args[4:],
-            context_packet=context_packet,
-        )
-        return 0
-    fail(f"unknown praxis role action: {action}")
-
-
 def run_praxis_delivery_action(config: dict, args: list[str]) -> int:
     """Run Praxis delivery actions."""
     if len(args) < 1:
-        fail("usage: task delivery -- <status|status-all|finish|precheck-all|commit-split|commit-split-all|deliver|deliver-all|cleanup|cleanup-all> ...")
+        fail("usage: task delivery -- <status|status-all|finish|commit-split|commit-split-all|deliver|deliver-all|cleanup|cleanup-all> ...")
     action = args[0]
-    if action == "precheck-all":
-        if len(args) < 2:
-            fail("usage: task delivery -- precheck-all <需求名> [--projects <project,project...>]")
-        _, remaining = split_project_filter(args[2:])
-        if remaining:
-            fail("usage: task delivery -- precheck-all <需求名> [--projects <project,project...>]")
-        praxis_write_delivery_precheck_packet(args[1], delivery_target_projects(config, args[1], args[2:]))
-        return 0
     if action in {"status-all", "commit-split-all", "deliver-all", "cleanup-all"}:
         if len(args) < 2:
             fail(f"usage: task delivery -- {action} <需求名> [--projects <project,project...>]")
@@ -517,23 +413,13 @@ def run_praxis_delivery_single_action(config: dict, args: list[str]) -> int:
         finish_requirement(config, project, requirement)
         return 0
     if action == "commit-split":
-        if praxis_require_verdict("quality", project, requirement):
-            return 1
         message = " ".join(args[3:]) if len(args) > 3 else None
         split_commit_requirement(config, project, requirement, message)
         return 0
     if action == "deliver":
-        if praxis_require_verdict("quality", project, requirement):
-            return 1
-        if praxis_require_verdict("delivery", project, requirement):
-            return 1
         deliver_requirement(config, project, requirement)
         return 0
     if action == "cleanup":
-        if praxis_require_verdict("quality", project, requirement):
-            return 1
-        if praxis_require_verdict("delivery", project, requirement):
-            return 1
         cleanup_requirement(config, project, requirement)
         return 0
     fail(f"unknown praxis delivery action: {action}")
@@ -546,19 +432,6 @@ def run_project_action(config: dict, project: str, action: str, args: list[str])
             fail("usage: task project -- start <project> <简短中文需求名> <用户原始需求原文>")
         start_requirement(config, project, args[0], " ".join(args[1:]))
         return 0
-    if action in {"finish", "commit-split", "deliver", "cleanup"}:
-        if not args:
-            fail(f"usage: task project -- {action} <project> <简短中文需求名>")
-        return run_praxis_delivery_action(config, [action, project, args[0], *args[1:]])
-    if action == "preflight":
-        if not args:
-            fail(f"usage: task project -- {action} <project> <简短中文需求名>")
-        praxis_context_packet(config, project, args[0])
-        return preflight(config, project, args[0])
-    if action in {"guard", "change-check", "migration-check"}:
-        if not args:
-            fail(f"usage: task project -- {action} <project> <简短中文需求名>")
-        return run_praxis_gate_action(config, [action, project, args[0]])
     if action == "status":
         status_project(config, project, args)
     elif action == "verify":
@@ -571,29 +444,6 @@ def run_project_action(config: dict, project: str, action: str, args: list[str])
         task_name = args[0] if args else "task"
         base_branch = args[1] if len(args) > 1 else None
         create_worktree(config, project, task_name, base_branch)
-    elif project == "docs" and action == "init":
-        if len(args) < 2:
-            fail("usage: task req -- init <简短中文需求名> <用户原始需求原文>")
-        doc_init(config, args[0], " ".join(args[1:]))
-    elif project == "docs" and action == "iter":
-        if len(args) < 3:
-            fail(
-                "usage: task req -- "
-                "iter <简短中文需求名> analysis|plan|progress <主题>"
-            )
-        doc_iter(config, args[0], args[1], " ".join(args[2:]))
-    elif project == "docs" and action == "check":
-        if not args:
-            fail("usage: task req -- check <简短中文需求名>")
-        raise SystemExit(docs_check(config, args[0]))
-    elif project == "docs" and action == "index":
-        if not args:
-            fail("usage: task req -- index <简短中文需求名>")
-        raise SystemExit(docs_index(config, args[0]))
-    elif project == "docs" and action == "db-plan":
-        if not args:
-            fail("usage: task req -- db-plan <简短中文需求名>")
-        raise SystemExit(db_plan(config, args[0]))
     else:
         fail(f"unknown action: {action}")
     return 0

@@ -7,7 +7,7 @@ from typing import Any
 
 from .config import local_database_config, project_dir
 from .context import verify_command
-from .delivery_policy import delivery_policy_issues
+from .delivery_policy import commit_changed_files, delivery_policy_issues, is_official_migration
 from .docs import find_requirement_dir, is_placeholder_raw_requirement
 from .finish import delivery_commits
 from .git_worktree import action_repo_dir, project_worktree_dirs
@@ -20,7 +20,6 @@ from .process import capture
 TEMPLATE_MARKERS = ["待补充", "后续确认", "需进一步调查"]
 EVIDENCE_MARKERS = ["来源证据", "源码路径", "表字段", "样例数据", "明确结论", "未决项", "查询环境", "关键 SQL"]
 ATTACHMENT_KEYWORDS = ["截图", "图片", "附件", "录屏", "表格", "Excel", "文件"]
-OFFICIAL_MIGRATION_MARKERS = ["db/migration/", "/db/migration/", "src/main/resources/db/migration/"]
 NO_PUSH_MARKERS = ["不推送", "仅本地验证", "local only", "no push", "not push"]
 DB_REQUIRED_KEYWORDS = ["SQL", "迁移", "报表口径", "数据修复", "字段映射", "字段来源", "表关系", "真实数据"]
 DB_OPTIONAL_KEYWORDS = ["字典", "主数据", "样例数据", "数据口径", "统计", "报表", "菜单授权", "低代码"]
@@ -291,12 +290,6 @@ def has_intermediate_sql(req_dir: Path) -> bool:
     return legacy.is_dir() and any(legacy.rglob("*.sql"))
 
 
-def is_official_migration(path: str) -> bool:
-    """识别正式 Flyway 迁移目录中的 SQL 变更。"""
-    normalized = path.replace("\\", "/")
-    return normalized.lower().endswith(".sql") and any(marker in normalized for marker in OFFICIAL_MIGRATION_MARKERS)
-
-
 def classify_changed_file(path: str) -> str:
     """把变更文件归类为收尾检查可读的风险类别。"""
     normalized = path.replace("\\", "/")
@@ -324,12 +317,6 @@ def commit_subject(line: str) -> str:
 def commit_hash(line: str) -> str:
     """从 `git log --oneline` 行中提取提交哈希。"""
     return line.split(maxsplit=1)[0]
-
-
-def commit_changed_files(repo_dir: Path, commit: str) -> list[str]:
-    """返回单个提交引入的文件列表。"""
-    output = capture(["git", "-C", str(repo_dir), "diff-tree", "--no-commit-id", "--name-only", "-r", commit], ROOT_DIR)
-    return sorted(line for line in output.splitlines() if line)
 
 
 def delivery_commit_lines(config: dict[str, Any], project: str, repo_dir: Path) -> list[str]:

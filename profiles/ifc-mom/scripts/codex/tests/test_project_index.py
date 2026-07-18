@@ -91,19 +91,6 @@ name = "Demo Extension"
 """,
                 encoding="utf-8",
             )
-            (root / ".praxis" / "profile.toml").write_text(
-                """
-schema_version = 1
-name = "Praxis"
-status = "complete"
-baseline = "portable"
-
-[control_plane]
-primary_command = "task"
-command_groups = ["req", "project", "context", "gate", "delivery", "system"]
-""",
-                encoding="utf-8",
-            )
             (root / PROJECTS_FILE).write_text(
                 """
 version = 1
@@ -118,10 +105,10 @@ kind = "docs"
 
             with (
                 patch.object(praxis, "ROOT_DIR", root),
-                patch.object(praxis, "PRAXIS_PROFILE", root / ".praxis" / "profile.toml"),
                 patch.object(praxis, "PRAXIS_DIR", root / ".praxis" / "out"),
                 patch.object(praxis, "PRAXIS_INDEX_FILE", root / ".praxis" / "out" / "project-index.json"),
                 patch.object(praxis, "load_config", return_value={"projects": {"docs": {"path": "docs", "kind": "docs"}}}),
+                patch.object(praxis, "praxis_profile_payload", return_value={"status": "PASS"}),
             ):
                 path = praxis.praxis_index(scan=True)
                 data = json.loads(path.read_text(encoding="utf-8"))

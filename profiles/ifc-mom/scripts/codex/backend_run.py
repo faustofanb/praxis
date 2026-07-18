@@ -9,51 +9,20 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 import argparse
 from pathlib import Path
-from subprocess import PIPE
-from typing import Any
 
-from momlib.paths import CONFIG_FILE, LEGACY_CONFIG_FILE, ROOT_DIR
-from momlib.process import run_command
+from momlib.config import load_config, project_dir
+from momlib.process import capture, fail, run_command
 
 
 BOOT_MODULE = "lamp-support/lamp-boot-server"
 BOOT_JAR = Path(BOOT_MODULE) / "target" / "lamp-boot-server.jar"
 
 
-def fail(message: str) -> None:
-    """输出统一错误格式并终止后端辅助脚本。"""
-    print(f"error: {message}", file=sys.stderr)
-    raise SystemExit(1)
-
-
-def load_config() -> dict[str, Any]:
-    """读取聚合工作区项目映射。"""
-    config_file = CONFIG_FILE if CONFIG_FILE.is_file() else LEGACY_CONFIG_FILE
-    with config_file.open("rb") as file:
-        return tomllib.load(file)
-
-
 def repo_dir_for(project_name: str) -> Path:
     """根据项目短名返回后端仓库目录。"""
-    project = load_config().get("projects", {}).get(project_name)
-    if not project:
-        fail(f"unknown project: {project_name}")
-    return ROOT_DIR / project["path"]
-
-
-def capture(command: list[str], cwd: Path) -> str:
-    """执行命令并返回 stdout；命令失败时抛出异常。"""
-    completed = run_command(
-        command,
-        cwd=cwd,
-        check=True,
-        text=True,
-        stdout=PIPE,
-    )
-    return completed.stdout
+    return project_dir(load_config(), project_name)
 
 
 def changed_files(repo_dir: Path) -> list[str]:
@@ -134,16 +103,11 @@ def build_boot_jar(repo_dir: Path, threads: str, profile: str) -> None:
         run_mvn(repo_dir, "-B", "-T", threads, "-pl", modules, "-am", "-Dmaven.compile.fork=true", "-Dmaven.test.skip=true", "-P", profile, "-f", "pom.xml", "package")
 
 
-def full_install(repo_dir: Path, threads: str, profile: str) -> None:
-    """执行后端全量 clean install。"""
-    run_mvn(repo_dir, "-B", "-T", threads, "clean", "install", "-Dmaven.compile.fork=true", "-Dmaven.test.skip=true", "-P", profile, "-f", "pom.xml")
-
-
 def run_boot_jar(repo_dir: Path) -> None:
     """运行已存在的 lamp-boot-server jar。"""
     boot_jar = repo_dir / BOOT_JAR
     if not boot_jar.is_file():
-        fail(f"Boot jar not found: {boot_jar}. Build it first with option 2 or 5.")
+        fail(f"Boot jar not found: {boot_jar}. Build it first with option 2.")
     java_opts = os.environ.get("JAVA_OPTS", "").split()
     spring_args = os.environ.get("SPRING_ARGS", "--spring.profiles.active=dev").split()
     # JAVA_OPTS 和 SPRING_ARGS 保留环境变量入口，方便本地调试时临时覆盖参数。
@@ -189,9 +153,8 @@ def main(argv: list[str]) -> None:
 Choose an action:
   1) Minimal compile changed Maven modules
   2) Build lamp-support/lamp-boot-server jar with changed modules
-  3) Full clean install
-  4) Run existing lamp-boot-server jar
-  5) Build boot jar, then run it
+  3) Run existing lamp-boot-server jar
+  4) Build boot jar, then run it
 """
     )
     action = input("Action [1]: ").strip() or "1"
@@ -200,10 +163,8 @@ Choose an action:
     elif action == "2":
         build_boot_jar(repo_dir, threads, profile)
     elif action == "3":
-        full_install(repo_dir, threads, profile)
-    elif action == "4":
         run_boot_jar(repo_dir)
-    elif action == "5":
+    elif action == "4":
         build_boot_jar(repo_dir, threads, profile)
         run_boot_jar(repo_dir)
     else:

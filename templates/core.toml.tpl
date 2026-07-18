@@ -8,6 +8,10 @@ purpose = "Shared Praxis control plane for context, evidence, verification and c
 config_root = ".praxis"
 output_root = ".praxis/out"
 
+[portability]
+path_style = "posix-relative"
+windows_supported = true
+
 [[stage]]
 id = "intake"
 label = "Intake"

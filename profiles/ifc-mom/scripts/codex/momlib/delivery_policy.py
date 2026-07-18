@@ -61,7 +61,7 @@ def is_pad_api_file(path: str) -> bool:
 
 def is_official_migration(path: str) -> bool:
     normalized = path.replace("\\", "/")
-    return any(marker in normalized for marker in OFFICIAL_MIGRATION_MARKERS)
+    return normalized.lower().endswith(".sql") and any(marker in normalized for marker in OFFICIAL_MIGRATION_MARKERS)
 
 
 def is_menu_authorization_migration(repo_dir: Path, commit: str, path: str) -> bool:

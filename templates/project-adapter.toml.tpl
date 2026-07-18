@@ -12,7 +12,7 @@ contracts = ".praxis/contracts"
 extensions = ".praxis/extensions"
 
 [path_policy]
-optional_external = []
+optional_external = ["praxis_outputs"]
 
 [project_kinds.docs]
 verification = "manual-doc-review"

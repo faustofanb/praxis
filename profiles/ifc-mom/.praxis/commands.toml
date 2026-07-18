@@ -194,7 +194,7 @@ requires_confirmation = false
 
 [[command]]
 id = "project.guard"
-argv = "task project -- guard <project> <requirement>"
+argv = "task gate -- guard <project> <requirement>"
 writes = []
 outputs = ["guard report"]
 risk = "readonly"
@@ -202,7 +202,7 @@ requires_confirmation = false
 
 [[command]]
 id = "project.change-check"
-argv = "task project -- change-check <project> <requirement>"
+argv = "task gate -- change-check <project> <requirement>"
 writes = []
 outputs = ["change gate report"]
 risk = "readonly"
@@ -210,7 +210,7 @@ requires_confirmation = false
 
 [[command]]
 id = "project.migration-check"
-argv = "task project -- migration-check <project> <requirement>"
+argv = "task gate -- migration-check <project> <requirement>"
 writes = []
 outputs = ["migration source report"]
 risk = "readonly"
@@ -233,14 +233,6 @@ risk = "state"
 requires_confirmation = false
 
 [[command]]
-id = "project.import-verdict"
-argv = "task gate -- import-verdict quality|delivery <project> <requirement> <agent-output-json>"
-writes = ["$PRAXIS_DIR/verdicts/<project>-<requirement>-<role>.json"]
-outputs = ["normalized role verdict JSON", "verdict validation result"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
 id = "project.delivery-status"
 argv = "task delivery -- status <project> <requirement>"
 writes = []
@@ -254,14 +246,6 @@ argv = "task delivery -- status-all <requirement>"
 writes = []
 outputs = ["read-only grouped delivery closeout status"]
 risk = "readonly"
-requires_confirmation = false
-
-[[command]]
-id = "project.delivery-precheck-all"
-argv = "task delivery -- precheck-all <requirement>"
-writes = ["$PRAXIS_DIR/delivery-precheck/<requirement>.json"]
-outputs = ["parallel quality and delivery-precheck dispatch packet"]
-risk = "state"
 requires_confirmation = false
 
 [[command]]

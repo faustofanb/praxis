@@ -1,6 +1,6 @@
 {
   "name": "praxis-workflow",
-  "version": "0.2.0+codex.20260718004817",
+  "version": "0.2.0+codex.20260718015631",
   "description": "User-level Praxis workflow package with templates, profile sync, and IFC MOM workflow assets.",
   "author": {
     "name": "Local developer"

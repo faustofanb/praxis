@@ -49,6 +49,6 @@ user-invocable: true
 ## 完成检查
 
 - 主对话没有携带不必要的长源码、长日志或全量规则。
-- 关键证据可从需求目录、verdict、readiness 或命令输出恢复。
+- 关键证据可从需求目录、代码审查结论、readiness 或命令输出恢复。
 - worker 回报足够 Quality Agent 复核。
 - 最终交付说明包含验证结果和未验证原因。

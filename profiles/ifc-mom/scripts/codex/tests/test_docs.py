@@ -443,14 +443,14 @@ capability: "待归类"
         self.assertIn("Domain Aggregate", domain_type_text)
         self.assertIn("domain-aggregate", domain_view_text)
 
-    def test_tolaria_actions_are_available_through_requirement_dispatcher(self) -> None:
+    def test_tolaria_actions_are_available_through_docs_dispatcher(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             docs_root = Path(tmp_dir)
             config = {"projects": {"docs": {"path": tmp_dir}}}
             doc_init(config, "数采表优化", "用户要求：数采表优化需要发布 Tolaria 索引。")
 
-            check_code = task_module.run_praxis_requirement_action(config, ["tolaria-check", "数采表优化"])
-            publish_code = task_module.run_praxis_requirement_action(config, ["tolaria-publish", "数采表优化"])
+            check_code = task_module.run_praxis_docs_action(config, ["tolaria-check", "数采表优化"])
+            publish_code = task_module.run_praxis_docs_action(config, ["tolaria-publish", "数采表优化"])
 
             report = docs_root / ".praxis" / "out" / "tolaria" / "tolaria-check.json"
             index = next((docs_root / "02-req").glob("2026-07/*数采表优化/04-产出物/Tolaria知识索引.md"))

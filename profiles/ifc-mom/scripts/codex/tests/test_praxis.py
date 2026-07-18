@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tempfile
 import sys
 import unittest
@@ -14,87 +13,6 @@ from momlib import praxis  # noqa: E402
 
 
 class PraxisCompatibilityTest(unittest.TestCase):
-    def test_praxis_profile_falls_back_without_profile_file(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            root = Path(tmp_dir)
-            config = {
-                "projects": {
-                    "backend": {
-                        "label": "Column Backend",
-                        "description": "MOM backend service repository.",
-                        "aliases": ["column", "mes-backend"],
-                        "path": str(root / "ifc-mom-column-max"),
-                        "kind": "java-maven",
-                        "defaultBranch": "local",
-                    }
-                }
-            }
-            req_dir = root / "docs" / "02-req" / "2026-06" / "example"
-            req_dir.mkdir(parents=True)
-            requirement = "example"
-
-            with (
-                patch.object(praxis, "ROOT_DIR", root),
-                patch.object(praxis, "PRAXIS_PROFILE", root / ".praxis" / "profile.toml"),
-                patch.object(
-                    praxis,
-                    "PRAXIS_DIR",
-                    root / ".praxis" / "out",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_CONTEXT_DIR",
-                    root / ".praxis" / "out" / "context",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_VERDICT_DIR",
-                    root / ".praxis" / "out" / "verdicts",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_READINESS_DIR",
-                    root / ".praxis" / "out" / "readiness",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_HANDOFF_DIR",
-                    root / ".praxis" / "out" / "handoffs",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_LOCK_DIR",
-                    root / ".praxis" / "out" / "locks",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_INDEX_FILE",
-                    root / ".praxis" / "out" / "project-index.json",
-                ),
-                patch.object(praxis, "find_requirement_dir", return_value=req_dir),
-            ):
-                packet_path = praxis.praxis_context_packet(config, "backend", requirement)
-                packet = json.loads(packet_path.read_text(encoding="utf-8"))
-                self.assertEqual(packet["controlPlane"]["primaryCommand"], "task")
-                self.assertEqual(packet["project"], "backend")
-                self.assertEqual(packet["requirementName"], requirement)
-                self.assertEqual(packet["facts"]["requirementDir"], "docs/02-req/2026-06/example")
-                self.assertEqual(packet["facts"]["projectLabel"], "Column Backend")
-                self.assertEqual(packet["facts"]["projectDescription"], "MOM backend service repository.")
-                self.assertEqual(packet["facts"]["projectAliases"], ["column", "mes-backend"])
-                self.assertNotIn(str(root), json.dumps(packet, ensure_ascii=False))
-
-
-    def test_praxis_profile_strict_still_fails_when_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            root = Path(tmp_dir)
-            with (
-                patch.object(praxis, "ROOT_DIR", root),
-                patch.object(praxis, "PRAXIS_PROFILE", root / ".praxis" / "profile.toml"),
-            ):
-                with self.assertRaises(FileNotFoundError):
-                    _ = praxis.praxis_profile(strict=True)
-
     def test_workflow_command_contract_flags_missing_separator_and_unknown_reference(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

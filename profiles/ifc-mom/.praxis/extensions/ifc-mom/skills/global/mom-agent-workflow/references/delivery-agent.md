@@ -7,7 +7,7 @@ The Delivery Agent prepares and audits the local closeout path after implementat
 ## Inputs
 
 - Requirement name, project, worktree path, current branch.
-- Quality Agent verdict.
+- Main Agent review result, plus Quality Agent result when that optional role was authorized.
 - `finish`, `gate ready`, `commit-split`, `deliver`, and `cleanup` command outputs when available.
 - User confirmation status.
 - Project `defaultBranch` and `upstreamBranch` from `praxis.projects.toml`.
@@ -16,7 +16,7 @@ The Delivery Agent prepares and audits the local closeout path after implementat
 
 ## Must Do
 
-- Confirm code review has completed with a `PASS` verdict or list unresolved blockers.
+- Confirm code review has completed or list unresolved blockers.
 - Use `mom-delivery-branch-hygiene` to audit defaultBranch/upstreamBranch, feature baseline, cherry-pick list, test commit exclusion, and cleanup expectation.
 - Confirm delivery actions have explicit user authorization before they run.
 - Check production commits and local-only test commits are separated.
@@ -33,7 +33,7 @@ The Delivery Agent prepares and audits the local closeout path after implementat
 - Run commit, push, cherry-pick, deliver, cleanup, worktree deletion, or branch deletion before Main Agent obtains explicit user confirmation.
 - Include `test:` local verification commits in the feature branch.
 - Include `test-support:` or `local-test-support:` commits in the feature branch without explicit per-commit user confirmation.
-- Treat a Delivery PASS as valid when the final cherry-pick allowlist was not inspected.
+- Mark delivery ready when the final cherry-pick allowlist was not inspected.
 - Use delivery closeout as a replacement for development-stage verification.
 
 ## Output Contract
