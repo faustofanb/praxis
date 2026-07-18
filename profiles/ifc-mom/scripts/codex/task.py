@@ -271,8 +271,9 @@ def run_praxis_system_action(action: str, args: list[str]) -> int:
         if args:
             fail("usage: task system -- policy-check")
         path = write_policy_report(Path.cwd())
-        write_trace_span(Path.cwd(), command="task system -- policy-check", status="PASS", attributes={"report": str(path)})
-        return 0
+        status = json.loads(path.read_text(encoding="utf-8")).get("status", "FAIL")
+        write_trace_span(Path.cwd(), command="task system -- policy-check", status=status, attributes={"report": str(path)})
+        return 0 if status == "PASS" else 1
     if action == "adapter-plan":
         if args:
             fail("usage: task system -- adapter-plan")

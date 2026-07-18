@@ -2,11 +2,11 @@
 
 ## 定位
 
-本文件只做 Praxis 工作流总索引。具体执行规则已拆分到 `.rule/global/praxis-workflow/`，避免单文件过大导致实际执行时漏读、漏遵守。
+本文件只做 Praxis 工作流总索引。具体执行规则已拆分到 `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/`，避免单文件过大导致实际执行时漏读、漏遵守。
 
 默认先读：
 
-- `.rule/global/00-工作流精简索引.md`
+- `.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md`
 - 本文件
 - 与任务类型匹配的拆分规则文件
 
@@ -22,7 +22,7 @@
 
 ## 快速路由
 
-- 不确定先读哪一份：读 `.rule/global/00-工作流精简索引.md`。
+- 不确定先读哪一份：读 `.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md`。
 - 要查命令入口：读 `praxis-workflow/01-入口与自动化.md`。
 - 要派发或管理 worker：读 `praxis-workflow/02-主对话与Subagent.md`。
 - 涉及真实数据、SQL、迁移、字段口径：读 `praxis-workflow/03-调查门禁.md`。
@@ -34,9 +34,9 @@
 ## 权威关系
 
 - `AGENTS.md`：工作区入口、任务路由、少量硬门禁。
-- `.rule/global/00-工作流精简索引.md`：默认执行清单和细粒度引用。
-- `.rule/global/praxis-workflow/*.md`：Praxis 执行细则。
-- `.rule/projects/`：项目专属规则，优先于全局通用规则。
-- `.skill/`：项目或任务技能，按任务类型使用。
+- `.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md`：默认执行清单和细粒度引用。
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/*.md`：Praxis 执行细则。
+- `.praxis/extensions/ifc-mom/rules/projects/`：项目专属规则，优先于全局通用规则。
+- `.praxis/extensions/ifc-mom/skills/`：项目或任务技能，按任务类型使用。
 
 当规则冲突时，优先级为：用户明确要求 > 项目专属规则 > Praxis 拆分细则 > 精简索引 > AGENTS 导航。

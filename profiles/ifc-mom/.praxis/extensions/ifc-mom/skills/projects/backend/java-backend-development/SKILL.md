@@ -17,14 +17,14 @@ user-invocable: true
 
 ## 标准参照
 
-- `.skill/global/mom-code-quality-compliance/SKILL.md`
-- `.rule/projects/backend/01-架构分层规范.md`
-- `.rule/projects/backend/02-父类继承与特性接口规范.md`
-- `.rule/projects/backend/03-命名与建模规范.md`
-- `.rule/projects/backend/04-开发规范.md`
-- `.rule/projects/backend/05-注解与事务规范.md`
-- `.rule/projects/backend/06-功能设计规范.md`
-- `.rule/projects/backend/07-数据库迁移与Flyway规范.md`
+- `.praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/SKILL.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/01-架构分层规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/02-父类继承与特性接口规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/03-命名与建模规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/04-开发规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/05-注解与事务规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/06-功能设计规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/backend/07-数据库迁移与Flyway规范.md`
 
 ## 目标
 

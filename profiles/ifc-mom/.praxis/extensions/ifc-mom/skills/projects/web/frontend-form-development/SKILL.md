@@ -10,8 +10,8 @@ user-invocable: true
 
 ## 标准参照
 
-- `.rule/projects/web/03-表单开发规范.md`
-- `.rule/projects/web/04-权限国际化与消息规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/03-表单开发规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/04-权限国际化与消息规范.md`
 
 ## 核心约束
 

@@ -41,19 +41,19 @@ task etl -- tree
 
 配套 skill 和参考文件：
 
-- `.rule/global/praxis-workflow/08a-轻量ETL资产与分层.md`：中心 ETL 资产目录、资产台账和 PostgreSQL 分层职责。
-- `.rule/global/praxis-workflow/08b-轻量ETL调查与口径治理.md`：dbx 只读调查、口径卡、对账和落盘要求。
-- `.rule/global/praxis-workflow/08c-轻量ETLMagicAPI与积木报表.md`：MagicAPI 兼容边界、积木报表和大屏契约。
-- `.rule/global/praxis-workflow/08d-轻量ETL产出物与验收.md`：产出物、迁移前中间产物、验收和交付说明。
-- `.skill/global/mom-lightweight-etl-report/SKILL.md`：触发条件和默认执行要求。
-- `.skill/global/mom-lightweight-etl-report/references/templates.md`：口径卡、注释、接口、积木报表、验收和产出物模板。
-- `.skill/global/mom-lightweight-etl-report/references/prompts.md`：调查、访谈、视图/函数、MagicAPI、积木报表、争议排查和影响分析提示词。
-- `.skill/global/mom-lightweight-etl-report/references/dev-db-base-rule-modeling.md`：开发库基础标准化层和公共规则函数层调查结论。
-- `.skill/global/mom-lightweight-etl-report/references/base-and-rule-modeling.sql`：第一版 `public.v_rpt_base_*` / `public.fn_rpt_rule_*` SQL 参考稿。
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08a-轻量ETL资产与分层.md`：中心 ETL 资产目录、资产台账和 PostgreSQL 分层职责。
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08b-轻量ETL调查与口径治理.md`：dbx 只读调查、口径卡、对账和落盘要求。
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08c-轻量ETLMagicAPI与积木报表.md`：MagicAPI 兼容边界、积木报表和大屏契约。
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08d-轻量ETL产出物与验收.md`：产出物、迁移前中间产物、验收和交付说明。
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md`：触发条件和默认执行要求。
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/references/templates.md`：口径卡、注释、接口、积木报表、验收和产出物模板。
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/references/prompts.md`：调查、访谈、视图/函数、MagicAPI、积木报表、争议排查和影响分析提示词。
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/references/dev-db-base-rule-modeling.md`：开发库基础标准化层和公共规则函数层调查结论。
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/references/base-and-rule-modeling.sql`：第一版 `public.v_rpt_base_*` / `public.fn_rpt_rule_*` SQL 参考稿。
 
 ## 触发条件
 
-出现以下任一场景，优先读取 `.skill/global/mom-lightweight-etl-report/SKILL.md` 和本规则：
+出现以下任一场景，优先读取 `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md` 和本规则：
 
 - 报表、统计表、驾驶舱、积木报表、大屏报表数据。
 - PostgreSQL 报表视图、函数、指标汇总、API 契约。
@@ -216,7 +216,7 @@ v_rpt_doc_<主题>
 
 ## 数据调查
 
-涉及表关系、字段来源、真实数据、报表口径、SQL、迁移或接口数据口径时，必须遵守 `.rule/global/praxis-workflow/03-调查门禁.md`。
+涉及表关系、字段来源、真实数据、报表口径、SQL、迁移或接口数据口径时，必须遵守 `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/03-调查门禁.md`。
 
 优先调查：
 
@@ -414,4 +414,4 @@ JR_<主题>_<用途>_<版本>
 ## 来源
 
 - `design/01-ELT报表架构设计.md`
-- `.skill/global/mom-lightweight-etl-report/SKILL.md`
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md`

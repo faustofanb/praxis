@@ -23,15 +23,15 @@ user-invocable: true
 
 ## 标准参照
 
-- 后端 skill：`.skill/projects/backend/java-backend-development/SKILL.md`
-- 后端本地测试：`.skill/projects/backend/local-test-override/SKILL.md`
-- Web skill：`.skill/projects/web/frontend-development/SKILL.md`
-- Web API skill：`.skill/projects/web/frontend-api-development/SKILL.md`
-- Web 表单 skill：`.skill/projects/web/frontend-form-development/SKILL.md`
-- PDA skill：`.skill/projects/pda/pda-development/SKILL.md`
-- 大屏 skill：`.skill/projects/big-screen/big-screen-development/SKILL.md`
-- 全局规则：`.rule/global/`
-- 项目规则：`.rule/projects/`
+- 后端 skill：`.praxis/extensions/ifc-mom/skills/projects/backend/java-backend-development/SKILL.md`
+- 后端本地测试：`.praxis/extensions/ifc-mom/skills/projects/backend/local-test-override/SKILL.md`
+- Web skill：`.praxis/extensions/ifc-mom/skills/projects/web/frontend-development/SKILL.md`
+- Web API skill：`.praxis/extensions/ifc-mom/skills/projects/web/frontend-api-development/SKILL.md`
+- Web 表单 skill：`.praxis/extensions/ifc-mom/skills/projects/web/frontend-form-development/SKILL.md`
+- PDA skill：`.praxis/extensions/ifc-mom/skills/projects/pda/pda-development/SKILL.md`
+- 大屏 skill：`.praxis/extensions/ifc-mom/skills/projects/big-screen/big-screen-development/SKILL.md`
+- 全局规则：`.praxis/extensions/ifc-mom/rules/global/`
+- 项目规则：`.praxis/extensions/ifc-mom/rules/projects/`
 
 ## 目标
 
@@ -64,8 +64,8 @@ user-invocable: true
 
 - 仅后端开发：转后端 skill。
 - 仅后台 Web：转 Web skill。
-- 仅 PDA：转 PDA skill，并按 `.rule/projects/pda/README.md` 展开读取页面、API、路由、状态、样式和性能细则。
-- 仅大屏：转大屏 skill，并按 `.rule/projects/big-screen/README.md` 展开读取开发、构建和部署细则。
+- 仅 PDA：转 PDA skill，并按 `.praxis/extensions/ifc-mom/rules/projects/pda/README.md` 展开读取页面、API、路由、状态、样式和性能细则。
+- 仅大屏：转大屏 skill，并按 `.praxis/extensions/ifc-mom/rules/projects/big-screen/README.md` 展开读取开发、构建和部署细则。
 - 后端 + Web：以后端契约为主线，再接 Web。
 - 后端 + PDA：以后端契约为主线，再接 PDA。
 - 后端 + 大屏：先锁定服务端数据结构，再做大屏消费。
@@ -88,7 +88,7 @@ user-invocable: true
 若任务要求产出文档，默认遵循：
 
 - 根目录 `docs/` 下一个需求对应一个独立目录
-- 需求目录命名遵循 `.rule/global/05-需求文档组织规范.md`
+- 需求目录命名遵循 `.praxis/extensions/ifc-mom/rules/global/05-需求文档组织规范.md`
 - 大需求按需求分析、任务规划、开发进度进行目录化和多轮维护
 - 不在仓库根目录随意放置临时工作文件
 

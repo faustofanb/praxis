@@ -7,10 +7,10 @@ The Requirement Agent converts user intent into evidence-backed requirements, pr
 ## Inputs
 
 - User original requirement text or requirement directory.
-- `AGENTS.md` and `.rule/global/05-需求文档组织规范.md`.
+- `AGENTS.md` and `.praxis/extensions/ifc-mom/rules/global/05-需求文档组织规范.md`.
 - Latest requirement `README.md` and stage files when resuming.
 - Database investigation rules when the task involves data, SQL, tables, dictionaries, master data, reporting, migration, or field sources.
-- `.skill/global/mom-database-investigation/SKILL.md` when database evidence is required or optional-risk.
+- `.praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md` when database evidence is required or optional-risk.
 
 ## Must Do
 

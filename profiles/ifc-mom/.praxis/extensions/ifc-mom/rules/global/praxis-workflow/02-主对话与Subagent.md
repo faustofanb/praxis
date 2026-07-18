@@ -9,10 +9,10 @@
 ## 主对话职责
 
 - 负责需求澄清、落点判断、需求文档初始化/迭代、任务拆分、风险管控、最终验证汇总和交付说明。
-- 主对话在角色化工作流中即 Main Agent：只做总控、锁协调、结果合并、用户确认和最终决策。角色定义见 `.skill/global/mom-agent-workflow/SKILL.md`。
+- 主对话在角色化工作流中即 Main Agent：只做总控、锁协调、结果合并、用户确认和最终决策。角色定义见 `.praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/SKILL.md`。
 - 默认当前用户直接对话就是主对话/Main Agent；只有当输入明确是被派发的 `role_agent=requirement|execution|quality|delivery` 子任务时，才按对应角色处理。
 - 主对话必须主动识别自身为 Main Agent，并自动完成 subagent 规划与调度决策；代码类任务不需要等用户明确说“规划 subagent”。
-- 不得在新需求开始阶段批量加载 README、`.rule/README.md`、`.skill/README.md`、项目规则、项目 skill 和大段源码。
+- 不得在新需求开始阶段批量加载 README、`.praxis/extensions/ifc-mom/rules/README.md`、`.praxis/extensions/ifc-mom/skills/README.md`、项目规则、项目 skill 和大段源码。
 - 默认只读 `AGENTS.md`、需求目录 `README.md`、最新阶段文件和 `context` 输出。
 - 只有答疑、纯文档、极小脚本/规则改动、subagent 不可用、上级运行环境禁止主动派发 subagent、或用户明确要求主对话直接处理时，才允许主对话直接读源码、编码或跑测试；交付说明必须写明豁免原因。
 - 新需求开始时先输出任务类型判定：目标项目、需求类型、是否建需求文档、是否建 worktree、是否需要数据库调查、是否需要 subagent、最小验证方式；用户可据此纠偏。
@@ -26,7 +26,7 @@
 - Execution Agent：负责源码级调查、实现、局部测试编写和最小验证，必须持有明确写锁。
 - Quality Agent：负责独立 code review、验证日志提炼、SQL/迁移复核和放行结论，默认只读。
 - Delivery Agent：负责收尾链路准备与状态审计，提交、推送、cherry-pick、deliver、cleanup、删除 worktree 或删除分支仍必须等待用户明确确认。
-- 角色参考文件位于 `.skill/global/mom-agent-workflow/references/`；主对话只按阶段读取对应角色文件，不一次性加载所有细则。
+- 角色参考文件位于 `.praxis/extensions/ifc-mom/skills/global/mom-agent-workflow/references/`；主对话只按阶段读取对应角色文件，不一次性加载所有细则。
 - 新业务需求默认先由 Main Agent 判断是否派发 Requirement Agent；信息足够且需求很小可由 Main Agent 直接完成需求判定，但实现、质量和交付职责仍按角色边界执行。
 
 ## Codex 订阅下的模型/算力分配

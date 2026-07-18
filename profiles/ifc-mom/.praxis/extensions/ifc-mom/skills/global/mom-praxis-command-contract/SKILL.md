@@ -9,7 +9,7 @@ user-invocable: true
 ## 适用场景
 
 - 修改 `Taskfile.yml`、`.praxis/commands.toml`、`.praxis/manifest.toml`、`.praxis/core.toml`、`.praxis/project-adapter.toml`、`scripts/codex/task.py`。
-- 修改 `AGENTS.md`、`.rule/global/00-工作流精简索引.md`、`.rule/global/praxis-workflow/`、`.praxis/templates/` 中的命令示例或模板。
+- 修改 `AGENTS.md`、`.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md`、`.praxis/extensions/ifc-mom/rules/global/praxis-workflow/`、`.praxis/templates/` 中的命令示例或模板。
 - 新增、重命名、删除 `task req/project/context/etl/gate/delivery/system` 子命令。
 - 修复 “文档写的是一个命令，脚本实际是另一个命令” 的漂移。
 
@@ -27,7 +27,7 @@ user-invocable: true
 2. 再检查命令台账：`.praxis/commands.toml`。
 3. 再检查共享平台与项目适配：`.praxis/core.toml`、`.praxis/project-adapter.toml`。
 4. 再检查机器路由：`.praxis/manifest.toml` 的 `commands`、`rules`、`skills`、`gates`。
-5. 最后同步人类入口：`AGENTS.md`、`.rule/global/00-工作流精简索引.md`、相关 `praxis-workflow/*.md`。
+5. 最后同步人类入口：`AGENTS.md`、`.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md`、相关 `praxis-workflow/*.md`。
 6. 修改后运行命令契约和工作流检查。
 
 ## 必跑验证

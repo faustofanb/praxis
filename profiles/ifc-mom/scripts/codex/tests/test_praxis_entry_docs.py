@@ -78,6 +78,14 @@ class PraxisEntryDocsTest(unittest.TestCase):
             self.assertNotIn(forbidden, text, msg=str(path))
             self.assertNotIn(forbidden_lower, text.lower(), msg=str(path))
 
+    def test_extension_docs_use_packaged_rule_and_skill_paths(self) -> None:
+        extension_root = ROOT / ".praxis" / "extensions" / "ifc-mom"
+        for path in extension_root.rglob("*.md"):
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn(".rule/", text, msg=str(path))
+            self.assertNotIn(".skill/", text, msg=str(path))
+            self.assertNotIn(".praxis/projects.toml", text, msg=str(path))
+
 
 if __name__ == "__main__":
     unittest.main()

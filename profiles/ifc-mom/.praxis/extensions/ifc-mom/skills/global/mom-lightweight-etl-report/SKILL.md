@@ -10,7 +10,7 @@ user-invocable: true
 
 在当前 MOM 工作区中，报表链路默认采用“PostgreSQL 函数沉淀规则、视图沉淀口径、MagicAPI 暴露接口、积木报表负责展示”的轻量 ETL 架构。
 
-详细工作流见 `.rule/global/praxis-workflow/08-轻量ETL报表工作流.md`；按任务需要再读取 `08a-轻量ETL资产与分层.md`、`08b-轻量ETL调查与口径治理.md`、`08c-轻量ETLMagicAPI与积木报表.md`、`08d-轻量ETL产出物与验收.md`；原始设计来源见 `design/01-ELT报表架构设计.md`。
+详细工作流见 `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08-轻量ETL报表工作流.md`；按任务需要再读取 `08a-轻量ETL资产与分层.md`、`08b-轻量ETL调查与口径治理.md`、`08c-轻量ETLMagicAPI与积木报表.md`、`08d-轻量ETL产出物与验收.md`；原始设计来源见 `design/01-ELT报表架构设计.md`。
 
 按需读取的 references：
 
@@ -178,8 +178,8 @@ PostgreSQL 能跑不等于 MagicAPI 能跑。报表 SQL 若要直接放入 Magic
 ## 来源
 
 - `design/01-ELT报表架构设计.md`
-- `.rule/global/praxis-workflow/08-轻量ETL报表工作流.md`
-- `.rule/global/praxis-workflow/08a-轻量ETL资产与分层.md`
-- `.rule/global/praxis-workflow/08b-轻量ETL调查与口径治理.md`
-- `.rule/global/praxis-workflow/08c-轻量ETLMagicAPI与积木报表.md`
-- `.rule/global/praxis-workflow/08d-轻量ETL产出物与验收.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08-轻量ETL报表工作流.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08a-轻量ETL资产与分层.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08b-轻量ETL调查与口径治理.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08c-轻量ETLMagicAPI与积木报表.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/08d-轻量ETL产出物与验收.md`

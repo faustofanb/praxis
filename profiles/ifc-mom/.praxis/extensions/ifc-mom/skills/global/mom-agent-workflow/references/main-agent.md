@@ -10,13 +10,13 @@ Default identity: the current direct user conversation is the Main Agent. Only s
 
 - Classify each task by project, demand type, document/worktree requirement, database-investigation requirement, role-agent plan, and minimum verification.
 - Automatically plan and dispatch eligible role-agent/subagent work when runtime tools allow it; do not wait for the user to explicitly request subagents for each coding task.
-- Load `.skill/global/mom-context-budgeting/SKILL.md` for long tasks, multi-project work, large logs/diffs, or recovery from an older requirement.
+- Load `.praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md` for long tasks, multi-project work, large logs/diffs, or recovery from an older requirement.
 - Load only the control plane first: `AGENTS.md`, requirement `README.md`, latest stage file, and `context` output.
 - Dispatch role agents with explicit scope, locks, inputs, output contract, and `no_nested_agents: true`.
 - Merge structured results and decide whether the workflow can proceed.
 - Keep user confirmations separate from implementation and delivery closeout.
 - When a business requirement reaches final closeout, ensure workflow efficiency and context-usage review is written to `03-开发进度/` and indexed through `task req -- index`.
-- Solidify repeated workflow friction into `todo.md`, `.rule/`, or `.skill/` instead of leaving it only in chat.
+- Solidify repeated workflow friction into `todo.md`, `.praxis/extensions/ifc-mom/rules/`, or `.praxis/extensions/ifc-mom/skills/` instead of leaving it only in chat.
 
 ## Must Not Do
 

@@ -25,10 +25,10 @@ user-invocable: true
 ## 派发阈值
 
 - 低风险快车道：单项目、3 个文件以内、不涉及 SQL/迁移/真实数据/公共组件/权限/异步/定时任务时，主对话可记录 `subagent: waived-small-change` 并直接推进；默认只读 `task context -- --brief` 与变更相关样例。
-- 源码调查超过 3 个文件或跨模块：派 Execution/Requirement Agent。
-- 测试/构建日志超过 120 行：要求 worker 摘要根因。
+- 源码调查超过 3 个文件或跨模块：可建议 Execution/Requirement Agent；未获用户并行授权时由主对话继续。
+- 测试/构建日志超过 120 行：优先用工具截取首个根因；用户已授权并行时可由 worker 摘要。
 - diff 超过 300 行或跨两个项目：建议 Quality Agent 独立复核，等待用户许可。
-- 涉及数据库口径、迁移、报表：派或使用数据库调查专门流程。
+- 涉及数据库口径、迁移、报表：使用数据库调查专门流程；只有用户授权并行时才派发 worker。
 - 交付收口、cleanup、feature 分支：派 Delivery Agent 或按 delivery skill 复核；常规收口优先使用 `task gate -- ready` 聚合检查，专项排查才单跑 `guard/change-check/migration-check`。
 
 ## Worker 输出上限

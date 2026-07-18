@@ -46,6 +46,6 @@ user-invocable: true
 
 ## 关联规则
 
-- `.rule/global/praxis-workflow/03-调查门禁.md`
-- `.rule/global/00-工作流精简索引.md -> 调查与证据`
-- `.skill/global/mom-lightweight-etl-report/SKILL.md`
+- `.praxis/extensions/ifc-mom/rules/global/praxis-workflow/03-调查门禁.md`
+- `.praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md -> 调查与证据`
+- `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md`

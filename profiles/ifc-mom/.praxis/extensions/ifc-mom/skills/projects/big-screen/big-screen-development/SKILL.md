@@ -22,7 +22,7 @@ user-invocable: true
 
 ## 核心约束
 
-- 开发前必须读取 `.rule/projects/big-screen/README.md`，再按改动类型展开读取具体规则。
+- 开发前必须读取 `.praxis/extensions/ifc-mom/rules/projects/big-screen/README.md`，再按改动类型展开读取具体规则。
 - 新看板放在 `src/dashboards/<dashboard>/`，并在 `config/dashboards.config.js` 注册。
 - 设计稿默认按 1920x1080 组织，通过既有缩放方案适配屏幕，不为单一分辨率写死散落样式。
 - 图片、字体等资源路径遵守项目规范；优先复用 `src/shared/` 的配置、样式和工具。
@@ -32,10 +32,10 @@ user-invocable: true
 
 ## 规范映射
 
-- 看板目录、资源路径、页面初始化：`.rule/projects/big-screen/01-大屏开发规范.md`
-- 构建输出、部署、Nginx、API 代理：`.rule/projects/big-screen/02-大屏构建与部署规范.md`
-- 性能与稳定性：`.rule/global/03-性能与稳定性规范.md`
-- 报表/驾驶舱数据口径：`.skill/global/mom-lightweight-etl-report/SKILL.md`
+- 看板目录、资源路径、页面初始化：`.praxis/extensions/ifc-mom/rules/projects/big-screen/01-大屏开发规范.md`
+- 构建输出、部署、Nginx、API 代理：`.praxis/extensions/ifc-mom/rules/projects/big-screen/02-大屏构建与部署规范.md`
+- 性能与稳定性：`.praxis/extensions/ifc-mom/rules/global/03-性能与稳定性规范.md`
+- 报表/驾驶舱数据口径：`.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md`
 
 ## 验证方式
 
@@ -53,6 +53,6 @@ user-invocable: true
 
 ## 来源
 
-- `.rule/projects/big-screen/01-大屏开发规范.md`
-- `.rule/projects/big-screen/02-大屏构建与部署规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/big-screen/01-大屏开发规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/big-screen/02-大屏构建与部署规范.md`
 - `LargeVisualizationScreen/README.md`

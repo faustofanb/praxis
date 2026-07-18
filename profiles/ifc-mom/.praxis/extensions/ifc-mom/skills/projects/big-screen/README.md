@@ -8,5 +8,5 @@
 
 ## 使用要求
 
-- 大屏需求必须同时读取 `.rule/projects/big-screen/README.md` 和 `big-screen-development/SKILL.md`。
-- 若任务涉及报表数据、驾驶舱口径、MagicAPI 或积木报表，优先联动 `.skill/global/mom-lightweight-etl-report/SKILL.md`。
+- 大屏需求必须同时读取 `.praxis/extensions/ifc-mom/rules/projects/big-screen/README.md` 和 `big-screen-development/SKILL.md`。
+- 若任务涉及报表数据、驾驶舱口径、MagicAPI 或积木报表，优先联动 `.praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/SKILL.md`。

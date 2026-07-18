@@ -10,8 +10,8 @@ user-invocable: true
 
 ## 标准参照
 
-- `.rule/projects/web/02-API编写规范.md`
-- `.rule/projects/web/05-公共包与导入规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/02-API编写规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/05-公共包与导入规范.md`
 
 ## 核心约束
 

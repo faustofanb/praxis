@@ -28,7 +28,7 @@ task context -- <project> <需求名>
 
 - `task req -- init` 创建 v2 标准目录（`README.md`、`00-原始需求/`、`01-`~`04-` 子目录）。
 - 业务需求必须把用户原始需求原文写入 `00-原始需求/`；缺原文或占位词时脚本应失败。
-- 非业务需求（规则维护、流程纠偏、工具配置、过程改进）**不**运行 `task req -- init`，直接更新 `AGENTS.md`、`.rule/`、`.skill/` 或 `todo.md`。
+- 非业务需求（规则维护、流程纠偏、工具配置、过程改进）**不**运行 `task req -- init`，直接更新 `AGENTS.md`、`.praxis/extensions/ifc-mom/rules/`、`.praxis/extensions/ifc-mom/skills/` 或 `todo.md`。
 
 **P1**
 
@@ -75,7 +75,7 @@ task req -- db-plan <需求名>
 - 聚合根不是单一 Git 仓库；分支/worktree 操作在具体子仓库执行。
 - Codeup HTTPS Git 操作优先使用 `task`/`rtk` 工作流入口；必须手工执行底层 Git 时使用 `rtk git ...` 或 `/usr/bin/git ...`，禁止裸 `git ...`。
 - 所有代码类需求无论大小，凡涉及业务代码新增、修改、删除或生成，必须创建主任务 worktree。
-- 从 `defaultBranch` 创建（配置于 `.praxis/projects.toml`，PDA/Web/后端通常为 `local`）。
+- 从 `defaultBranch` 创建（配置于 `praxis.projects.toml`，PDA/Web/后端通常为 `local`）。
 - 创建或同步需求 worktree 前，目标主项目仓库必须干净；若 `git status --short` 存在任何未提交变更或未跟踪文件，立即暂停任务并报告用户，等待确认处理方式。
 - 创建前必须先同步 `upstreamBranch -> defaultBranch`；统一脚本执行 `fetch + switch defaultBranch + merge --no-edit origin/<upstreamBranch>`，失败或冲突时不得继续基于旧 `local` 创建需求 worktree。
 - 主项目仓库有污染时，禁止自行 stash、restore、commit、手工绕过统一命令、基于旧 `local` 建 worktree 或继续在主项目仓库开发。
@@ -97,4 +97,4 @@ task project -- worktree backend <任务名>
 task project -- worktree web <任务名> [基座分支]
 ```
 
-分支职责见 `.rule/global/04-本地开发与交付工作流.md`。
+分支职责见 `.praxis/extensions/ifc-mom/rules/global/04-本地开发与交付工作流.md`。

@@ -10,11 +10,11 @@ The Execution Agent performs scoped source investigation, implementation, and lo
 - Target project rule and skill paths.
 - Allowed write paths and read-only paths.
 - Verification command expected for the change scope.
-- For backend/Web code, `.skill/global/mom-code-quality-compliance/SKILL.md` and the relevant project skill.
-- For PDA code, `.rule/projects/pda/README.md` plus `.skill/projects/pda/pda-development/SKILL.md`.
-- For big-screen code, `.rule/projects/big-screen/README.md` plus `.skill/projects/big-screen/big-screen-development/SKILL.md`.
-- For Praxis command changes, `.skill/global/mom-praxis-command-contract/SKILL.md`.
-- For Web/low-code/report frontend changes, `.skill/global/mom-frontend-pattern-search/SKILL.md`.
+- For backend/Web code, `.praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/SKILL.md` and the relevant project skill.
+- For PDA code, `.praxis/extensions/ifc-mom/rules/projects/pda/README.md` plus `.praxis/extensions/ifc-mom/skills/projects/pda/pda-development/SKILL.md`.
+- For big-screen code, `.praxis/extensions/ifc-mom/rules/projects/big-screen/README.md` plus `.praxis/extensions/ifc-mom/skills/projects/big-screen/big-screen-development/SKILL.md`.
+- For Praxis command changes, `.praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md`.
+- For Web/low-code/report frontend changes, `.praxis/extensions/ifc-mom/skills/global/mom-frontend-pattern-search/SKILL.md`.
 
 ## Must Do
 

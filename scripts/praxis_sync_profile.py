@@ -30,11 +30,15 @@ def sync_profile(
     *,
     force: bool = False,
     dry_run: bool = False,
+    prune: bool = False,
 ) -> list[str]:
     root = Path(workspace).expanduser().resolve()
     source_root = PROFILE_ROOT / profile
     if not source_root.is_dir():
         raise ValueError(f"unknown Praxis profile: {profile}")
+
+    if prune:
+        _prune_managed_files(root, source_root, dry_run=dry_run)
 
     written: list[str] = []
     for source_path in sorted(path for path in source_root.rglob("*") if path.is_file()):
@@ -52,6 +56,19 @@ def sync_profile(
     return written
 
 
+def _prune_managed_files(root: Path, source_root: Path, *, dry_run: bool) -> None:
+    extension_root = source_root / ".praxis" / "extensions"
+    managed_roots = list(path for path in extension_root.iterdir() if path.is_dir()) if extension_root.is_dir() else []
+    managed_roots.append(source_root / "scripts" / "codex")
+    for managed_root in managed_roots:
+        target_root = root / managed_root.relative_to(source_root)
+        if not managed_root.is_dir() or not target_root.is_dir():
+            continue
+        for target in sorted((path for path in target_root.rglob("*") if path.is_file()), reverse=True):
+            if not (source_root / target.relative_to(root)).is_file() and not dry_run:
+                target.unlink()
+
+
 def available_profiles() -> list[str]:
     if not PROFILE_ROOT.is_dir():
         return []
@@ -64,10 +81,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("profile", choices=available_profiles(), help="Packaged profile name")
     parser.add_argument("--force", action="store_true", help="Overwrite existing profile files")
     parser.add_argument("--dry-run", action="store_true", help="List files without writing")
+    parser.add_argument("--prune", action="store_true", help="Remove stale files from profile-managed directories")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     args = parser.parse_args(argv)
 
-    written = sync_profile(args.workspace, args.profile, force=args.force, dry_run=args.dry_run)
+    written = sync_profile(args.workspace, args.profile, force=args.force, dry_run=args.dry_run, prune=args.prune)
     if args.json:
         print(json.dumps({"profile": args.profile, "written": written}, ensure_ascii=False, indent=2))
     elif written:

@@ -63,7 +63,7 @@ task system -- command-audit
 - `task system -- check`：校验 `.praxis/profile.toml`、本路线文件、方法论四层、M1-M4、命令契约和 Praxis profile。
 - `task system -- index`：产出 `$PRAXIS_DIR/project-index.json`；Taskfile 默认 `$PRAXIS_DIR=.praxis/out/runtime`，仓库内 `.praxis/out/` 仅作为显式生成的参考快照。
 - `task system -- praxis-profile`：校验 `.praxis/core.toml` 与 `.praxis/project-adapter.toml` 的通用平台/项目适配边界，并写出 `.praxis/out/profile.json`。
-- `task system -- template-check`：校验 `.praxis/templates/`、`.rule/` 和 `.skill/` 的模板/规范契约，并写出 `.praxis/out/template-report.json`。
+- `task system -- template-check`：校验 `.praxis/templates/`、`.praxis/extensions/ifc-mom/rules/` 和 `.praxis/extensions/ifc-mom/skills/` 的模板/规范契约，并写出 `.praxis/out/template-report.json`。
 - `task system -- template-render`：从 `.praxis/templates/` 生成 rule 或 skill 骨架。
 - `task system -- command-audit`：扫描规则/AGENTS/README，保证入口统一 `task`。
 - `task context -- --brief`：产出 `$PRAXIS_DIR/context/<project>-<需求名>.json` 和低噪声恢复摘要；完整 `task context` 只在复杂/恢复/交接场景展开。

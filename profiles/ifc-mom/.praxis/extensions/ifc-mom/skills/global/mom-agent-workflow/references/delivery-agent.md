@@ -10,7 +10,7 @@ The Delivery Agent prepares and audits the local closeout path after implementat
 - Quality Agent verdict.
 - `finish`, `gate ready`, `commit-split`, `deliver`, and `cleanup` command outputs when available.
 - User confirmation status.
-- Project `defaultBranch` and `upstreamBranch` from `.praxis/projects.toml`.
+- Project `defaultBranch` and `upstreamBranch` from `praxis.projects.toml`.
 - `.praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md`.
 - Explicit delivery allowlist: `.praxis/out/delivery/<project>/<requirement>/confirmed-commits.txt` when generated.
 

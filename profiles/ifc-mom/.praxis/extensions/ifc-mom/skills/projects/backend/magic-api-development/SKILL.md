@@ -22,7 +22,7 @@ user-invocable: true
 - 业务编排复杂，必须依赖清晰的 `Service`、事务边界和强类型对象沉淀
 - 需求需要长期沉淀到常规模块代码，而不是以脚本方式快速交付
 
-若命中以上情况，优先转 `.skill/projects/backend/java-backend-development/SKILL.md`。
+若命中以上情况，优先转 `.praxis/extensions/ifc-mom/skills/projects/backend/java-backend-development/SKILL.md`。
 
 ## 背景
 
@@ -183,9 +183,9 @@ var time = workDate == null ? 0 : workDate.getTime();
 
 ## 协作关系
 
-- 标准 Java 后端开发：转 `.skill/projects/backend/java-backend-development/SKILL.md`
-- 本地 Maven 测试覆盖：转 `.skill/projects/backend/local-test-override/SKILL.md`
-- 若需求同时涉及后端与 Web/PDA：优先由 `.skill/global/mom-fullstack-collaboration/SKILL.md` 总控分流
+- 标准 Java 后端开发：转 `.praxis/extensions/ifc-mom/skills/projects/backend/java-backend-development/SKILL.md`
+- 本地 Maven 测试覆盖：转 `.praxis/extensions/ifc-mom/skills/projects/backend/local-test-override/SKILL.md`
+- 若需求同时涉及后端与 Web/PDA：优先由 `.praxis/extensions/ifc-mom/skills/global/mom-fullstack-collaboration/SKILL.md` 总控分流
 
 ## 来源
 

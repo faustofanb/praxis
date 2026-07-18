@@ -71,11 +71,12 @@ def sync_workspaces(
     registry_path: str | Path | None = None,
     force: bool = False,
     dry_run: bool = False,
+    prune: bool = False,
 ) -> list[dict[str, Any]]:
     registry = load_registry(registry_path or default_registry_path(profile))
     results: list[dict[str, Any]] = []
     for workspace in profile_workspaces(profile, registry):
-        files = sync_profile(workspace["path"], profile, force=force, dry_run=dry_run)
+        files = sync_profile(workspace["path"], profile, force=force, dry_run=dry_run, prune=prune)
         results.append(
             {
                 "name": workspace["name"],
@@ -93,10 +94,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--registry", help="Workspace registry JSON path")
     parser.add_argument("--force", action="store_true", help="Overwrite existing profile files")
     parser.add_argument("--dry-run", action="store_true", help="List files without writing")
+    parser.add_argument("--prune", action="store_true", help="Remove stale files from profile-managed directories")
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     args = parser.parse_args(argv)
 
-    results = sync_workspaces(args.profile, registry_path=args.registry, force=args.force, dry_run=args.dry_run)
+    results = sync_workspaces(
+        args.profile,
+        registry_path=args.registry,
+        force=args.force,
+        dry_run=args.dry_run,
+        prune=args.prune,
+    )
     if args.json:
         print(json.dumps({"profile": args.profile, "workspaces": results}, ensure_ascii=False, indent=2))
         return 0

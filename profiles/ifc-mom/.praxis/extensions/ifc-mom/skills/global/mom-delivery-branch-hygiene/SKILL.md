@@ -28,7 +28,7 @@ user-invocable: true
 
 ## 执行流程
 
-1. 读取 `.praxis/projects.toml`，确认 `defaultBranch` 和 `upstreamBranch`。
+1. 读取 `praxis.projects.toml`，确认 `defaultBranch` 和 `upstreamBranch`。
 2. 检查当前分支、worktree、未提交变更和 `defaultBranch..HEAD` 提交列表。
 3. 将提交分类为生产提交、测试提交、本地测试辅助、临时提交、无关提交。
 4. 交付前运行 `task delivery -- finish <project> <需求名>` 获取收口提示和显式候选哈希清单，并补充 `origin/<upstreamBranch>...HEAD` 或等价基线差异审计。

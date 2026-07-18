@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import task as task_module  # noqa: E402
 from praxislib.adapters import adapter_plan, write_adapter_plan  # noqa: E402
 from praxislib.observability import write_trace_span, write_trace_summary  # noqa: E402
 from praxislib.policy import policy_report, write_policy_report  # noqa: E402
@@ -22,6 +23,19 @@ def run_git(root: Path, *args: str) -> None:
 
 
 class PolicyObservabilityAdaptersTest(unittest.TestCase):
+    def test_policy_action_returns_failure_status_from_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            report = Path(tmp_dir) / "policy-report.json"
+            report.write_text('{"status":"FAIL"}\n', encoding="utf-8")
+            with (
+                patch.object(task_module, "write_policy_report", return_value=report),
+                patch.object(task_module, "write_trace_span") as trace,
+            ):
+                exit_code = task_module.run_praxis_system_action("policy-check", [])
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(trace.call_args.kwargs["status"], "FAIL")
+
     def test_policy_report_passes_for_clean_portable_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

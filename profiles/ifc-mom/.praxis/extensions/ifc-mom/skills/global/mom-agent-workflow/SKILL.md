@@ -78,11 +78,11 @@ Read only the role reference needed for the current stage:
 
 Load these only when the task triggers them:
 
-- Command contract drift: `.skill/global/mom-praxis-command-contract/SKILL.md`
-- Database investigation: `.skill/global/mom-database-investigation/SKILL.md`
-- Delivery branch hygiene: `.skill/global/mom-delivery-branch-hygiene/SKILL.md`
-- Frontend pattern search: `.skill/global/mom-frontend-pattern-search/SKILL.md`
-- Context budgeting: `.skill/global/mom-context-budgeting/SKILL.md`
+- Command contract drift: `.praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md`
+- Database investigation: `.praxis/extensions/ifc-mom/skills/global/mom-database-investigation/SKILL.md`
+- Delivery branch hygiene: `.praxis/extensions/ifc-mom/skills/global/mom-delivery-branch-hygiene/SKILL.md`
+- Frontend pattern search: `.praxis/extensions/ifc-mom/skills/global/mom-frontend-pattern-search/SKILL.md`
+- Context budgeting: `.praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md`
 
 ## Stage Map
 
@@ -114,7 +114,7 @@ output_contract: <required structured result>
 
 - Main Agent should not load source, long logs, or full diffs when a role agent can return a compressed result.
 - Main Agent is the current main conversation and is not dispatched through `role_agent`.
-- Main Agent automatically plans and dispatches eligible role-agent/subagent work when runtime tools allow it; it does not wait for the user to explicitly ask for subagents on each coding task.
+- Main Agent 默认直接执行；只有用户明确要求并行，或主对话无法可靠完成的独立高风险工作，才派发 role-agent/subagent。
 - Requirement and Quality agents are read-only by default.
 - Execution agents must own explicit write paths and must not change files outside the lock.
 - Delivery agents may prepare commands and readiness conclusions, but commit, push, cherry-pick, deliver, cleanup, branch deletion, and worktree deletion still require explicit user confirmation.

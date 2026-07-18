@@ -16,12 +16,12 @@ user-invocable: true
 
 ## 标准参照
 
-- `.skill/global/mom-code-quality-compliance/SKILL.md`
-- `.rule/projects/web/01-前端开发总规范.md`
-- `.rule/projects/web/02-API编写规范.md`
-- `.rule/projects/web/03-表单开发规范.md`
-- `.rule/projects/web/04-权限国际化与消息规范.md`
-- `.rule/projects/web/05-公共包与导入规范.md`
+- `.praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/SKILL.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/01-前端开发总规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/02-API编写规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/03-表单开发规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/04-权限国际化与消息规范.md`
+- `.praxis/extensions/ifc-mom/rules/projects/web/05-公共包与导入规范.md`
 
 ## 前置确认
 
