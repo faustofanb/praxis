@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import re
 import sys
 import time
@@ -29,10 +28,7 @@ PRAXIS_READINESS_DIR = PRAXIS_DIR / "readiness"
 PRAXIS_HANDOFF_DIR = PRAXIS_DIR / "handoffs"
 PRAXIS_LOCK_DIR = PRAXIS_DIR / "locks"
 PRAXIS_INDEX_FILE = PRAXIS_DIR / "project-index.json"
-PRAXIS_PROPOSALS_FILE = PRAXIS_DIR / "evolution-proposals.json"
-PRAXIS_RUNTIME_FILE = PRAXIS_DIR / "runtime-evaluation.json"
 PRAXIS_ROUTE_FILE = ROOT_DIR / ".praxis" / "rules" / "praxis-workflow.md"
-TODO_FILE = ROOT_DIR / "todo.md"
 
 
 REQUIRED_LAYERS = ["epistemology", "dialectics", "historical_materialism", "organization"]
@@ -116,17 +112,6 @@ def skill_files() -> list[Path]:
     if extension_root.is_dir():
         roots.extend(sorted(path for path in extension_root.glob("*/skills") if path.is_dir()))
     return sorted(path for root in roots if root.is_dir() for path in root.rglob("SKILL.md"))
-
-
-def pending_todo_lines() -> list[str]:
-    """Return pending workflow-hardening lines from todo.md."""
-    if not TODO_FILE.is_file():
-        return []
-    return [
-        line.strip()
-        for line in TODO_FILE.read_text(encoding="utf-8").splitlines()
-        if line.strip().startswith("- [待固化]")
-    ]
 
 
 def _is_command_legacy(raw: str) -> bool:
@@ -783,125 +768,3 @@ def praxis_write_delivery_precheck_packet(requirement_name: str, projects: list[
     print(f"Praxis delivery precheck: {path}")
     return path
 
-
-def praxis_formalism_check() -> int:
-    """Check for obvious workflow formalism and unresolved hardening records."""
-    errors: list[str] = []
-    warnings: list[str] = []
-    pending_items = pending_todo_lines()
-    if pending_items:
-        warnings.append(f"todo.md has {len(pending_items)} pending hardening item(s)")
-    if PRAXIS_ROUTE_FILE.is_file():
-        route_text = PRAXIS_ROUTE_FILE.read_text(encoding="utf-8")
-        if not re.search(r"^#{2,4}\s+分阶段(实施|执行|完成状态)", route_text, re.MULTILINE):
-            errors.append("Praxis route file has no staged implementation section")
-
-    print(f"Praxis formalism check: {'FAIL' if errors else 'PASS'}")
-    if errors:
-        print("Findings:")
-        for error in errors:
-            print(f"  - {error}")
-        return 1
-    if warnings:
-        print("Warnings:")
-        for warning in warnings:
-            print(f"  - {warning}")
-        return 0
-    print("Findings: none")
-    return 0
-
-
-def praxis_evolve_propose() -> Path:
-    """Write controlled-evolution proposals from current feedback and route state."""
-    pending = pending_todo_lines()
-    proposals = []
-    if pending:
-        for index, line in enumerate(pending, start=1):
-            proposals.append(
-                {
-                    "id": f"todo-{index}",
-                    "source": "todo.md",
-                    "problem": line.removeprefix("- [待固化] ").strip(),
-                    "requiredPath": ["rule", "skill", "script-or-template", "regression-test", "todo-cleanup"],
-                    "applyPolicy": "proposal-only",
-                }
-            )
-    else:
-        proposals.append(
-            {
-                "id": "monitor-formalism",
-                "source": "praxis formalism-check",
-                "problem": "No pending hardening item; continue checking that workflow steps produce evidence instead of empty ritual.",
-                "requiredPath": ["observe", "threshold", "proposal"],
-                "applyPolicy": "proposal-only",
-            }
-        )
-
-    data = {
-        "schemaVersion": 1,
-        "policy": "controlled-evolution",
-        "canApplyAutomatically": False,
-        "proposals": proposals,
-    }
-    PRAXIS_DIR.mkdir(parents=True, exist_ok=True)
-    PRAXIS_PROPOSALS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Evolution proposals: {PRAXIS_PROPOSALS_FILE}")
-    return PRAXIS_PROPOSALS_FILE
-
-
-def praxis_runtime_evaluation(benchmark: bool = False) -> Path:
-    """Evaluate uv+Python versus Bun+TypeScript for the Praxis control plane."""
-    data = {
-        "schemaVersion": 1,
-        "recommendation": "hybrid-python-core-bun-ts-adapters",
-        "benchmarkRequested": benchmark,
-        "evaluated": ["uv-python", "bun-typescript"],
-        "detected": {
-            "python": shutil.which("python3") or "",
-            "uv": shutil.which("uv") or "",
-            "bun": shutil.which("bun") or "",
-        },
-        "criteria": [
-            {
-                "name": "local-availability",
-                "uv-python": "Already required by existing workflow and tests.",
-                "bun-typescript": "Useful when Bun is installed; current workflow still treats Bun as optional.",
-            },
-            {
-                "name": "filesystem-git-docs-automation",
-                "uv-python": "Best fit for current TOML/JSON/filesystem/Git orchestration with stdlib coverage.",
-                "bun-typescript": "Viable, but would add a second required runtime for existing Python-heavy scripts.",
-            },
-            {
-                "name": "frontend-node-analysis",
-                "uv-python": "Can invoke tools but is weaker for TypeScript AST/package graph work.",
-                "bun-typescript": "Best fit for Web/PDA package graph, TypeScript AST and frontend config analysis.",
-            },
-            {
-                "name": "migration-risk",
-                "uv-python": "Lowest risk because current verification and task dispatcher already run here.",
-                "bun-typescript": "Full rewrite would be high churn before Praxis semantics are stable.",
-            },
-        ],
-        "decisions": [
-            {
-                "decision": "keep-core-in-python",
-                "scope": "Praxis control plane, Git/worktree, docs, JSON/TOML, guard, delivery and evidence indexing.",
-                "reason": "Current workflow is already verified around uv+Python; replacing the core now would add churn without proving a larger control-plane gain.",
-            },
-            {
-                "decision": "use-bun-ts-adapters",
-                "scope": "Frontend/PDA package graph, TypeScript AST, route/component/API analysis.",
-                "reason": "Bun+TypeScript gives better native leverage where the target projects are TypeScript/Vue/uni-app.",
-            },
-            {
-                "decision": "revisit-after-praxis-control-plane-stabilizes",
-                "scope": "Possible future CLI rewrite.",
-                "reason": "A full TypeScript rewrite should be justified by measured speed, maintainability and context-reduction gains after Praxis semantics are in use.",
-            },
-        ],
-    }
-    PRAXIS_DIR.mkdir(parents=True, exist_ok=True)
-    PRAXIS_RUNTIME_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"Praxis runtime evaluation: {PRAXIS_RUNTIME_FILE}")
-    return PRAXIS_RUNTIME_FILE

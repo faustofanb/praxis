@@ -1051,22 +1051,6 @@ class WorkflowPolicyTest(unittest.TestCase):
         self.assertGreaterEqual(data["counts"]["skills"], 1)
         self.assertIn("Execution", data["roles"])
 
-    def test_praxis_formalism_check_and_evolve_proposal_are_machine_readable(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            proposal_path = Path(tmp_dir) / "evolution-proposals.json"
-            with patch.object(task_module, "PRAXIS_PROPOSALS_FILE", proposal_path), patch.object(praxis, "PRAXIS_PROPOSALS_FILE", proposal_path):
-                with redirect_stdout(io.StringIO()) as formalism_output:
-                    formalism_code = task_module.run_praxis_action("formalism-check", [])
-                with redirect_stdout(io.StringIO()) as evolve_output:
-                    evolve_code = task_module.run_praxis_action("evolve", ["propose"])
-            proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
-        self.assertEqual(formalism_code, 0)
-        self.assertEqual(evolve_code, 0)
-        self.assertIn("Praxis formalism check: PASS", formalism_output.getvalue())
-        self.assertIn("Evolution proposals:", evolve_output.getvalue())
-        self.assertEqual(proposal["schemaVersion"], 1)
-        self.assertIn("controlled-evolution", proposal["policy"])
-
     def test_praxis_req_project_gate_delivery_commands_route_existing_capabilities(self) -> None:
         config = {"projects": {"backend": {"path": "ifc-mom-column-max", "defaultBranch": "local"}}}
         with (
@@ -1223,20 +1207,6 @@ class WorkflowPolicyTest(unittest.TestCase):
                 offenders.append(relative)
 
         self.assertEqual(offenders, [])
-
-    def test_praxis_runtime_evaluation_recommends_hybrid_stack(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            runtime_path = Path(tmp_dir) / "runtime-evaluation.json"
-            with patch.object(praxis, "PRAXIS_RUNTIME_FILE", runtime_path):
-                path = task_module.praxis_runtime_evaluation(benchmark=True)
-            data = json.loads(path.read_text(encoding="utf-8"))
-
-        self.assertEqual(data["schemaVersion"], 1)
-        self.assertEqual(data["recommendation"], "hybrid-python-core-bun-ts-adapters")
-        self.assertTrue(data["benchmarkRequested"])
-        self.assertIn("uv-python", data["evaluated"])
-        self.assertIn("bun-typescript", data["evaluated"])
-        self.assertTrue(any(item["decision"] == "keep-core-in-python" for item in data["decisions"]))
 
     def test_praxis_relative_keeps_external_artifact_paths_absolute(self) -> None:
         self.assertEqual(praxis.relative(Path("/private/tmp/praxis/report.json")), "/private/tmp/praxis/report.json")

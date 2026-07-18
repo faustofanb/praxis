@@ -128,7 +128,7 @@
 
 ## Code Graph 调度
 
-- 跨模块、不熟悉代码或旧需求恢复类任务，调查 subagent 先使用 `task system -- code-graph check`；图谱过期时后台刷新会自动排队，本次调查直接使用源码搜索。
-- 使用 `task system -- code-graph query --refresh <关键词>` 定位候选文件，再精读源码。
-- 不得仅因图谱过期直接降级为源码 grep；只有 build/query 失败时才记录原因并用源码搜索兜底。
+- 跨模块、不熟悉代码或旧需求恢复类任务，可先用 `task system -- codegraph status` 检查项目根已有索引。
+- 索引可用时使用 `task system -- codegraph explore <关键词>` 定位候选文件，再精读源码。
+- 索引缺失或查询失败时直接使用源码搜索，不自动初始化或刷新图谱。
 - 图谱结论必须回到源码、SQL、真实库查询结果或需求文档确认。

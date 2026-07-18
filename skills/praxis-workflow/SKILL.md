@@ -85,7 +85,7 @@ Treat this plugin as shared behavior, not as the source of project facts.
 
 Do not infer the target repository from the current shell directory. A Praxis workspace can aggregate many backend, frontend and uni-app repositories.
 
-Resolve the target project from `praxis.projects.toml` first. Use the selected project's `path` as the candidate repository, then locate that repository's actual root. Check CodeGraph only at that project root. If an existing Praxis graph is stale, `task system -- code-graph check` queues one asynchronous refresh while the current task falls back to source search. Never auto-initialize a missing graph.
+Resolve the target project from `praxis.projects.toml` first. Use the selected project's `path` as the candidate repository, then locate that repository's actual root. Use an existing `.codegraph/` index only at that project root; otherwise fall back to source search. Never auto-initialize a missing graph.
 
 ## Reference Map
 
@@ -105,7 +105,6 @@ Use scripts from this plugin only for generic Praxis workspace operations:
 ```bash
 python scripts/praxis_check_workspace.py <workspace>
 python scripts/praxis_check_workspace.py <workspace> --json
-python scripts/praxis_doctor.py <workspace>
 python scripts/praxis_init_workspace.py <workspace> --name "Workspace Name"
 python scripts/praxis_sync_profile.py <workspace> ifc-mom --force
 python scripts/praxis_sync_workspaces.py ifc-mom --force

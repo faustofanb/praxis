@@ -79,6 +79,7 @@ class CodeGraphAdapterTest(unittest.TestCase):
         self.assertIn("system codegraph init", commands)
         self.assertIn("system codegraph explore <query>", commands)
         self.assertIn("system codegraph impact <symbol>", commands)
+        self.assertFalse(any("code-graph" in command for command in commands))
 
 
 if __name__ == "__main__":

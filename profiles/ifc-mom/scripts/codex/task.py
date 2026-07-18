@@ -62,14 +62,11 @@ from momlib.etl import run_etl_action
 from momlib.finish import cleanup_requirement, deliver_requirement, delivery_status, finish_requirement, split_commit_requirement
 from momlib.git_worktree import create_worktree, project_worktree_dirs
 from momlib.praxis import (
-    PRAXIS_PROPOSALS_FILE,
     PRAXIS_CONTEXT_DIR,
     command_audit,
     safe_packet_name,
     praxis_check,
     praxis_context_packet,
-    praxis_evolve_propose,
-    praxis_formalism_check,
     praxis_index,
     praxis_write_lock,
     praxis_write_delivery_precheck_packet,
@@ -77,14 +74,10 @@ from momlib.praxis import (
     praxis_write_role_handoff,
     praxis_import_verdict_file,
     praxis_require_verdict,
-    praxis_runtime_evaluation,
     praxis_validate_verdict_file,
 )
 from praxislib.project_index import write_project_index_config
-from praxislib.adapters import write_adapter_plan
-from praxislib.code_graph import build_code_graph, code_graph_check, query_code_graph, refresh_code_graph
 from praxislib.codegraph_adapter import run_codegraph
-from praxislib.observability import write_trace_span, write_trace_summary
 from praxislib.policy import write_policy_report
 from momlib.process import fail
 from momlib.project_actions import list_projects, run_project, shell_project, status_project, verify_project
@@ -98,9 +91,6 @@ from momlib.praxis_templates import render_template, write_template_report as te
 TOP_LEVEL_ACTIONS = {
     "check",
     "index",
-    "formalism-check",
-    "evolve",
-    "runtime-eval",
     "command-audit",
     "template-check",
     "template-render",
@@ -186,16 +176,10 @@ def run_praxis_action(action: str, args: list[str]) -> int:
     if action in {
         "check",
         "index",
-        "formalism-check",
         "init-project-index",
         "project-index",
         "policy-check",
-        "adapter-plan",
-        "trace-summary",
-        "code-graph",
         "codegraph",
-        "evolve",
-        "runtime-eval",
         "command-audit",
         "template-check",
         "template-render",
@@ -212,7 +196,7 @@ def run_praxis_action(action: str, args: list[str]) -> int:
         if not args:
             fail(
                 "usage: task system -- "
-                "<check|index|init-project-index|project-index|policy-check|adapter-plan|trace-summary|code-graph|codegraph|praxis-profile|formalism-check|evolve|runtime-eval|command-audit|template-check|template-render>"
+                "<check|index|init-project-index|project-index|policy-check|codegraph|praxis-profile|command-audit|template-check|template-render>"
             )
         return run_praxis_system_action(args[0], args[1:])
     config = load_config()
@@ -272,60 +256,12 @@ def run_praxis_system_action(action: str, args: list[str]) -> int:
             fail("usage: task system -- policy-check")
         path = write_policy_report(Path.cwd())
         status = json.loads(path.read_text(encoding="utf-8")).get("status", "FAIL")
-        write_trace_span(Path.cwd(), command="task system -- policy-check", status=status, attributes={"report": str(path)})
         return 0 if status == "PASS" else 1
-    if action == "adapter-plan":
-        if args:
-            fail("usage: task system -- adapter-plan")
-        path = write_adapter_plan(Path.cwd())
-        write_trace_span(Path.cwd(), command="task system -- adapter-plan", status="PASS", attributes={"report": str(path)})
-        return 0
-    if action == "trace-summary":
-        if args:
-            fail("usage: task system -- trace-summary")
-        write_trace_summary(Path.cwd())
-        return 0
-    if action == "code-graph":
-        if not args or args[0] not in {"build", "query", "check", "refresh-worker"}:
-            fail("usage: task system -- code-graph build|query [--refresh] <keyword>|check")
-        subaction = args[0]
-        if subaction == "refresh-worker":
-            return refresh_code_graph(Path.cwd())
-        if subaction == "build":
-            if len(args) != 1:
-                fail("usage: task system -- code-graph build")
-            path = build_code_graph(Path.cwd())
-            write_trace_span(Path.cwd(), command="task system -- code-graph build", status="PASS", attributes={"graph": str(path)})
-            return 0
-        if subaction == "query":
-            if len(args) < 2:
-                fail("usage: task system -- code-graph query [--refresh] <keyword>")
-            refresh_stale = args[1] == "--refresh"
-            keyword_args = args[2:] if refresh_stale else args[1:]
-            if not keyword_args:
-                fail("usage: task system -- code-graph query [--refresh] <keyword>")
-            result = query_code_graph(Path.cwd(), " ".join(keyword_args), refresh_stale=refresh_stale)
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            write_trace_span(Path.cwd(), command="task system -- code-graph query", status="PASS", attributes={"matches": len(result.get("matches", []))})
-            return 0
-        return code_graph_check(Path.cwd())
     if action == "codegraph":
         return run_codegraph(Path.cwd(), args)
     if action == "praxis-profile":
         path = praxis_profile_report()
         print(f"Praxis profile report: {path}")
-        return 0
-    if action == "formalism-check":
-        return praxis_formalism_check()
-    if action == "evolve":
-        if not args or args[0] != "propose":
-            fail("usage: task system -- evolve propose")
-        praxis_evolve_propose()
-        return 0
-    if action == "runtime-eval":
-        if args and args != ["--benchmark"]:
-            fail("usage: task system -- runtime-eval [--benchmark]")
-        praxis_runtime_evaluation(benchmark="--benchmark" in args)
         return 0
     if action == "command-audit":
         if len(args) > 1:

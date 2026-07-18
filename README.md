@@ -16,7 +16,6 @@ skills can live in packaged profiles, then be synced into workspaces.
 - `scripts/praxis_init_workspace.py`: renders generic Praxis entry templates into a workspace.
 - `scripts/praxis_sync_profile.py`: syncs packaged workflow profiles such as `ifc-mom` into a workspace.
 - `scripts/praxis_sync_workspaces.py`: syncs one packaged profile to every workspace listed in that profile's registry.
-- `scripts/praxis_doctor.py`: human-facing wrapper for workspace checks.
 - `templates/`: project-neutral starter files and agent contracts for new Praxis workspaces.
 - `profiles/`: packaged workflow rules, skills, command registries and automation scripts for project families.
 - `tests/`: lightweight tests for plugin scripts and reference wiring.

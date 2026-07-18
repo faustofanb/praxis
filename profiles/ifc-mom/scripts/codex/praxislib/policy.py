@@ -97,11 +97,7 @@ def policy_report(root: Path) -> dict[str, Any]:
         "schemaVersion": 1,
         "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
         "status": "PASS" if failed == 0 else "FAIL",
-        "engine": "python-fallback",
-        "conftest": {
-            "policyPath": ".praxis/policies/praxis.rego",
-            "suggestedCommand": "conftest test --policy .praxis/policies praxis.toml praxis.projects.toml .praxis/commands.toml",
-        },
+        "engine": "python",
         "summary": {"total": len(checks), "failed": failed},
         "checks": checks,
     }

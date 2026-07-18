@@ -185,7 +185,7 @@ var time = workDate == null ? 0 : workDate.getTime();
 
 - 标准 Java 后端开发：转 `.praxis/extensions/ifc-mom/skills/projects/backend/java-backend-development/SKILL.md`
 - 本地 Maven 测试覆盖：转 `.praxis/extensions/ifc-mom/skills/projects/backend/local-test-override/SKILL.md`
-- 若需求同时涉及后端与 Web/PDA：优先由 `.praxis/extensions/ifc-mom/skills/global/mom-fullstack-collaboration/SKILL.md` 总控分流
+- 若需求同时涉及后端与 Web/PDA：由主对话按 `praxis.projects.toml` 分流
 
 ## 来源
 

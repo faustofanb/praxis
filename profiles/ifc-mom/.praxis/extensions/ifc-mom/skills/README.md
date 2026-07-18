@@ -17,7 +17,6 @@
 
 ### 全局 Skill
 
-- `mom-fullstack-collaboration/`: 负责跨后端、Web、PDA、大屏的需求拆解、落点判断、契约对齐、性能约束和交付自检
 - `mom-agent-workflow/`: 负责角色化 Agent 调度、职责边界、输出契约和交付质量协作
 - `mom-code-quality-compliance/`: 负责后端/Web 代码规范执行、自检和复核证据
 - `mom-context-budgeting/`: 负责主对话上下文预算、worker 派发阈值、长日志摘要和证据落盘

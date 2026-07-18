@@ -10,8 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from praxislib import config as praxis_config  # noqa: E402
-from praxislib import praxis  # noqa: E402
+from momlib import praxis  # noqa: E402
 from praxislib.project_index import (  # noqa: E402
     PROJECTS_FILE,
     scan_project_candidates,
@@ -20,37 +19,6 @@ from praxislib.project_index import (  # noqa: E402
 
 
 class ProjectIndexTest(unittest.TestCase):
-    def test_load_config_prefers_root_project_index(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            root = Path(tmp_dir)
-            (root / ".praxis").mkdir()
-            (root / ".praxis" / "projects.toml").write_text(
-                """
-version = 1
-
-[projects.legacy]
-path = "legacy"
-kind = "legacy"
-""",
-                encoding="utf-8",
-            )
-            (root / PROJECTS_FILE).write_text(
-                """
-version = 1
-
-[projects.app]
-path = "app"
-kind = "node"
-""",
-                encoding="utf-8",
-            )
-
-            with patch.object(praxis_config, "ROOT_DIR", root):
-                loaded = praxis_config.load_config()
-
-        self.assertEqual(list(loaded["projects"]), ["app"])
-        self.assertEqual(loaded["_praxis"]["configSource"], PROJECTS_FILE)
-
     def test_scan_project_candidates_detects_common_project_types(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
@@ -153,7 +121,7 @@ kind = "docs"
                 patch.object(praxis, "PRAXIS_PROFILE", root / ".praxis" / "profile.toml"),
                 patch.object(praxis, "PRAXIS_DIR", root / ".praxis" / "out"),
                 patch.object(praxis, "PRAXIS_INDEX_FILE", root / ".praxis" / "out" / "project-index.json"),
-                patch.object(praxis_config, "ROOT_DIR", root),
+                patch.object(praxis, "load_config", return_value={"projects": {"docs": {"path": "docs", "kind": "docs"}}}),
             ):
                 path = praxis.praxis_index(scan=True)
                 data = json.loads(path.read_text(encoding="utf-8"))

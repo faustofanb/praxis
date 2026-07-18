@@ -212,23 +212,10 @@ def project_index_summary(root: Path, *, scan: bool = False) -> dict[str, Any]:
     """Build the generic project-index section consumed by Praxis reports."""
     config, source = read_project_index(root)
     scanned = scan_project_candidates(root) if scan else []
-    code_graph = root / ".praxis" / "out" / "code-graph.json"
-    graph_summary: dict[str, Any] = {
-        "path": ".praxis/out/code-graph.json",
-        "status": "missing",
+    graph_summary = {
+        "path": ".codegraph/",
+        "status": "present" if (root / ".codegraph").is_dir() else "missing",
     }
-    if code_graph.is_file():
-        try:
-            graph = json.loads(code_graph.read_text(encoding="utf-8"))
-            graph_summary = {
-                "path": ".praxis/out/code-graph.json",
-                "status": "present",
-                "files": graph.get("summary", {}).get("files", 0),
-                "edges": graph.get("summary", {}).get("edges", 0),
-                "edgeCoverage": graph.get("summary", {}).get("edgeCoverage", "none"),
-            }
-        except json.JSONDecodeError:
-            graph_summary["status"] = "invalid"
     return {
         "root": ".",
         "configSource": source,

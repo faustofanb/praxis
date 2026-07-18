@@ -71,16 +71,6 @@ class PraxisCompatibilityTest(unittest.TestCase):
                     "PRAXIS_INDEX_FILE",
                     root / ".praxis" / "out" / "project-index.json",
                 ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_PROPOSALS_FILE",
-                    root / ".praxis" / "out" / "evolution-proposals.json",
-                ),
-                patch.object(
-                    praxis,
-                    "PRAXIS_RUNTIME_FILE",
-                    root / ".praxis" / "out" / "runtime-evaluation.json",
-                ),
                 patch.object(praxis, "find_requirement_dir", return_value=req_dir),
             ):
                 packet_path = praxis.praxis_context_packet(config, "backend", requirement)

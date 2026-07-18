@@ -43,48 +43,8 @@ requires_confirmation = false
 [[command]]
 id = "praxis.policy-check"
 argv = "task system -- policy-check"
-writes = [".praxis/out/policy-report.json", ".praxis/out/traces/praxis-trace.jsonl"]
+writes = [".praxis/out/policy-report.json"]
 outputs = ["Praxis policy-as-code fallback report"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
-id = "praxis.adapter-plan"
-argv = "task system -- adapter-plan"
-writes = [".praxis/out/adapter-plan.json", ".praxis/out/traces/praxis-trace.jsonl"]
-outputs = ["optional adapter plan for orchestration, quality, dependency and build tools"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
-id = "praxis.trace-summary"
-argv = "task system -- trace-summary"
-writes = [".praxis/out/traces/trace-summary.json"]
-outputs = ["local OpenTelemetry-style trace summary and OTLP configuration"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
-id = "praxis.code-graph.build"
-argv = "task system -- code-graph build"
-writes = [".praxis/out/code-graph.json", ".praxis/out/traces/praxis-trace.jsonl"]
-outputs = ["Praxis code graph index"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
-id = "praxis.code-graph.query"
-argv = "task system -- code-graph query [--refresh] <keyword>"
-writes = [".praxis/out/code-graph-query.json", ".praxis/out/traces/praxis-trace.jsonl"]
-outputs = ["ranked code graph matches"]
-risk = "state"
-requires_confirmation = false
-
-[[command]]
-id = "praxis.code-graph.check"
-argv = "task system -- code-graph check"
-writes = [".praxis/out/code-graph.json", ".praxis/out/code-graph-refresh.lock", ".praxis/out/code-graph-refresh.log"]
-outputs = ["code graph validation result and asynchronous refresh status"]
 risk = "state"
 requires_confirmation = false
 

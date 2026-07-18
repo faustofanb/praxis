@@ -4,7 +4,6 @@
 
 ## 列表
 
-- `mom-fullstack-collaboration/`: MOM 多项目协作总控 skill
 - `mom-agent-workflow/`: MOM 角色化 Agent 调度与交付质量协作 skill
 - `mom-code-quality-compliance/`: 后端/Web 代码规范执行、自检和复核证据 skill
 - `mom-context-budgeting/`: 主对话上下文预算、worker 派发阈值、长日志摘要和证据落盘 skill

@@ -313,26 +313,6 @@ def test_ifc_mom_profile_packages_workflow_rules_and_skills() -> None:
     assert (profile / "scripts" / "codex" / "momlib" / "process.py").is_file()
 
 
-def test_ifc_mom_profile_documents_engineering_control_layer() -> None:
-    route_text = (
-        PLUGIN_ROOT
-        / "profiles"
-        / "ifc-mom"
-        / ".praxis"
-        / "extensions"
-        / "ifc-mom"
-        / "rules"
-        / "global"
-        / "praxis-workflow"
-        / "09-Praxis重型化路线.md"
-    ).read_text(encoding="utf-8")
-
-    assert "工程控制层" in route_text
-    assert "工程控制论" in route_text
-    assert "软件工程" in route_text
-    assert "目标-观测-反馈" in route_text
-
-
 def test_ifc_mom_profile_requires_chinese_conversation_and_requirement_docs() -> None:
     workflow_index = (
         PLUGIN_ROOT
