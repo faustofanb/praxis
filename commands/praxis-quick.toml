@@ -1,0 +1,2 @@
+description = "启动 Praxis Next quick task"
+prompt = "使用中文根据用户参数启动一个 quick task。先确认任务适合 quick 路径，然后执行 `praxis task quick-start --id <短ID> --title <中文标题> --json`；随后提示如何用 `praxis task resume` 和 `praxis task quick-check` 继续。不要越级创建 formal requirement。"
