@@ -65,7 +65,7 @@ def test_platform_adapters_call_same_runtime_and_propagate_exit(tmp_path):
     fake.chmod(0o755)
     env = os.environ.copy()
     env["PRAXIS_BIN"] = str(fake)
-    for adapter in ["codex", "claude-code", "omp"]:
+    for adapter in ["codex", "claude-code", "omp", "orca"]:
         proc = subprocess.run(
             [
                 "node",
@@ -78,4 +78,4 @@ def test_platform_adapters_call_same_runtime_and_propagate_exit(tmp_path):
             text=True,
         )
         assert proc.returncode == 7
-    assert capture.read_text().count("workspace") == 3
+    assert capture.read_text().count("workspace") == 4

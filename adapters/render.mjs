@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 
 const check = process.argv.includes("--check");
 const files = new Map([
@@ -19,6 +19,13 @@ const files = new Map([
     name: "Praxis Next",
     summary: "调用已安装 Praxis CLI 的薄平台适配器",
     locale: "zh-CN"
+  }]
+  ,
+  [".orca-plugin/plugin.json", {
+    name: "praxis-next",
+    version: "0.1.0",
+    description: "Praxis Next Orca 薄适配器",
+    commands: ["/praxis-help", "/praxis-check", "/praxis-quick", "/praxis-start"]
   }]
 ]);
 

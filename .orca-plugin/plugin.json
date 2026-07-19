@@ -1,0 +1,11 @@
+{
+  "name": "praxis-next",
+  "version": "0.1.0",
+  "description": "Praxis Next Orca 薄适配器",
+  "commands": [
+    "/praxis-help",
+    "/praxis-check",
+    "/praxis-quick",
+    "/praxis-start"
+  ]
+}
