@@ -1,0 +1,7 @@
+id = "verification"
+version = "0.1.0"
+kind = "reusable"
+requires = ["project-registry"]
+rules = []
+templates = []
+executors = []

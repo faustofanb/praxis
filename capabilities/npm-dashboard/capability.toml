@@ -1,0 +1,7 @@
+id = "npm-dashboard"
+version = "0.1.0"
+kind = "stack"
+requires = ["verification"]
+rules = []
+templates = []
+executors = []

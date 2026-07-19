@@ -1,0 +1,7 @@
+id = "database-investigation"
+version = "0.1.0"
+kind = "domain"
+requires = ["database-change-classification"]
+rules = []
+templates = []
+executors = []

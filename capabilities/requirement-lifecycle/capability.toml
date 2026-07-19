@@ -1,0 +1,7 @@
+id = "requirement-lifecycle"
+version = "0.1.0"
+kind = "reusable"
+requires = ["task-policy"]
+rules = []
+templates = []
+executors = []

@@ -1,0 +1,7 @@
+id = "workspace"
+version = "0.1.0"
+kind = "reusable"
+requires = []
+rules = []
+templates = []
+executors = []

@@ -1,0 +1,7 @@
+id = "tolaria"
+version = "0.1.0"
+kind = "domain"
+requires = ["documentation"]
+rules = []
+templates = []
+executors = []

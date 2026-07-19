@@ -1,0 +1,10 @@
+id = "base"
+version = "0.1.0"
+extends = []
+capabilities = ["workspace", "project-registry", "task-policy", "worktree-lifecycle", "requirement-lifecycle", "context", "verification", "delivery", "documentation", "database-change-classification", "migration-checks"]
+project_types = ["java-maven", "pnpm-web", "docs"]
+[parameters]
+[defaults]
+locale = "zh-CN"
+[constraints]
+workspace_minimal = true

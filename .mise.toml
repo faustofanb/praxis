@@ -1,0 +1,60 @@
+[tools]
+python = "3.12.13"
+uv = "0.11.29"
+node = "22.23.1"
+
+[tasks.setup]
+description = "同步锁定依赖"
+run = "uv sync --extra dev --locked"
+
+[tasks.lock]
+description = "更新 Python 依赖锁"
+run = "uv lock"
+
+[tasks.format]
+description = "格式化代码"
+run = "uv run --extra dev ruff format ."
+
+[tasks.lint]
+description = "运行静态检查"
+run = "uv run --extra dev ruff check ."
+
+[tasks.test-unit]
+description = "运行单元测试"
+run = "uv run --extra dev pytest tests/unit"
+
+[tasks.test-integration]
+description = "运行集成测试"
+run = "uv run --extra dev pytest tests/integration"
+
+[tasks.test]
+description = "运行常规测试"
+run = "uv run --extra dev pytest"
+
+[tasks.build-adapters]
+description = "生成平台适配文件"
+run = "node adapters/render.mjs"
+
+[tasks.check-adapters]
+description = "检查平台适配文件漂移"
+run = "node adapters/render.mjs --check"
+
+[tasks.check-vendor]
+description = "验证第三方 vendored 内容"
+run = "uv run --extra dev praxis doctor --json --check-vendor"
+
+[tasks.verify-package]
+description = "构建 wheel 并在干净环境验证"
+run = "uv run --extra dev python scripts/verify_wheel.py"
+
+[tasks.doctor]
+description = "输出中文环境诊断"
+run = "uv run --extra dev praxis doctor"
+
+[tasks.smoke]
+description = "运行端到端 CLI smoke test"
+run = "uv run --extra dev praxis-smoke"
+
+[tasks.verify]
+description = "完整发布前验证"
+depends = ["lint", "test", "check-adapters", "check-vendor", "smoke", "verify-package"]

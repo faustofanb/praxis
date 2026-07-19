@@ -1,0 +1,12 @@
+id = "aotu"
+version = "0.1.0"
+extends = ["java-vue"]
+capabilities = ["pnpm-uniapp", "npm-dashboard", "database-investigation", "etl-report", "magicapi", "pda-pad", "big-screen", "tolaria", "manufacturing-rules"]
+project_types = ["java-maven", "pnpm-web", "pnpm-uniapp", "npm-dashboard", "docs"]
+[parameters]
+delivery_contract = "strict-confirmation"
+product_profile = "manufacturing"
+[defaults]
+locale = "zh-CN"
+[constraints]
+workspace_minimal = true

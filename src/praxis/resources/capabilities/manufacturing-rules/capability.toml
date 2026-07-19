@@ -1,0 +1,7 @@
+id = "manufacturing-rules"
+version = "0.1.0"
+kind = "domain"
+requires = ["task-policy"]
+rules = []
+templates = []
+executors = []
