@@ -1,6 +1,6 @@
 ---
 name: mom-agent-workflow
-description: Use when coordinating IFC MOM work through role-based agents, optimizing Codex workflow responsibilities, dispatching requirement/execution/quality/delivery agents, or reducing main conversation context load.
+description: Use when coordinating IFC MOM work through role-based agents, optimizing platform-neutral workflow responsibilities, dispatching requirement/execution/quality/delivery roles, or reducing main conversation context load.
 user-invocable: true
 ---
 
@@ -8,7 +8,7 @@ user-invocable: true
 
 ## Core Rule
 
-Use role-based agents as workflow responsibilities, not as new runtime agent types. Codex may still dispatch `explorer` or `worker`; the dispatched prompt must explicitly assign one of these MOM roles and follow that role contract.
+Use role-based agents as workflow responsibilities, not as new runtime agent types. When the current platform offers subagent/task delegation, the dispatched prompt must explicitly assign one of these MOM roles and follow that role contract.
 
 The current direct user conversation is the Main Agent by default. Treat a conversation as a non-main role only when the input explicitly says it is a delegated `role_agent=requirement|execution|quality|delivery` task.
 
@@ -18,28 +18,22 @@ The current direct user conversation is the Main Agent by default. Treat a conve
 - 只有得到用户明确许可后才能派发 Tester/Quality；许可前由 Main Agent 停在编码和代码级检查，并报告未执行项。
 - 浏览器、桌面/电脑控制、管理页面、登录态、外部系统联调和发布不属于默认验证范围。
 
-## Codex-Only Model Routing
+## Runtime-Neutral Capability Routing
 
-The default runtime budget is a Codex-only subscription. Do not plan work around
-Claude, Gemini, Opencode, remote paid reviewers, or any non-Codex model unless
-the user explicitly changes the available subscriptions for this task.
+Treat delegation as a platform capability, not a model-vendor decision. Use the current runtime's available subagent/task mechanism when it exists and the work is genuinely independent; otherwise the Main Agent executes the role contract serially in the current conversation.
 
-Treat "model choice" as a routing and effort decision:
+Treat "agent choice" as a routing and evidence decision:
 
 | Lane | Use For | Avoid For |
 | --- | --- | --- |
-| Main Codex | routing, requirement truth, risk decisions, write-lock ownership, final integration, final answer | bulk source reading, long logs, wide grep-style discovery |
-| Explore / low-effort Codex worker | read-only candidate discovery, same-domain examples, config inventory, long-log root-cause extraction | architectural decisions, code edits, final review conclusions |
-| Execution Codex worker | scoped implementation with explicit write locks and verification command | ambiguous requirements, shared-contract changes before the contract owner exists |
+| Main Agent | routing, requirement truth, risk decisions, write-lock ownership, final integration, final answer | bulk source reading, long logs, wide discovery when a read-only delegation capability is available |
+| Explore / read-only worker | read-only candidate discovery, same-domain examples, config inventory, long-log root-cause extraction | architectural decisions, code edits, final review conclusions |
+| Execution worker | scoped implementation with explicit write locks and verification command | ambiguous requirements, shared-contract changes before the contract owner exists |
 | Tester role | focused behavior tests and critical-path assertions | restating implementation details, broad low-signal coverage |
 | Reviewer / Quality role | independent diff, SQL, migration, permission, concurrency and verification review | trivial typo fixes, deterministic formatting, unchanged files |
 | Tool-only path | dbx schema lookup, LSP references, Code Graph query, grep/glob/read, task verify | asking a model to infer facts available from tools |
 
-Default policy: use tools before models, use one Main Codex coordinator, spawn
-Codex workers only when they reduce missed-context risk or isolate independent
-work, and keep non-Codex lanes disabled. If a task is answer-only, deterministic,
-or below the low-risk threshold, record `subagent: waived-small-change` instead
-of spending a worker.
+Default policy: use tools before agents, use one Main Agent coordinator, spawn workers only when they reduce missed-context risk or isolate independent work, and never hard-code vendor, model, or subscription assumptions. If a task is answer-only, deterministic, below the low-risk threshold, or the runtime has no delegation capability, record `subagent: waived-small-change` or `subagent: unavailable-runtime` instead of fabricating a worker.
 
 ## Cost and Context Guardrails
 

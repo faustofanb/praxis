@@ -7,7 +7,7 @@ description: Use when working in a Praxis workspace, changing Praxis workflow be
 
 ## Purpose
 
-Use this skill as the shared Codex entry discipline for Praxis workspaces. It packages reusable workflow rules, thin templates and helper scripts while leaving project-specific paths, branch names, verification commands and domain rules in the current workspace.
+Use this skill as the shared, agent-neutral entry discipline for Praxis workspaces. It packages reusable workflow rules, thin templates and helper scripts while leaving project-specific paths, branch names, verification commands and domain rules in the current workspace.
 
 ## Language Policy
 
@@ -15,13 +15,13 @@ Use this skill as the shared Codex entry discipline for Praxis workspaces. It pa
 
 ## 快速需求路径
 
-用户要求快速落地时，默认走：项目/业务域定位 -> 恢复同名需求或新建独立需求与工作树 -> 必要的源码或数据调查 -> 修改代码 -> 语法/解析检查 -> 仅回写必须留档的文件。
+用户要求快速落地且变更属于 L0 时，默认走：项目定位 -> `task project -- quick <project> <简短任务名>` -> 隔离 worktree -> 必要调查 -> 最小代码修改 -> 语法/解析检查 -> 回写 `.praxis/tasks/<id>.toml` 状态。
 
-- 不默认使用 TDD、完整测试、全局校验、预检、子代理或详细阶段文档。
-- 代码修改仍必须在项目工作树中完成；先恢复同一需求已有工作树，确实是独立工作才新建。
-- 只有用户输入、调查结论、SQL 草案、实施说明、进度等需要作为交付物保留时，才创建或复用需求目录；不要为纯代码小改机械建目录。
-- 新建前按需求名查找未完成需求；业务聚合只用于检索候选，不能触发自动复用。只有同名需求可自动恢复，不同需求名默认新建独立目录和工作树。
-- 语法/解析失败必须修复；其他验证仅在用户要求或变更风险确实需要时执行，并说明原因。
+- L0 不默认创建需求目录，也不默认使用 TDD、完整测试、全局校验、预检、子代理或阶段文档。
+- 数据库、迁移、权限、报表、共享契约或跨项目变更不属于 L0；改走 `task project -- start <project> <需求名> <用户原始需求>`。
+- 同一项目/任务名的并发创建由 workspace lock 串行化；现存 worktree 必须唯一，出现多个候选时停止，不猜测。
+- 快速任务仍必须在隔离 worktree 中完成，并保留 `.praxis/tasks/<id>.toml`，使模式、项目、策略、worktree 与状态可恢复。
+- 修改后运行 `task project -- quick-check <project> <简短任务名>`；高风险路径会 fail closed，边界通过后按 manifest 输出执行语法/解析或最多 1–2 个聚焦契约检查。
 
 ## 受控开发边界
 
@@ -43,7 +43,8 @@ At the start of an acting turn inside a Praxis workspace:
 6. Read `.praxis/contracts/agents/turn.schema.json` when present.
 7. Read `.praxis/contracts/agents/delivery.schema.json` when doing delivery or closeout work.
 8. Read `.praxis/rules/praxis-workflow.md` when present.
-9. Load extension manifests and rules only when the task matches that extension.
+9. Read each installed extension's `extension.toml` and matching `manifest.toml` only when the task matches that extension.
+10. Route matching IFC MOM/AOTU tasks through manifest-listed global/backend/web/pda/big-screen rules and skills; do not preload unrelated profile assets.
 
 Treat this plugin as shared behavior, not as the source of project facts.
 
@@ -64,6 +65,10 @@ Read only the reference needed for the task:
 - Verification, resume and final response evidence: `references/verification-closeout.md`.
 - Delivery candidate auditing and confirmations: `references/delivery-contract.md`.
 
+## Session Integration
+
+The installed plugin's session-start hook automatically detects an existing packaged profile, compares managed files, and synchronizes drift under a local lock. Do not ask the user to run profile sync on every task. Manual sync is only for first-time initialization, explicit repair, bulk registry distribution, or a workspace with auto-sync disabled in `.praxis/plugin-sync.toml`. The hook never owns workspace-local project paths, branches, databases, requirements or business documents.
+
 ## Helper Scripts
 
 Use scripts from this plugin only for generic Praxis workspace operations:
@@ -76,7 +81,7 @@ python scripts/praxis_sync_profile.py <workspace> ifc-mom --force
 python scripts/praxis_sync_workspaces.py ifc-mom --force
 ```
 
-Prefer the workspace's own `task ...` commands after a workspace already has its Praxis entry files. If a workspace imports RTK instructions, prefix shell commands with `rtk`.
+Prefer the workspace's own `task ...` commands after a workspace already has its Praxis entry files. If RTK is available, use it for shell commands; if not, run the underlying command and report `RTK optimization unavailable` in delivery.
 
 ## Packaged Profiles
 
@@ -84,7 +89,7 @@ Profiles under `profiles/` carry reusable project-family assets such as extensio
 
 - `ifc-mom`: IFC MOM workflow rules, MOM/AOTU skills, command registry, delivery automation, ETL/report, backend, web, PDA and big-screen guidance.
 
-Profile workspace registries such as `profiles/ifc-mom/workspaces.json` are local orchestration lists for syncing shared profile assets to multiple workspaces. They do not replace workspace-local `praxis.projects.toml`.
+Workspace registries such as root `workspaces.local.json` are local orchestration lists for syncing shared profile assets to multiple workspaces. They do not replace workspace-local `praxis.projects.toml` and are not part of the portable package.
 
 Profile sync must not overwrite project registries, branch names, verification commands or requirement records unless the user explicitly asks for that local project change.
 

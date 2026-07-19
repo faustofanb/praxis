@@ -1,0 +1,9 @@
+{
+  "name": "praxis-workflow",
+  "version": "0.3.0",
+  "description": "Portable Praxis workflow package with templates, profile sync, IFC MOM/AOTU assets, RTK guidance, and embedded Ponytail.",
+  "author": {
+    "name": "Local developer"
+  },
+  "hooks": "./hooks/hooks.json"
+}

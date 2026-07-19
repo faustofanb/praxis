@@ -6,7 +6,8 @@
 ._*
 
 # Custom folder icons
-Icon
+Icon
+
 
 # Volume root files
 .DocumentRevisions-V100
@@ -161,3 +162,6 @@ htmlcov/
 
 # pyenv
 # .python-version
+
+### Praxis local orchestration
+workspaces.local.json

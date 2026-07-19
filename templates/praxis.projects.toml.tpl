@@ -1,5 +1,6 @@
 version = 1
 worktreeRoot = ".worktrees"
+developmentBranchPrefix = "praxis/"
 
 [projects.docs]
 label = "Documentation"

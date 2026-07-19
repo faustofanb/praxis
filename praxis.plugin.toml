@@ -1,0 +1,9 @@
+schema_version = 1
+name = "praxis-workflow"
+version = "0.3.0"
+description = "Portable Praxis workflow package with templates, profile sync, IFC MOM/AOTU assets, RTK guidance, and embedded Ponytail."
+author = "Local developer"
+license = "UNLICENSED"
+platforms = ["codex", "claude-code", "omp"]
+ponytail_version = "4.8.4"
+rtk_missing = "fallback"

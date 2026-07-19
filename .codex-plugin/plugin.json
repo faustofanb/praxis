@@ -1,7 +1,7 @@
 {
   "name": "praxis-workflow",
-  "version": "0.2.0+codex.20260718091947",
-  "description": "User-level Praxis workflow package with templates, profile sync, and IFC MOM workflow assets.",
+  "version": "0.3.0",
+  "description": "Portable Praxis workflow package with templates, profile sync, IFC MOM/AOTU assets, RTK guidance, and embedded Ponytail.",
   "author": {
     "name": "Local developer"
   },
@@ -17,7 +17,7 @@
   "interface": {
     "displayName": "Praxis Workflow",
     "shortDescription": "Praxis startup gates, templates, profiles, and sync scripts.",
-    "longDescription": "Praxis Workflow packages shared Codex guidance, reference rules, workspace templates, helper scripts, and syncable project-family profiles. The IFC MOM profile bundles MOM/AOTU workflow rules and skills while project-specific branches, paths, and verification commands stay in the local workspace.",
+    "longDescription": "Praxis Workflow packages portable guidance, workspace templates, helper scripts, optional RTK command policy, embedded Ponytail assets, and syncable IFC MOM/AOTU profile assets while project facts stay in each workspace.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [

@@ -1,6 +1,7 @@
 schema_version = 1
 id = "ifc-mom"
 name = "IFC MOM Extension"
+profile_version = "1.0.0"
 description = "Manufacturing, ETL/report, PDA, big-screen, MagicAPI, database and delivery rules layered on top of generic Praxis."
 adapter = ".praxis/extensions/ifc-mom/project-adapter.toml"
 manifest = ".praxis/extensions/ifc-mom/manifest.toml"

@@ -1,0 +1,27 @@
+{
+  "source": "https://github.com/DietrichGebert/ponytail",
+  "version": "4.8.4",
+  "files": {
+    "commands/ponytail-audit.toml": "4b92393d6fc4cf0fce16e60c7425314b7ba298c19d6a394f32046ae01c84e843",
+    "commands/ponytail-debt.toml": "355dc9e9df1bc349b47a33abb68f1cd28a5f801877e904b17fc6b18d7542ef7f",
+    "commands/ponytail-gain.toml": "802751e4d25187b8ce5205d0738fcf285d29606e42fa6d97613ee9f276589f3d",
+    "commands/ponytail-help.toml": "4d7288eee201b4303d0eb51bab6534ca8536431d828afb6dd338faf6523fe27e",
+    "commands/ponytail-review.toml": "11cf252cdef88c6d301f4b1d0d5b9b9678d44fc0bd88e00cae08e31c9e757280",
+    "commands/ponytail.toml": "7651fd868658dc4ea28075e7ded5571786002d1bc3256fa123219d2e6163b404",
+    "hooks/claude-codex-hooks.json": "dd0837e870a8b81eb45ef4adebfc413a48c6daf84329befd897640f731aa0e39",
+    "hooks/ponytail-activate.js": "1c428c4ee9687c2f4321924109ee92e8f8b06fd6600cb6be9ec5b59633cafab1",
+    "hooks/ponytail-config.js": "0a8daf96cf9ac703dc4cb7b5065253567e513c951d60b8eb94a0fe727514aeca",
+    "hooks/ponytail-instructions.js": "23c050103f28dbe6bad953ae21d98cd06d720a20f33d4716e9de419f947d495e",
+    "hooks/ponytail-mode-tracker.js": "5d1a960ff01b73f651ec0242052a8cf1e064cb88147806bf6e13f92798aca251",
+    "hooks/ponytail-runtime.js": "80e4a13db4eca13f8cfca5237a46c34220c7c1f9ec841297191c0a46e49ca33e",
+    "hooks/ponytail-subagent.js": "7f6bee86702a488d29ef0dcaabf424bbe2aca345a6a642319d43a1fe0276792e",
+    "pi-extension/index.js": "67f12660b2279922adcefd6c112b851830dc1d9b2c9f240b190c849d33e837b3",
+    "skills/ponytail/SKILL.md": "1316a2f3f95741d2300b116fe0c2d81ce4a9568656ed0a62643f54aaf09957f2",
+    "skills/ponytail-audit/SKILL.md": "5560b8e383dbe2ddfddc873a1e2bf2e586e23e0cd7d995537482b2315331f6d1",
+    "skills/ponytail-debt/SKILL.md": "c84fba75f0ca12bfe83f9a78ea02fd125c5dd3f1fbb18124105a489937f284e6",
+    "skills/ponytail-gain/SKILL.md": "24e01d1c9715cb136ba1c4f1e52a95940c0193558b876828e537736480d6408b",
+    "skills/ponytail-help/SKILL.md": "2264d1615117b02b0fd5a69ec84cd2757006471a78e4d6c22eed6d581c1d37a4",
+    "skills/ponytail-review/SKILL.md": "40df33b58fc6ef889b93585733feb9566b76e9586efa7f376785c1e995197ac0",
+    "vendor/ponytail/LICENSE": "fb1bc6909ac3ef82d5c22106e32ef682b0cff66788fa915fb9b53b15c9d2f3ab"
+  }
+}

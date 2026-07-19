@@ -1,0 +1,7 @@
+schema_version = 1
+id = "ifc-mom"
+version = "1.0.0"
+extension_root = ".praxis/extensions/ifc-mom"
+managed_roots = [".praxis/extensions/ifc-mom", "scripts/praxis"]
+obsolete_roots = ["scripts/\u0063odex"]
+project_kinds = ["java-maven", "pnpm-web", "pnpm-uniapp", "npm-dashboard", "docs"]

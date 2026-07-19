@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "praxis-workflow",
+  "description": "Portable Praxis workflow package with templates, profile sync, IFC MOM/AOTU assets, RTK guidance, and embedded Ponytail.",
+  "owner": {
+    "name": "Local developer"
+  },
+  "plugins": [
+    {
+      "name": "praxis-workflow",
+      "description": "Portable Praxis workflow package with templates, profile sync, IFC MOM/AOTU assets, RTK guidance, and embedded Ponytail.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

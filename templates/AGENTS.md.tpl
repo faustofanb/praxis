@@ -23,7 +23,7 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - Use project configuration for branch names and project paths.
 - Do not infer the target repository from the current shell directory. Resolve the project from `praxis.projects.toml`, then check `.codegraph/` only at that project's actual repository root.
 - If the selected project has a usable `.codegraph/`, CodeGraph may accelerate source understanding; otherwise use normal local search. Do not rebuild an index for a quick task.
-- 快速需求默认由主对话完成：先调查、后改代码，只做语法/解析检查；不默认使用 TDD、全局校验、预检、子代理或阶段文档。
+- 快速需求默认由主对话完成：低风险 L0 代码任务先运行 `task project -- quick <project> <简短任务名>` 创建隔离 worktree 与 `.praxis/tasks/<id>.toml`；修改后运行 `task project -- quick-check <project> <简短任务名>`，再执行 manifest 输出的语法/解析或聚焦检查。不默认使用 TDD、全局校验、预检、子代理或阶段文档。数据库、迁移、权限、报表、共享契约或跨项目变更必须升级到 formal 模式。
 
 
 ## Every Turn Contract
@@ -31,7 +31,7 @@ This is the thin Agent entrypoint for {{ workspace_name }}.
 - Treat each user message as a new turn.
 - Reconcile the latest user request, active task state, workspace state and loaded Praxis sources.
 - Before creating anything, search exact-name active requirements. Same-aggregate results are retrieval candidates only; a different requirement name creates an independent directory and worktree.
-- For code-bearing business work, create or restore the project worktree before editing business code. Create or restore a requirement directory only when documentation output must be retained.
+- For code-bearing business work, create or restore the project worktree before editing business code. Use `project quick` for eligible L0 work without retained requirement docs; use `project start` when requirement documents or L1/L2 lifecycle evidence must be retained.
 - For docs-only business work with retained output, create or restore the requirement directory before drafting.
 - Answer-only, read-only investigation and pure workflow maintenance may waive the business worktree, but the final answer must state the waiver reason and residual risk.
 - Delivery or closeout work must identify confirmed commits, excluded commits, candidate audit evidence and required confirmations before preparing destructive or remote commands.

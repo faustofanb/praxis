@@ -5,6 +5,17 @@ name = "ifc-mom-praxis-adapter"
 description = "IFC MOM project adapter routing for the portable Praxis control plane."
 source = "external:praxis-design/00-设计方案/第零章 提示词.md"
 
+[task.quick]
+project = "workspace-selected"
+triggers = ["快速修复", "小改", "低风险", "quick"]
+commands = ["project.quick"]
+database_investigation = false
+verification_level = "L0"
+requires_requirement = false
+requires_worktree = true
+quality_review = false
+gates = ["changed-file-boundary", "syntax"]
+
 [task.praxis-maintenance]
 project = "docs"
 triggers = ["Praxis", "工作流优化", "规则模板", "skill模板", "平台配置", "过程改进"]
@@ -12,10 +23,12 @@ methodology = ["practice.evidence-first", "organization.anti-formalism", "organi
 rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/global/praxis-workflow/07-过程改进与维护.md"]
 skills = [".praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md"]
 commands = ["praxis.check", "praxis.profile", "praxis.template-check", "praxis.template-render", "praxis.command-audit"]
-database_investigation = "not-required"
+database_investigation = false
 verification_level = "L0"
+requires_requirement = false
+quality_review = false
 requires_worktree = false
-gates = ["template-contract-valid", "portable-config-boundary", "codex-specific-config-isolated"]
+gates = ["template-contract-valid", "portable-config-boundary", "platform-specific-config-isolated"]
 
 [task.docs]
 project = "docs"
@@ -24,8 +37,10 @@ methodology = ["practice.evidence-first", "organization.anti-formalism", "organi
 rules = ["AGENTS.md", ".praxis/extensions/ifc-mom/rules/global/00-工作流精简索引.md", ".praxis/extensions/ifc-mom/rules/global/05-需求文档组织规范.md"]
 skills = [".praxis/extensions/ifc-mom/skills/global/mom-doc-organization/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-tolaria-vault/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-praxis-command-contract/SKILL.md", ".praxis/extensions/ifc-mom/skills/global/mom-context-budgeting/SKILL.md"]
 commands = ["docs.init", "docs.iter", "docs.check", "docs.index", "docs.tolaria-check", "docs.tolaria-publish", "praxis.check", "praxis.profile"]
-database_investigation = "not-required"
+database_investigation = false
 verification_level = "L0"
+requires_requirement = true
+quality_review = false
 requires_worktree = false
 gates = ["original-requirement-preserved", "no-placeholder-docs"]
 
@@ -38,8 +53,10 @@ skills = [".praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/
 commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check", "project.migration-check"]
-database_investigation = "risk-tiered"
+database_investigation = false
 verification_level = "L1"
+requires_requirement = true
+quality_review = false
 requires_worktree = true
 gates = ["worktree-or-exemption", "evidence-before-conclusion", "verification-before-completion"]
 
@@ -52,8 +69,10 @@ skills = [".praxis/extensions/ifc-mom/skills/global/mom-code-quality-compliance/
 commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check"]
-database_investigation = "optional-risk"
+database_investigation = false
 verification_level = "L1"
+requires_requirement = true
+quality_review = false
 requires_worktree = true
 gates = ["worktree-or-exemption", "web-local-config-sync", "verification-before-completion"]
 
@@ -66,8 +85,10 @@ skills = [".praxis/extensions/ifc-mom/skills/projects/pda/pda-development/SKILL.
 commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check"]
-database_investigation = "optional-risk"
+database_investigation = false
 verification_level = "L1"
+requires_requirement = true
+quality_review = false
 requires_worktree = true
 gates = ["worktree-or-exemption", "verification-before-completion"]
 
@@ -80,8 +101,10 @@ skills = [".praxis/extensions/ifc-mom/skills/projects/big-screen/big-screen-deve
 commands = ["project.start", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check"]
-database_investigation = "optional-risk"
+database_investigation = false
 verification_level = "L1"
+requires_requirement = true
+quality_review = false
 requires_worktree = true
 gates = ["worktree-or-exemption", "bounded-dashboard-data", "verification-before-completion"]
 
@@ -94,8 +117,10 @@ skills = [".praxis/extensions/ifc-mom/skills/global/mom-lightweight-etl-report/S
 commands = ["docs.init", "docs.tolaria-check", "docs.tolaria-publish", "etl.init", "etl.subject", "etl.tree", "context.brief", "project.preflight", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check"]
-database_investigation = "required"
+database_investigation = true
 verification_level = "L2"
+requires_requirement = true
+quality_review = true
 requires_worktree = true
 gates = ["database-evidence-required", "etl-assets-numbered", "verification-before-completion"]
 
@@ -108,7 +133,9 @@ skills = [".praxis/extensions/ifc-mom/skills/global/mom-migration-script-generat
 commands = ["project.start", "context.brief", "project.preflight", "docs.db-plan", "project.verify", "project.delivery-status"]
 closeout_commands = ["project.readiness"]
 diagnostic_commands = ["context", "project.guard", "project.change-check", "project.migration-check"]
-database_investigation = "required"
+database_investigation = true
 verification_level = "L2"
+requires_requirement = true
+quality_review = true
 requires_worktree = true
 gates = ["database-evidence-required", "migration-intermediate-artifact", "explicit-closeout-confirmation"]

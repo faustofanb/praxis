@@ -177,6 +177,22 @@ risk = "state"
 requires_confirmation = false
 
 [[command]]
+id = "project.quick"
+argv = "task project -- quick <project> <task-name>"
+writes = [".worktrees/<project>/<task>-dev/", ".praxis/tasks/<id>.toml"]
+outputs = ["isolated quick-task worktree", "resumable quick-task state"]
+risk = "state"
+requires_confirmation = false
+
+[[command]]
+id = "project.quick-check"
+argv = "task project -- quick-check <project> <task-name>"
+writes = []
+outputs = ["quick-task changed-file boundary", "required L0 checks"]
+risk = "readonly"
+requires_confirmation = false
+
+[[command]]
 id = "project.preflight"
 argv = "task project -- preflight <project> <requirement>"
 writes = []

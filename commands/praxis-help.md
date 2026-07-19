@@ -1,0 +1,6 @@
+---
+description: 显示 Praxis Workflow 快速参考
+---
+<!-- Generated from commands/praxis-help.toml by scripts/praxis_build_adapters.py; do not edit. -->
+
+使用中文显示当前工作区的 Praxis Workflow 快速参考。包含：启动门禁、何时使用 task project -- start、worktree 规则、docs/Tolaria 命令和安全收口边界。只报告，不修改。

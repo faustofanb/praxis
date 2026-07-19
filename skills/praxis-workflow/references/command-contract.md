@@ -9,6 +9,8 @@ Prefer the workspace's documented `task ...` commands for human-facing workflow 
 For go-task command dispatch, pass subcommands through `--` when required by the local Taskfile:
 
 ```bash
+task project -- quick <project> <short-task-name>
+task project -- quick-check <project> <short-task-name>
 task project -- start <project> <requirement-name> <original-user-request>
 task req -- init <requirement-name> <original-user-request>
 task context -- --brief <project> <requirement-name>

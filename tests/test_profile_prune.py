@@ -20,9 +20,11 @@ def load_sync_profile():
 
 def test_sync_profile_prune_removes_stale_managed_files(tmp_path: Path) -> None:
     stale_extension = tmp_path / ".praxis/extensions/ifc-mom/stale.md"
-    stale_script = tmp_path / "scripts/codex/stale.py"
+    stale_script = tmp_path / "scripts/praxis/stale.py"
+    stale_core = tmp_path / "scripts/praxis/praxis_core/stale.py"
     local_config = tmp_path / "praxis.projects.toml"
-    for path in (stale_extension, stale_script, local_config):
+    obsolete_script = tmp_path / "scripts" / ("co" + "dex") / "obsolete.py"
+    for path in (stale_extension, stale_script, stale_core, obsolete_script, local_config):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("stale\n", encoding="utf-8")
 
@@ -30,4 +32,6 @@ def test_sync_profile_prune_removes_stale_managed_files(tmp_path: Path) -> None:
 
     assert not stale_extension.exists()
     assert not stale_script.exists()
+    assert not stale_core.exists()
+    assert not obsolete_script.exists()
     assert local_config.exists()
