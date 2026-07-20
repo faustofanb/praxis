@@ -44,7 +44,7 @@ class DatabaseService:
 
     def connections(self, project_id: str) -> Result:
         project = WorkspaceService(self.root).project(project_id)
-        external = self.dbx.discover()
+        external = self.discover()
         if not external.ok:
             return external
         return Result(
@@ -57,7 +57,21 @@ class DatabaseService:
         )
 
     def discover(self) -> Result:
-        return self.dbx.discover()
+        result = self.dbx.discover()
+        audit_id = self.store.audit(
+            "database.discovered",
+            result.code,
+            {
+                "count": len(result.data.get("connections", [])),
+                "transport": result.data.get("transport"),
+            },
+        )
+        return Result(
+            result.ok,
+            result.code,
+            data={**result.data, "audit_id": audit_id},
+            diagnostics=result.diagnostics,
+        )
 
     def query(
         self,

@@ -1,6 +1,6 @@
 ---
 name: dbx-database-investigation
-description: 通过外部配置的 DBX 调查数据库结构。适用于表结构、DTO、迁移、报表口径、SQL 错误和执行计划调查。
+description: 通过 DBX CLI（必要时回退 MCP）调查数据库结构。适用于表结构、DTO、迁移、报表口径、SQL 错误和执行计划调查。
 ---
 
 # DBX 数据库调查
@@ -27,11 +27,11 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 
 ## 六、提供能力
 
-优先使用 Schema 上下文，只读取任务涉及的表；必要时执行一个有界 `SELECT`、`WITH … SELECT` 或 `EXPLAIN`。
+优先调用 DBX CLI 的 JSON 契约（`connections`、`schema`、`query`、`context`），只读取任务涉及的表；必要时执行一个有界 `SELECT`、`WITH … SELECT` 或 `EXPLAIN`。仅当连接引用显式指定数据库而 CLI 无法选择该数据库，或 CLI 不可用时，回退 DBX MCP。
 
 ## 七、依赖工具
 
-执行前检查 `skill.toml` 中的全部 `required_tools`。未安装时停止并说明如何配置外部 DBX。
+先检查 `dbx` CLI；CLI 不可用时再检查 `skill.toml` 中的 MCP `required_tools`。两者都不可用时停止并说明如何安装 `@dbx-app/cli` 或配置外部 DBX MCP。
 
 ## 八、业务约束
 

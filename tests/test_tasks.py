@@ -4,6 +4,7 @@ from pathlib import Path
 
 from praxis.knowledge.requirements import RequirementService
 from praxis.result import Result
+from praxis.storage.sqlite import StateStore
 from praxis.tasks.service import TaskService
 from praxis.workspace.service import WorkspaceService
 
@@ -13,6 +14,12 @@ def test_task_start_is_blocked_when_required_graph_is_unavailable(tmp_path: Path
     result = service.start("T-1", "Investigate", "backend", graph_required=True)
     assert not result.ok
     assert service.inspect("T-1") is None
+    gate = StateStore(tmp_path).audit_events()[0]
+    assert (gate["event"], gate["code"], gate["details"]["event"]) == (
+        "gate.run",
+        "STALE",
+        "task_start",
+    )
 
 
 def test_task_progress_updates_state_and_requirement_context(tmp_path: Path) -> None:

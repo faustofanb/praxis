@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from praxis.codegraph.hooks import CodeGraphHooks
+from praxis.gates.engine import GateEvent
 from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
@@ -25,6 +26,24 @@ class TaskService:
             "task-context", project_id, graph_required=graph_required
         )
 
+    def _run_context_gate(self, project_id: str, graph_required: bool) -> Result:
+        result = self.context_gate(project_id, graph_required)
+        audit_id = self.store.audit(
+            "gate.run",
+            result.code,
+            {
+                "event": GateEvent.TASK_START.value,
+                "project_id": project_id,
+                "graph_required": graph_required,
+            },
+        )
+        return Result(
+            result.ok,
+            result.code,
+            data={**result.data, "audit_id": audit_id},
+            diagnostics=result.diagnostics,
+        )
+
     def start(
         self,
         task_id: str,
@@ -34,7 +53,7 @@ class TaskService:
         requirement_id: str | None = None,
         graph_required: bool = False,
     ) -> Result:
-        context = self.context_gate(project_id, graph_required)
+        context = self._run_context_gate(project_id, graph_required)
         if not context.ok:
             return context
         task = {
@@ -44,6 +63,7 @@ class TaskService:
             "requirement_id": requirement_id,
             "graph_required": graph_required,
             "status": "active",
+            "gate_audit_id": context.data["audit_id"],
             "updated_at": datetime.now(UTC).isoformat(),
         }
         self.store.set("task", task_id, task)
@@ -57,7 +77,7 @@ class TaskService:
         task = self.inspect(task_id)
         if task is None:
             return Result(False, "TASK_NOT_FOUND")
-        context = self.context_gate(task["project_id"], task["graph_required"])
+        context = self._run_context_gate(task["project_id"], task["graph_required"])
         if not context.ok:
             return context
         task["status"] = "active"

@@ -109,6 +109,21 @@ class ContextCompiler:
             "omitted": omitted,
             "path": str(path),
         }
+        skills = [
+            item.fragment_id.removeprefix("skill-")
+            for item in selected
+            if item.source_type == "skill"
+        ]
+        data["skill_audit_id"] = self.store.audit(
+            "skill.routed",
+            "OK",
+            {
+                "context_id": context_id,
+                "requirement_id": request.requirement_id,
+                "project_id": request.project_id,
+                "skills": skills,
+            },
+        )
         atomic_write_text(path, self._render(data, selected))
         if current:
             self.store.set("context_previous", current_key, current)

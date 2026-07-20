@@ -5,6 +5,7 @@ from pathlib import Path
 from praxis.context.service import ContextBuildRequest, ContextCompiler, ContextFragment
 from praxis.knowledge.requirements import RequirementService
 from praxis.portraits.service import PortraitService
+from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
 
 
@@ -54,6 +55,10 @@ def test_context_build_keeps_required_facts_and_persists_manifest(tmp_path: Path
     assert all(item["content_hash"].startswith("blake2b:") for item in result.data["sources"])
     assert Path(result.data["path"]).is_file()
     assert compiler.show(result.data["context_id"]).data == result.data
+    routed = next(
+        event for event in StateStore(tmp_path).audit_events() if event["event"] == "skill.routed"
+    )
+    assert routed["details"]["skills"] == ["dbx-database-investigation"]
 
 
 def test_context_build_fails_instead_of_dropping_required_fragments(tmp_path: Path) -> None:

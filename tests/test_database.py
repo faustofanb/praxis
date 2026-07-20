@@ -97,6 +97,16 @@ def test_database_read_requires_registered_connection(tmp_path: Path) -> None:
     assert unknown.code == "DATABASE_CONNECTION_NOT_REGISTERED"
 
 
+def test_database_discovery_is_audited(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = DatabaseService(tmp_path, dbx=FakeDbx()).discover()
+
+    event = StateStore(tmp_path).audit_events()[0]
+    assert result.ok
+    assert (event["event"], event["details"]["count"]) == ("database.discovered", 2)
+
+
 def test_database_read_routes_connection_and_database_from_target_reference(tmp_path: Path) -> None:
     _workspace(tmp_path)
     workspace = WorkspaceService(tmp_path)
