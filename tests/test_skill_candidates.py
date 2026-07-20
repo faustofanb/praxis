@@ -20,15 +20,17 @@ def test_business_skill_requires_review_before_catalog_promotion(tmp_path: Path)
 
     candidate = service.generate("app")
     catalog = tmp_path / "catalog"
-    blocked = service.promote("app-development", catalog, approved=False)
+    candidate_id = "business.demo.app.development"
+    blocked = service.promote(candidate_id, catalog, approved=False)
 
     assert candidate.ok
     assert candidate.data["status"] == "pending-review"
     assert blocked.code == "SKILL_REVIEW_REQUIRED"
     assert not catalog.exists()
 
-    promoted = service.promote("app-development", catalog, approved=True)
-    skill = SkillRegistry(catalog).inspect("app-development")
+    promoted = service.promote(candidate_id, catalog, approved=True)
+    skill = SkillRegistry(catalog).inspect(candidate_id)
     assert promoted.ok
     assert skill.type == "business"
     assert skill.source.startswith("portrait:")
+    assert "## 十二、知识来源" in skill.path.read_text()

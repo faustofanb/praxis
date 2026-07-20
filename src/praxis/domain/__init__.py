@@ -1,0 +1,1 @@
+"""Praxis domain rules."""

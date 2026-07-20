@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_codex_manifest_exposes_single_skill_source_and_mcp() -> None:
     manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text())
     assert manifest["name"] == "praxis-next"
-    assert manifest["version"] == "2.0.0"
+    assert manifest["version"] == "3.0.0"
     assert manifest["skills"] == "./skills/"
     assert (ROOT / "skills" / "dbx-database-investigation").resolve() == (
         ROOT / "assets" / "skills" / "system" / "dbx-database-investigation"

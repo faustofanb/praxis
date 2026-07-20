@@ -6,8 +6,11 @@ from pathlib import Path
 import pytest
 
 from praxis.codegraph.lifecycle import CodeGraphLifecycle
+from praxis.domain.requirement import RequirementStatus
 from praxis.result import Result
+from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
+from praxis.worktree.lifecycle import WorktreeLifecycle
 from praxis.worktree.service import WorktreeService
 
 
@@ -36,7 +39,9 @@ class FakeGraph:
 def test_worktree_service_uses_only_worktrunk_json_commands(tmp_path: Path) -> None:
     calls: list[list[str]] = []
 
-    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    def run(
+        command: list[str], cwd: Path, environment: dict[str, str] | None
+    ) -> subprocess.CompletedProcess[str]:
         calls.append(command)
         outputs = {
             "switch": '{"path": "/tmp/worktree"}',
@@ -50,6 +55,99 @@ def test_worktree_service_uses_only_worktrunk_json_commands(tmp_path: Path) -> N
     assert service.remove("feature/x").ok
     assert service.merge("main").ok
     assert all(command[0] == "wt" and "--format=json" in command for command in calls)
+
+
+def test_worktree_creation_binds_requirement_repository_and_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [
+            Project(
+                "app",
+                "python",
+                "repo",
+                "main",
+                lint_commands=("ruff check .",),
+                typecheck_commands=("ty check",),
+            )
+        ],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("演示需求实现", "原始需求", ["demo"], [])
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+    ):
+        store.transition_requirement(requirement["requirement_id"], status)
+    calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
+
+    def run(
+        command: list[str], cwd: Path, environment: dict[str, str] | None
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append((command, cwd, environment))
+        return subprocess.CompletedProcess(command, 0, '{"path": "created"}', "")
+
+    result = WorktreeService(tmp_path, run=run).create_for_requirement(
+        requirement["requirement_id"], "app", "backend"
+    )
+
+    assert result.ok
+    assert result.data["branch"] == f"req/{requirement['requirement_id']}/02-backend"
+    command, cwd, environment = calls[0]
+    assert cwd == repo
+    assert command[:5] == [
+        "wt",
+        "switch",
+        "--create",
+        result.data["branch"],
+        "--base",
+    ]
+    assert environment and environment["WORKTRUNK_WORKTREE_PATH"].endswith(
+        f"演示需求实现__{requirement['requirement_id']}/02-后端开发/app"
+    )
+    context = {
+        "branch": result.data["branch"],
+        "repo_path": str(repo),
+        "worktree_path": result.data["path"],
+    }
+    lifecycle = WorktreeLifecycle(tmp_path)
+    assert lifecycle.run("worktree-pre-start", context).ok
+
+    import praxis.worktree.lifecycle as lifecycle_module
+
+    quality_calls: list[list[str]] = []
+
+    class SuccessfulGraphHooks:
+        def __init__(self, root: Path):
+            pass
+
+        def run(self, *args, **kwargs) -> Result:
+            return Result(True)
+
+    class SuccessfulProcessRunner:
+        def __init__(self, cwd: Path, **kwargs):
+            pass
+
+        def run(self, command: list[str], *, machine_output: bool) -> Result:
+            quality_calls.append(command)
+            return Result(True, data={"command": command, "stdout": ""})
+
+    monkeypatch.setattr(lifecycle_module, "CodeGraphHooks", SuccessfulGraphHooks)
+    monkeypatch.setattr(lifecycle_module, "ProcessRunner", SuccessfulProcessRunner)
+    assert lifecycle.run("pre-commit", context).ok
+    assert quality_calls == [
+        ["git", "diff", "--name-only", "HEAD"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        ["ruff", "check", "."],
+        ["ty", "check"],
+    ]
 
 
 def test_codegraph_lifecycle_covers_worktrunk_and_verification_events() -> None:
@@ -105,10 +203,15 @@ def test_worktrunk_hook_installation_wires_codegraph_lifecycle(tmp_path: Path) -
 
     assert result.ok
     config = (repo / ".config" / "wt.toml").read_text()
-    assert "post-start" in config and "--initialize" in config
-    assert "pre-merge" in config and "post-merge" in config and "post-remove" in config
-    assert "{{ worktree_path }}" in config
-    assert "{{ cwd }}" in config
+    for event in (
+        "worktree-pre-start",
+        "worktree-post-start",
+        "pre-commit",
+        "pre-merge",
+        "post-merge",
+        "post-remove",
+    ):
+        assert f"lifecycle {event} --stdin-json" in config
 
 
 @pytest.mark.parametrize("event", ["task_start", "change_preflight", "verify", "delivery"])

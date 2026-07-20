@@ -1,0 +1,136 @@
+from __future__ import annotations
+
+import shlex
+from pathlib import Path
+from typing import Any
+
+from praxis.codegraph.hooks import CodeGraphHooks
+from praxis.gates.policies import allowed_paths_gate, secret_gate
+from praxis.integrations.process import ProcessRunner
+from praxis.result import Result
+from praxis.storage.sqlite import StateStore
+from praxis.workspace.service import Project, WorkspaceService
+
+
+class WorktreeLifecycle:
+    def __init__(self, root: Path | str):
+        self.root = Path(root)
+        self.store = StateStore(self.root)
+
+    def run(self, event: str, context: dict[str, Any]) -> Result:
+        branch = str(context.get("branch", ""))
+        binding = self.store.get("worktree", branch)
+        if not binding:
+            return Result(False, "WORKTREE_BINDING_NOT_FOUND", data={"branch": branch})
+        if event == "worktree-pre-start":
+            return self._pre_start(binding, context)
+
+        project_id = binding["repository_id"]
+        project = WorkspaceService(self.root).project(project_id)
+        worktree = context.get("worktree_path")
+        if not worktree:
+            return Result(False, "LIFECYCLE_CONTEXT_INVALID", data={"field": "worktree_path"})
+        graph_event = {
+            "worktree-post-start": "post-start",
+            "pre-commit": "change-preflight",
+            "pre-merge": "pre-merge",
+            "post-merge": "post-merge",
+            "post-remove": "post-remove",
+        }.get(event)
+        if not graph_event:
+            return Result(False, "LIFECYCLE_EVENT_NOT_FOUND", data={"event": event})
+        result = CodeGraphHooks(self.root).run(
+            graph_event,
+            project_id,
+            worktree=worktree,
+            initialize=event == "worktree-post-start",
+        )
+        if result.ok and event == "pre-commit":
+            result = self._change_gates(binding, Path(str(worktree)))
+        if result.ok and event == "pre-commit":
+            result = self._run_commands(project, Path(str(worktree)), pre_merge=False)
+        if result.ok and event == "pre-merge":
+            result = self._run_commands(project, Path(str(worktree)), pre_merge=True)
+        if result.ok and event == "post-remove":
+            self.store.delete("worktree", branch)
+        return result
+
+    def _pre_start(self, binding: dict[str, Any], context: dict[str, Any]) -> Result:
+        requirement = self.store.requirement(binding["requirement_id"])
+        if not requirement or requirement["status"] not in {"ready", "in_progress"}:
+            return Result(False, "REQUIREMENT_NOT_READY")
+        project = WorkspaceService(self.root).project(binding["repository_id"])
+        expected_repo = (self.root / project.path).resolve()
+        expected_worktree = Path(binding["path"]).resolve()
+        actual_repo = Path(str(context.get("repo_path", ""))).resolve()
+        actual_worktree = Path(str(context.get("worktree_path", ""))).resolve()
+        if actual_repo != expected_repo or actual_worktree != expected_worktree:
+            return Result(
+                False,
+                "WORKTREE_BINDING_MISMATCH",
+                data={
+                    "expected_repo": str(expected_repo),
+                    "actual_repo": str(actual_repo),
+                    "expected_worktree": str(expected_worktree),
+                    "actual_worktree": str(actual_worktree),
+                },
+            )
+        return Result(True, data=binding)
+
+    def _run_commands(self, project: Project, worktree: Path, *, pre_merge: bool) -> Result:
+        lint = project.lint_commands
+        typecheck = project.typecheck_commands
+        tests = project.test_commands
+        if not any((lint, typecheck, tests)):
+            lint, typecheck, tests = self._detected_commands(worktree)
+        commands = tests if pre_merge else (*lint, *typecheck)
+        results = []
+        for command in commands:
+            result = ProcessRunner(worktree, audit_root=self.root).run(
+                shlex.split(command), machine_output=True
+            )
+            results.append(result.data)
+            if not result.ok:
+                code = "TEST_GATE_FAILED" if pre_merge else "CODE_QUALITY_GATE_FAILED"
+                self.store.audit("gate.failed", code, result.data)
+                return Result(False, code, data={"results": results})
+        return Result(True, data={"results": results})
+
+    def _change_gates(self, binding: dict[str, Any], worktree: Path) -> Result:
+        runner = ProcessRunner(worktree, audit_root=self.root)
+        changed: set[str] = set()
+        for command in (
+            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "ls-files", "--others", "--exclude-standard"],
+        ):
+            result = runner.run(command, machine_output=True)
+            if not result.ok:
+                return Result(False, "CHANGED_FILES_UNAVAILABLE", data=result.data)
+            changed.update(result.data["stdout"].splitlines())
+        paths = sorted(changed)
+        result = allowed_paths_gate(
+            paths,
+            binding.get("allowed_paths", ()),
+            binding.get("forbidden_paths", ()),
+        )
+        if not result.ok:
+            return result
+        root = worktree.resolve()
+        files = {}
+        for name in paths:
+            path = (root / name).resolve()
+            if not path.is_relative_to(root):
+                return Result(False, "GATE_PATH_OUT_OF_SCOPE", data={"blocked_paths": [name]})
+            if path.is_file():
+                files[name] = path.read_text(encoding="utf-8", errors="ignore")
+        return secret_gate(files)
+
+    @staticmethod
+    def _detected_commands(worktree: Path) -> tuple[tuple[str, ...], ...]:
+        if (worktree / "pyproject.toml").exists():
+            return (("uv run ruff check .",), ("uv run ty check",), ("uv run pytest",))
+        if (worktree / "pom.xml").exists():
+            return ((), (), ("mvn test",))
+        if (worktree / "package.json").exists():
+            return ((), (), ("npm test",))
+        return ((), (), ())

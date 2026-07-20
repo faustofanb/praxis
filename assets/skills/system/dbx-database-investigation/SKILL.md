@@ -1,16 +1,54 @@
 ---
 name: dbx-database-investigation
-description: Investigate database structures through an externally configured DBX MCP using read-only tools. Use for schema investigation, API/DTO comparison, Flyway or SQL migration design, report semantics, SQL errors, execution plans, or an explicitly requested business portrait supplement.
+description: 通过外部配置的 DBX 调查数据库结构。适用于表结构、DTO、迁移、报表口径、SQL 错误和执行计划调查。
 ---
 
-# DBX database investigation
+# DBX 数据库调查
 
-1. Check that every `required_tools` entry from `skill.toml` is available. If not, stop and tell the user to install and configure the external DBX MCP.
-2. Call `dbx_list_connections`, then match a connection using the selected workspace project facts and portrait. Praxis never configures DBX.
-3. If no connection matches, stop with: `未找到匹配 connection；请先在 DBX 中配置目标业务系统连接。`
-4. Display the selected connection and environment. Ask for confirmation again before reading a production connection.
-5. Prefer `dbx_get_schema_context`; call `dbx_list_tables` or `dbx_describe_table` only for tables involved in the task.
-6. If data is necessary, execute one bounded `SELECT`, `WITH ... SELECT`, or `EXPLAIN`. Never broaden the query beyond the stated investigation.
-7. Record conclusions in requirement `analysis.md`; save reusable query text under requirement `artifacts/`.
+## 一、技能用途
 
-禁止调用 `dbx_add_connection`、`dbx_remove_connection`，禁止写 SQL、危险 SQL、自动连接管理、secret 持久化或绕过用户确认。DBX 的工具可用性和 connection 配置在 Skill 执行时检查，不由 Praxis router 猜测。
+在不保存数据库凭据的前提下调查连接、Schema、表结构和有界只读数据。
+
+## 二、适用业务域
+
+适用于当前需求已经登记的业务系统和业务域。
+
+## 三、适用场景
+
+Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执行计划。
+
+## 四、不适用场景
+
+连接管理、生产写入、部署或与当前需求无关的全库浏览。
+
+## 五、所需输入
+
+需求编号、目标仓库、已登记的 `dbx://` 连接引用和调查目的。
+
+## 六、提供能力
+
+优先使用 Schema 上下文，只读取任务涉及的表；必要时执行一个有界 `SELECT`、`WITH … SELECT` 或 `EXPLAIN`。
+
+## 七、依赖工具
+
+执行前检查 `skill.toml` 中的全部 `required_tools`。未安装时停止并说明如何配置外部 DBX。
+
+## 八、业务约束
+
+先通过系统画像匹配连接。未找到时返回：`未找到匹配 connection；请先在 DBX 中配置目标业务系统连接。`
+
+## 九、数据约束
+
+不扩大查询范围，不输出凭据，不把秘密写入需求文档、画像、技能或日志。
+
+## 十、风险
+
+禁止调用 `dbx_add_connection`、`dbx_remove_connection`；禁止写 SQL、危险 SQL、自动连接管理和绕过 Praxis 门禁。
+
+## 十一、验证方法
+
+记录连接引用、Schema 证据、查询边界和调查结论；可复用 SQL 必须登记为需求产出物。
+
+## 十二、知识来源
+
+DBX 工具可用性和连接配置在执行时核对，Praxis 路由器不猜测外部状态。

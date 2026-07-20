@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from praxis.codegraph.hooks import CodeGraphHooks
+from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
@@ -70,8 +71,13 @@ class TaskService:
             return Result(False, "TASK_NOT_FOUND")
         requirement_id = task.get("requirement_id")
         if requirement_id:
-            vault = WorkspaceService(self.root).load()["vault"]
-            path = self.root / vault / "requirements" / requirement_id / "progress.md"
+            requirement = self.store.requirement(requirement_id)
+            if not requirement:
+                return Result(False, "REQUIREMENT_NOT_FOUND")
+            vault = WorkspaceService(self.root).load()["knowledge_root"]
+            path = RequirementPathPolicy(self.root / vault).requirement_path(
+                requirement_id, requirement["short_name"]
+            ) / "执行进度.md"
             timestamp = datetime.now(UTC).isoformat()
             with path.open("a", encoding="utf-8") as progress:
                 progress.write(f"\n- {timestamp}: {message}\n")

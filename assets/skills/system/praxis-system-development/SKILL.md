@@ -1,22 +1,62 @@
 ---
 name: praxis-system-development
-description: Route a system-development task to the smallest installed method Skill. Use for brainstorming, code review, context degradation or optimization, file/skill search, prompt design, subagent execution, systematic debugging, test writing, or implementation minimalism.
+description: 将系统开发任务路由到最小的已安装方法技能，适用于设计、审查、上下文、检索、调试和测试。
 ---
 
-# Praxis system development router
+# Praxis 系统开发路由
 
-Inspect the task intent and load only the matching installed Skill:
+## 一、技能用途
 
-- design uncertainty → Brainstorming
-- correctness or maintainability review → Code Quality Review
-- lost context or conflicting context → Context Degradation
-- context budget or excessive instructions → Context Optimization
-- repository lookup → File Search
-- missing capability discovery → Find Skills
-- implementation scope control → Karpathy Guidelines
-- prompt construction → Prompt Engineering
-- independently executable planned work → Subagent Driven Development
-- defects or failing tests → Systematic Debugging
-- new or changed tests → Testing Writing Guidelines
+根据当前任务只加载一个或少数真正匹配的方法技能。
 
-Check that the selected Skill is available in the current Agent host. If absent, report the missing Skill instead of reconstructing its full instructions. Never load every delegate by default.
+## 二、适用业务域
+
+适用于所有已登记业务系统的工程任务。
+
+## 三、适用场景
+
+- 设计不确定：头脑风暴
+- 正确性或可维护性审查：代码质量审查
+- 上下文丢失或冲突：上下文退化检测
+- 预算或指令过多：上下文优化
+- 仓库定位：文件检索
+- 缺少能力：技能发现
+- 实现范围控制：Karpathy 开发准则
+- 缺陷或失败测试：系统化调试
+- 新增或修改测试：测试编写规范
+
+## 四、不适用场景
+
+不用于承载业务知识、SQL 安全规则或发布策略。
+
+## 五、所需输入
+
+任务意图、阶段、Agent 角色、风险和上下文预算。
+
+## 六、提供能力
+
+返回最小匹配技能集合及来源、版本、许可证、风险和内容哈希。
+
+## 七、依赖工具
+
+所选技能必须真实安装；缺失时报告，不重写其完整说明。
+
+## 八、业务约束
+
+业务事实只来自需求、画像和已审核业务技能。
+
+## 九、数据约束
+
+不默认加载全部技能或全部历史上下文。
+
+## 十、风险
+
+Markdown 不直接执行行为，权限和门禁仍由 Praxis Python 服务裁决。
+
+## 十一、验证方法
+
+检查路由分数、Token 预算和最终来源清单。
+
+## 十二、知识来源
+
+来源为 `skill.toml` 中登记的已安装方法技能。

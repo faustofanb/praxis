@@ -42,8 +42,8 @@ class FakeWorktree:
     def __init__(self, root):
         pass
 
-    def create(self, branch: str, base: str) -> Result:
-        return Result(True, data={"branch": branch, "base": base})
+    def create_for_requirement(self, requirement_id: str, repository_id: str, stage: str) -> Result:
+        return Result(True, data={"requirement_id": requirement_id, "stage": stage})
 
     def list(self) -> Result:
         return Result(True, data={"items": []})
@@ -51,7 +51,7 @@ class FakeWorktree:
     def remove(self, branch: str) -> Result:
         return Result(True, data={"removed": branch})
 
-    def merge(self, target: str) -> Result:
+    def merge(self, target: str, **kwargs) -> Result:
         return Result(True, data={"target": target})
 
     def install_hooks(self, project_id: str) -> Result:
@@ -75,11 +75,31 @@ class FakeTask:
         return {"id": task_id} if task_id != "missing" else None
 
 
+class FakeDatabase:
+    def __init__(self, root):
+        pass
+
+    def connections(self, project_id: str) -> Result:
+        return Result(True, data={"project_id": project_id})
+
+    def query(self, project_id: str, connection_ref: str, sql: str, **kwargs) -> Result:
+        return Result(
+            True,
+            data={
+                "project_id": project_id,
+                "connection_ref": connection_ref,
+                "sql": sql,
+                **kwargs,
+            },
+        )
+
+
 @pytest.fixture
 def application(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PraxisApplication:
     monkeypatch.setattr(application_module, "CodeGraphService", FakeGraph)
     monkeypatch.setattr(application_module, "WorktreeService", FakeWorktree)
     monkeypatch.setattr(application_module, "TaskService", FakeTask)
+    monkeypatch.setattr(application_module, "DatabaseService", FakeDatabase)
     return PraxisApplication(tmp_path)
 
 
@@ -89,23 +109,26 @@ def test_workspace_requirement_and_skill_dispatch(application: PraxisApplication
         "workspace.init",
         {
             "workspace_id": "demo",
-            "product_family": "family",
-            "projects": [{"id": "app", "kind": "python", "path": "app", "default_branch": "main"}],
+            "name": "演示开发工作空间",
         },
     )
     assert initialized.ok
-    assert application.execute("workspace.inspect").data["schema_version"] == 2
+    assert application.execute("workspace.inspect").data["schema_version"] == 3
+    assert application.execute(
+        "system.add",
+        {"system_id": "demo-system", "name": "演示系统", "domains": ["demo"]},
+    ).ok
     assert application.execute("workspace.bootstrap").ok
     assert application.execute(
-        "requirement.create",
+        "requirement.new",
         {
-            "requirement_id": "REQ-1",
-            "title": "Example",
-            "request": "Original",
-            "domain_tags": ["demo"],
+            "short_name": "演示需求实现",
+            "request": "原始需求",
+            "systems": ["demo-system"],
+            "domains": ["demo"],
         },
     ).ok
-    assert (root / "knowledge" / "requirements" / "REQ-1").exists()
+    assert list((root / "知识库" / "需求").rglob("原始需求.md"))
     assert application.execute("skill.inspect", {"id": "dbx-database-investigation"}).ok
     uri = "praxis://skills/system/dbx-database-investigation"
     assert application.execute("skill.resource", {"uri": uri}).ok
@@ -131,7 +154,10 @@ def test_codegraph_dispatch(application, operation, arguments, key) -> None:
 @pytest.mark.parametrize(
     ("operation", "arguments"),
     [
-        ("worktree.create", {"branch": "feature", "base": "main"}),
+        (
+            "worktree.create",
+            {"requirement_id": "REQ-20260720-001", "repository_id": "app", "stage": "backend"},
+        ),
         ("worktree.list", {}),
         ("worktree.remove", {"branch": "feature"}),
         ("worktree.merge", {"target": "main"}),
@@ -140,6 +166,15 @@ def test_codegraph_dispatch(application, operation, arguments, key) -> None:
         ("task.resume", {"task_id": "T"}),
         ("task.progress", {"task_id": "T", "message": "done"}),
         ("task.inspect", {"task_id": "T"}),
+        ("database.connections", {"project_id": "app"}),
+        (
+            "database.query",
+            {
+                "project_id": "app",
+                "connection_ref": "dbx://dev",
+                "sql": "select 1",
+            },
+        ),
     ],
 )
 def test_worktree_and_task_dispatch(application, operation, arguments) -> None:

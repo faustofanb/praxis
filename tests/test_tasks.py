@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from praxis.knowledge.requirements import RequirementService
 from praxis.result import Result
 from praxis.tasks.service import TaskService
 from praxis.workspace.service import WorkspaceService
@@ -16,16 +17,16 @@ def test_task_start_is_blocked_when_required_graph_is_unavailable(tmp_path: Path
 
 def test_task_progress_updates_state_and_requirement_context(tmp_path: Path) -> None:
     WorkspaceService(tmp_path).init("demo", "family", "knowledge", [])
-    requirement = tmp_path / "knowledge" / "requirements" / "REQ-1"
-    requirement.mkdir(parents=True)
-    (requirement / "progress.md").write_text("# Progress\n")
+    requirement = RequirementService(tmp_path).create("任务进度记录", "原始需求", [], [])
+    requirement_id = requirement.data["requirement_id"]
+    requirement_path = Path(requirement.data["path"])
     service = TaskService(tmp_path, context_gate=lambda project, required: Result(True))
 
-    assert service.start("T-1", "Implement", "backend", requirement_id="REQ-1").ok
+    assert service.start("T-1", "Implement", "backend", requirement_id=requirement_id).ok
     assert service.progress("T-1", "Gate implementation complete").ok
     task = service.inspect("T-1")
     assert task is not None and task["status"] == "active"
-    assert "Gate implementation complete" in (requirement / "progress.md").read_text()
+    assert "Gate implementation complete" in (requirement_path / "执行进度.md").read_text()
 
 
 def test_task_resume_rechecks_context_freshness(tmp_path: Path) -> None:

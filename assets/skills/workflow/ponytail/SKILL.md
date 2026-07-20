@@ -1,14 +1,54 @@
 ---
 name: ponytail
-description: Prefer the smallest correct implementation using YAGNI, standard-library and native-platform features before dependencies or abstractions. Use for implementation, refactoring, simplification, or reviews that ask about over-engineering, unnecessary code, dependencies, or speculative flexibility.
+description: 优先使用满足需求的最小正确实现，先复用现有代码、标准库和平台原生能力，再考虑依赖或抽象。
 ---
 
-# Ponytail
+# Ponytail 最小实现
 
-1. Confirm the requested behavior and the smallest observable success criteria.
-2. Delete unnecessary work before adding code. Prefer existing code, the standard library, and native platform features.
-3. Avoid speculative layers, configuration, dependencies, and generalization. State any shortcut that creates real follow-up debt.
-4. Preserve correctness, security, user data, and required verification; minimal does not mean incomplete.
-5. End with the smallest focused test or check that proves the behavior.
+## 一、技能用途
 
-Praxis may emit `PONYTAIL_DIFF_GROWTH` as a non-blocking prompt to reconsider a growing diff. Treat it as review guidance, never as a delivery gate.
+控制实现、重构和审查中的不必要复杂度。
+
+## 二、适用业务域
+
+适用于所有代码开发任务。
+
+## 三、适用场景
+
+新增功能、修复、重构、简化和过度设计审查。
+
+## 四、不适用场景
+
+不用于削弱安全、数据完整性、可访问性或明确验收要求。
+
+## 五、所需输入
+
+可观察行为、最小成功标准和必须通过的验证。
+
+## 六、提供能力
+
+优先删除无用工作，复用现有代码、标准库和平台原生能力。
+
+## 七、依赖工具
+
+不要求额外依赖。
+
+## 八、业务约束
+
+不得用“最小”为理由遗漏需求或业务规则。
+
+## 九、数据约束
+
+保留用户数据和现有兼容边界。
+
+## 十、风险
+
+真实的延期债务必须明确记录，不能伪装成已完成。
+
+## 十一、验证方法
+
+以最小、聚焦的测试或检查证明行为。
+
+## 十二、知识来源
+
+Praxis 可发出非阻断的 `PONYTAIL_DIFF_GROWTH`，只作为复杂度复核提示。

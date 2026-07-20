@@ -46,7 +46,7 @@ export function runPraxis(arguments_, options = {}) {
 
 export default function praxisExtension(pi) {
   pi.registerCommand("praxis", {
-    description: "Run the Praxis V2 CLI (usage: /praxis <command> [arguments])",
+    description: "Run the Praxis V3 CLI (usage: /praxis <command> [arguments])",
     handler: async (value, context) => {
       let arguments_;
       try {

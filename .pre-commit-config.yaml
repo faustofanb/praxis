@@ -11,3 +11,8 @@ repos:
         entry: uv run ty check
         language: system
         pass_filenames: false
+      - id: praxis-commit-message
+        name: Praxis提交信息门禁
+        entry: uv run praxis gate commit-message --message-file
+        language: system
+        stages: [commit-msg]

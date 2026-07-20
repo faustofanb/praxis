@@ -7,6 +7,19 @@ from praxis.result import Result
 
 
 class GateEvent(StrEnum):
+    REQUIREMENT_CAPTURED = "requirement_captured"
+    REQUIREMENT_READY = "requirement_ready"
+    WORKTREE_PRE_START = "worktree_pre_start"
+    WORKTREE_POST_START = "worktree_post_start"
+    BEFORE_AGENT = "before_agent"
+    BEFORE_TOOL = "before_tool"
+    AFTER_EDIT = "after_edit"
+    COMMIT_MESSAGE = "commit_message"
+    PRE_COMMIT = "pre_commit"
+    PRE_MERGE = "pre_merge"
+    PRE_RELEASE = "pre_release"
+    DATABASE_WRITE = "database_write"
+    DEPLOYMENT = "deployment"
     TASK_START = "task_start"
     CHANGE_PREFLIGHT = "change_preflight"
     VERIFY = "verify"

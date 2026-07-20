@@ -4,6 +4,7 @@ import json
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from praxis.result import Result
 
@@ -35,4 +36,16 @@ class WitrService:
             data = json.loads(process.stdout)
         except json.JSONDecodeError:
             data = {"output": process.stdout}
-        return Result(True, data=data)
+        return Result(True, data=redact_runtime_data(data))
+
+
+def redact_runtime_data(value: Any, key: str = "") -> Any:
+    if key.lower() in {"password", "secret", "token", "api_key", "access_token"}:
+        return "[已脱敏]"
+    if isinstance(value, dict):
+        return {
+            item_key: redact_runtime_data(item, item_key) for item_key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_runtime_data(item) for item in value]
+    return value

@@ -12,7 +12,7 @@ test("Pi extension registers the Praxis command", () => {
   });
 
   assert.deepEqual([...commands.keys()], ["praxis"]);
-  assert.match(commands.get("praxis").description, /Praxis V2 CLI/);
+  assert.match(commands.get("praxis").description, /Praxis V3 CLI/);
 });
 
 test("Pi extension parses quoted CLI arguments without a shell", () => {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from praxis.skills.registry import SkillRegistry
+from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 
 
 def test_dbx_skill_is_routed_only_for_database_intent() -> None:
@@ -49,3 +49,55 @@ def test_skill_hash_changes_with_content(tmp_path: Path) -> None:
     (root / "SKILL.md").write_text("second")
     second = SkillRegistry(tmp_path).inspect("example").content_hash
     assert first != second
+
+
+def test_structured_skill_routing_scores_business_facts_and_denied_risk(tmp_path: Path) -> None:
+    root = tmp_path / "business" / "reporting"
+    root.mkdir(parents=True)
+    (root / "skill.toml").write_text(
+        'id = "reporting"\ntype = "business"\nversion = "1.0.0"\n'
+        'license = "Proprietary"\nrisk = "none"\ncontext_budget = 100\n'
+        'required_tools = []\nsource = "verified-doc"\nsource_version = "1"\n'
+        'triggers = ["报表"]\nsystems = ["ifc-mom"]\nbusiness_domains = ["production"]\n'
+        'repository_roles = ["java-backend"]\nstages = ["backend"]\n'
+        'artifact_types = ["api"]\ndenied_risks = ["deployment"]\n'
+    )
+    (root / "SKILL.md").write_text("# 生产报表开发\n")
+    registry = SkillRegistry(tmp_path)
+
+    matched = registry.route_context(
+        SkillRoutingContext(
+            system_id="ifc-mom",
+            business_domains=("production",),
+            repository_role="java-backend",
+            stage="backend",
+            artifact_types=("api",),
+            risks=(),
+            token_budget=200,
+        )
+    )
+    denied = registry.route_context(
+        SkillRoutingContext(system_id="ifc-mom", risks=("deployment",), token_budget=200)
+    )
+
+    assert [skill.id for skill in matched] == ["reporting"]
+    assert denied == []
+
+
+def test_skill_registry_reports_normalized_duplicates_without_deleting(tmp_path: Path) -> None:
+    for skill_id in ("legacy-one", "legacy-two"):
+        root = tmp_path / "business" / skill_id
+        root.mkdir(parents=True)
+        (root / "skill.toml").write_text(
+            f'id = "{skill_id}"\ntype = "business"\nversion = "1.0.0"\n'
+            'license = "Proprietary"\nrisk = "none"\ncontext_budget = 100\n'
+            'required_tools = []\nsource = "legacy"\nsource_version = "1"\ntriggers = []\n'
+        )
+        (root / "SKILL.md").write_text("---\nname: legacy\n---\n\n# 生产报表\n\n核对业务口径。\n")
+
+    registry = SkillRegistry(tmp_path)
+
+    assert registry.verify().ok
+    assert registry.duplicates().data["groups"] == [["legacy-one", "legacy-two"]]
+    assert len(registry.all()) == 2
+    assert [skill.id for skill in registry.search("生产报表")] == ["legacy-one", "legacy-two"]

@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from enum import StrEnum
+
+
+class RequirementStatus(StrEnum):
+    CAPTURED = "captured"
+    INVESTIGATING = "investigating"
+    ANALYZED = "analyzed"
+    PLANNED = "planned"
+    READY = "ready"
+    IN_PROGRESS = "in_progress"
+    VERIFYING = "verifying"
+    BLOCKED = "blocked"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    ARCHIVED = "archived"
+
+
+_NEXT_STATUS: dict[RequirementStatus, frozenset[RequirementStatus]] = {
+    RequirementStatus.CAPTURED: frozenset({RequirementStatus.INVESTIGATING}),
+    RequirementStatus.INVESTIGATING: frozenset({RequirementStatus.ANALYZED}),
+    RequirementStatus.ANALYZED: frozenset({RequirementStatus.PLANNED}),
+    RequirementStatus.PLANNED: frozenset({RequirementStatus.READY}),
+    RequirementStatus.READY: frozenset({RequirementStatus.IN_PROGRESS}),
+    RequirementStatus.IN_PROGRESS: frozenset(
+        {RequirementStatus.VERIFYING, RequirementStatus.BLOCKED}
+    ),
+    RequirementStatus.VERIFYING: frozenset(
+        {RequirementStatus.COMPLETED, RequirementStatus.BLOCKED}
+    ),
+    RequirementStatus.BLOCKED: frozenset({RequirementStatus.IN_PROGRESS}),
+    RequirementStatus.COMPLETED: frozenset({RequirementStatus.ARCHIVED}),
+    RequirementStatus.CANCELLED: frozenset(),
+    RequirementStatus.ARCHIVED: frozenset(),
+}
+
+
+@dataclass(slots=True, frozen=True)
+class Requirement:
+    requirement_id: str
+    short_name: str
+    status: RequirementStatus = RequirementStatus.CAPTURED
+
+    def transition(self, target: RequirementStatus) -> Requirement:
+        if target == RequirementStatus.CANCELLED and self.status not in {
+            RequirementStatus.COMPLETED,
+            RequirementStatus.CANCELLED,
+            RequirementStatus.ARCHIVED,
+        }:
+            return replace(self, status=target)
+        if target not in _NEXT_STATUS[self.status]:
+            raise ValueError(f"非法需求状态转换：{self.status.value} -> {target.value}")
+        return replace(self, status=target)

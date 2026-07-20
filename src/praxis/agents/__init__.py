@@ -1,0 +1,1 @@
+"""Thin Agent session adapters."""
