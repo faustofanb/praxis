@@ -82,6 +82,9 @@ class FakeDatabase:
     def connections(self, project_id: str) -> Result:
         return Result(True, data={"project_id": project_id})
 
+    def discover(self) -> Result:
+        return Result(True, data={"connections": []})
+
     def query(self, project_id: str, connection_ref: str, sql: str, **kwargs) -> Result:
         return Result(
             True,

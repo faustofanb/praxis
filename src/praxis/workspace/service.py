@@ -5,13 +5,13 @@ import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from praxis.documents.atomic_writer import atomic_write_text
 from praxis.result import Result
 
 _WORKSPACE_ID = re.compile(r"^[a-z][a-z0-9-]{2,31}$")
 _STABLE_ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
-_DBX_REFERENCE = re.compile(r"^dbx://[A-Za-z0-9._-]+$")
 
 
 @dataclass(frozen=True)
@@ -177,12 +177,48 @@ class WorkspaceService:
     def inspect(self) -> Result:
         return Result(True, data=self.load())
 
+    def set_database_connections(
+        self,
+        project_id: str,
+        references: tuple[str, ...] | list[str],
+        production: tuple[str, ...] | list[str] = (),
+    ) -> Result:
+        payload = self.load(raw=True)
+        project = next(
+            (
+                repository
+                for system in payload.get("systems", [])
+                for repository in system.get("repositories", [])
+                if repository["id"] == project_id
+            ),
+            None,
+        )
+        if project is None:
+            raise KeyError(project_id)
+        candidate = Project(
+            id=project["id"],
+            name=project.get("name", ""),
+            kind=project["kind"],
+            path=project["path"],
+            default_branch=project["default_branch"],
+            database_connections=tuple(references),
+            production_database_connections=tuple(production),
+        )
+        self._validate_project(candidate)
+        project["database_connections"] = list(references)
+        if production:
+            project["production_database_connections"] = list(production)
+        else:
+            project.pop("production_database_connections", None)
+        self._write(payload)
+        return Result(True, data={"project_id": project_id, "registered": list(references)})
+
     @staticmethod
     def _validate_project(project: Project) -> None:
         invalid = [
             reference
             for reference in project.database_connections
-            if not _DBX_REFERENCE.fullmatch(reference)
+            if not _valid_dbx_reference(reference)
         ]
         if invalid:
             raise ValueError("数据库连接必须只保存 dbx:// 连接引用")
@@ -236,3 +272,11 @@ class WorkspaceService:
                     if values:
                         lines.append(f"{key} = {_array(values)}")
         atomic_write_text(self.path, "\n".join(lines) + "\n")
+
+
+def _valid_dbx_reference(reference: str) -> bool:
+    parsed = urlsplit(reference)
+    if parsed.scheme != "dbx" or not parsed.netloc or parsed.query or parsed.fragment:
+        return False
+    database = parsed.path.removeprefix("/")
+    return "/" not in database

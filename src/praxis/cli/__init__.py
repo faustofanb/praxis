@@ -32,8 +32,11 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(version)
 
     workspace = commands.add_parser("workspace").add_subparsers(dest="action", required=True)
-    for action in ("inspect", "show", "validate", "bootstrap"):
+    for action in ("inspect", "show", "validate"):
         _json_flag(workspace.add_parser(action))
+    bootstrap = workspace.add_parser("bootstrap")
+    bootstrap.add_argument("--approve-skills", action="store_true")
+    _json_flag(bootstrap)
     add_workspace = workspace.add_parser("add")
     add_workspace.add_argument("--system", required=True)
     add_workspace.add_argument("--id", required=True)
@@ -233,6 +236,7 @@ def _parser() -> argparse.ArgumentParser:
         _json_flag(child)
 
     database = commands.add_parser("database").add_subparsers(dest="action", required=True)
+    _json_flag(database.add_parser("discover"))
     connections = database.add_parser("connections")
     connections.add_argument("--project", required=True)
     _json_flag(connections)
@@ -249,6 +253,11 @@ def _parser() -> argparse.ArgumentParser:
     query.add_argument("--postimpact")
     query.add_argument("--approval")
     _json_flag(query)
+    configure = database.add_parser("configure")
+    configure.add_argument("--project", required=True)
+    configure.add_argument("--connection-ref", action="append", default=[])
+    configure.add_argument("--production-connection-ref", action="append", default=[])
+    _json_flag(configure)
 
     context = commands.add_parser("context").add_subparsers(dest="action", required=True)
     build_context = context.add_parser("build")
@@ -422,7 +431,9 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "typecheck_commands": args.typecheck_command,
                 "test_commands": args.test_command,
             }
-        return f"workspace.{args.action}", {}
+        return f"workspace.{args.action}", (
+            {"approve_skills": args.approve_skills} if args.action == "bootstrap" else {}
+        )
     if args.group == "system":
         if args.action != "add":
             return f"system.{args.action}", {"project_id": args.project}
@@ -530,6 +541,14 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 payload["runtime_arguments"] = runtime_arguments
         return f"portrait.{args.action}", payload
     if args.group == "database":
+        if args.action == "discover":
+            return "database.discover", {}
+        if args.action == "configure":
+            return "database.configure", {
+                "project_id": args.project,
+                "connection_refs": args.connection_ref,
+                "production_connection_refs": args.production_connection_ref,
+            }
         payload = {"project_id": args.project}
         if args.action == "query":
             payload.update(

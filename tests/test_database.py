@@ -41,8 +41,12 @@ class FakeDbx:
     def list_connections(self) -> Result:
         return Result(True, data={"connections": [{"name": "mom-dev"}, {"name": "mom-prod"}]})
 
-    def execute(self, connection: str, sql: str) -> Result:
-        self.executed.append((connection, sql))
+    def discover(self) -> Result:
+        return self.list_connections()
+
+    def execute(self, connection: str, sql: str, *, database: str | None = None) -> Result:
+        target = f"{connection}/{database}" if database else connection
+        self.executed.append((target, sql))
         return Result(True, data={"rows": [{"value": 1}]})
 
 
@@ -91,6 +95,24 @@ def test_database_read_requires_registered_connection(tmp_path: Path) -> None:
     assert result.ok
     assert dbx.executed == [("mom-dev", "select 1")]
     assert unknown.code == "DATABASE_CONNECTION_NOT_REGISTERED"
+
+
+def test_database_read_routes_connection_and_database_from_target_reference(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    workspace = WorkspaceService(tmp_path)
+    workspace.set_database_connections(
+        "backend", ("dbx://4b03f613-4dfb-4d50-abfa-3a73188f90cd/app",)
+    )
+    dbx = FakeDbx()
+
+    result = DatabaseService(tmp_path, dbx=dbx).query(
+        "backend",
+        "dbx://4b03f613-4dfb-4d50-abfa-3a73188f90cd/app",
+        "select 1",
+    )
+
+    assert result.ok
+    assert dbx.executed == [("4b03f613-4dfb-4d50-abfa-3a73188f90cd/app", "select 1")]
 
 
 def test_database_write_needs_approval_and_never_targets_production(tmp_path: Path) -> None:

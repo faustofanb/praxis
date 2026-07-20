@@ -179,7 +179,7 @@ class ContextCompiler:
                 )
             )
         intent = f"{requirement['original_request']} {request.stage} {request.agent_role}"
-        routed_skills = SkillRegistry.bundled().route(
+        routed_skills = SkillRegistry.workspace(self.root).route(
             intent, budget=max(0, request.token_budget // 4)
         )
         for skill in routed_skills:

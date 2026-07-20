@@ -1,45 +1,140 @@
 from __future__ import annotations
 
-import json
+import os
+import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from praxis.integrations.process import ProcessRunner, Runner
+import anyio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
 from praxis.result import Result
 
 _SECRET_KEYS = {"password", "password_ref", "secret", "token", "access_token", "api_key"}
+_UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.I,
+)
+_CallTool = Callable[[str, dict[str, Any]], Any]
 
 
 class DbxAdapter:
-    """Thin adapter over the documented @dbx-app/cli JSON commands."""
+    """DBX integration through its MCP server."""
 
-    def __init__(self, root: Path | str, *, run: Runner | None = None):
-        self.runner = ProcessRunner(root, run=run)
+    def __init__(self, root: Path | str, *, call_tool: _CallTool | None = None):
+        self.root = Path(root)
+        self.call_tool = call_tool or self._call_tool
 
     def list_connections(self) -> Result:
-        result = self.runner.run(["dbx", "connections", "list", "--json"], machine_output=True)
-        return self._json_result(result, "connections")
-
-    def execute(self, connection: str, sql: str) -> Result:
-        result = self.runner.run(
-            ["dbx", "query", connection, sql, "--json"], machine_output=True
-        )
-        return self._json_result(result)
-
-    @staticmethod
-    def _json_result(result: Result, key: str | None = None) -> Result:
-        if not result.ok:
-            code = "DBX_NOT_AVAILABLE" if result.code == "COMMAND_NOT_AVAILABLE" else "DBX_FAILED"
-            return Result(False, code, data={"stderr": result.data.get("stderr", "")})
         try:
-            payload = _redact(json.loads(result.data["stdout"]))
-        except (json.JSONDecodeError, TypeError):
-            return Result(False, "DBX_INVALID_RESPONSE")
-        if key:
-            if isinstance(payload, dict) and key in payload:
-                payload = payload[key]
-            return Result(True, data={key: payload})
-        return Result(True, data=payload if isinstance(payload, dict) else {"result": payload})
+            payload = self.call_tool("dbx_list_connections", {})
+            connections = _payload(payload)
+            if isinstance(connections, str):
+                connections = _markdown_rows(connections)
+            return Result(True, data={"connections": _redact(connections)})
+        except FileNotFoundError:
+            return Result(False, "DBX_NOT_AVAILABLE")
+        except (OSError, RuntimeError, TypeError, ValueError) as error:
+            return Result(False, "DBX_FAILED", data={"message": str(error)})
+
+    def discover(self) -> Result:
+        connections = self.list_connections()
+        if not connections.ok:
+            return connections
+        discovered = []
+        for connection in connections.data["connections"]:
+            if not isinstance(connection, dict):
+                continue
+            item = dict(connection)
+            db_type = str(item.get("type", "")).casefold()
+            query = _database_inventory_query(db_type)
+            if not query:
+                item["databases"] = [item["database"]] if item.get("database") else []
+                discovered.append(item)
+                continue
+            target = str(item.get("id") or item.get("name") or "")
+            result = self.execute(target, query)
+            item["databases"] = (
+                [str(row["name"]) for row in result.data.get("rows", []) if row.get("name")]
+                if result.ok
+                else ([str(item["database"])] if item.get("database") else [])
+            )
+            discovered.append(item)
+        return Result(True, data={"connections": discovered})
+
+    def execute(self, connection: str, sql: str, *, database: str | None = None) -> Result:
+        arguments: dict[str, Any] = {"sql": sql}
+        key = "connection_id" if _UUID.fullmatch(connection) else "connection_name"
+        arguments[key] = connection
+        if database:
+            arguments["database"] = database
+        try:
+            payload = _payload(self.call_tool("dbx_execute_query", arguments))
+            if isinstance(payload, str):
+                payload = {"rows": _markdown_rows(payload)}
+            elif isinstance(payload, list):
+                payload = {"rows": payload}
+            if not isinstance(payload, dict):
+                payload = {"result": payload}
+            return Result(True, data=_redact(payload))
+        except FileNotFoundError:
+            return Result(False, "DBX_NOT_AVAILABLE")
+        except (OSError, RuntimeError, TypeError, ValueError) as error:
+            return Result(False, "DBX_FAILED", data={"message": str(error)})
+
+    def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        return anyio.run(self._call_tool_async, name, arguments)
+
+    async def _call_tool_async(self, name: str, arguments: dict[str, Any]) -> Any:
+        parameters = StdioServerParameters(
+            command="dbx-mcp-server",
+            env={"DBX_MCP_ALLOW_WRITES": "0"},
+            cwd=self.root,
+        )
+        with Path(os.devnull).open("w") as errlog:
+            async with (
+                stdio_client(parameters, errlog=errlog) as streams,
+                ClientSession(*streams) as session,
+            ):
+                await session.initialize()
+                return await session.call_tool(name, arguments)
+
+
+def _payload(value: Any) -> Any:
+    structured = getattr(value, "structuredContent", None)
+    if structured is not None:
+        return structured
+    content = getattr(value, "content", None)
+    if content is not None:
+        texts = [item.text for item in content if getattr(item, "text", None)]
+        return "\n".join(texts)
+    return value
+
+
+def _markdown_rows(value: str) -> list[dict[str, str]]:
+    table = [line.strip() for line in value.splitlines() if line.strip().startswith("|")]
+    if len(table) < 2:
+        raise ValueError("DBX MCP 返回了无法识别的表格")
+    headers = [cell.strip().casefold() for cell in table[0].strip("|").split("|")]
+    rows: list[dict[str, str]] = []
+    for line in table[2:]:
+        values = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(values) == len(headers):
+            rows.append(dict(zip(headers, values, strict=True)))
+    return rows
+
+
+def _database_inventory_query(db_type: str) -> str | None:
+    if db_type in {"postgres", "postgresql"}:
+        return (
+            "SELECT datname AS name FROM pg_database "
+            "WHERE datistemplate = false ORDER BY datname"
+        )
+    if db_type in {"sqlserver", "mssql"}:
+        return "SELECT name FROM sys.databases ORDER BY name"
+    return None
 
 
 def _redact(value: Any) -> Any:

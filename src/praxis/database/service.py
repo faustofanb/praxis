@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
 from praxis.artifacts.service import ArtifactService
@@ -28,7 +29,11 @@ _WRITE_CONTEXT = {
 class Dbx(Protocol):
     def list_connections(self) -> Result: ...
 
-    def execute(self, connection: str, sql: str) -> Result: ...
+    def discover(self) -> Result: ...
+
+    def execute(
+        self, connection: str, sql: str, *, database: str | None = None
+    ) -> Result: ...
 
 
 class DatabaseService:
@@ -39,7 +44,7 @@ class DatabaseService:
 
     def connections(self, project_id: str) -> Result:
         project = WorkspaceService(self.root).project(project_id)
-        external = self.dbx.list_connections()
+        external = self.dbx.discover()
         if not external.ok:
             return external
         return Result(
@@ -50,6 +55,9 @@ class DatabaseService:
                 "dbx": external.data["connections"],
             },
         )
+
+    def discover(self) -> Result:
+        return self.dbx.discover()
 
     def query(
         self,
@@ -97,7 +105,8 @@ class DatabaseService:
                 return artifact
             artifact_id = artifact.data["artifact_id"]
 
-        result = self.dbx.execute(_connection_name(connection_ref), sql)
+        connection, database = parse_dbx_reference(connection_ref)
+        result = self.dbx.execute(connection, sql, database=database)
         audit_id = self.store.audit(
             "database.execute",
             result.code,
@@ -160,8 +169,11 @@ class DatabaseService:
         )
 
 
-def _connection_name(connection_ref: str) -> str:
-    prefix = "dbx://"
-    if not connection_ref.startswith(prefix) or not connection_ref.removeprefix(prefix):
+def parse_dbx_reference(connection_ref: str) -> tuple[str, str | None]:
+    parsed = urlsplit(connection_ref)
+    if parsed.scheme != "dbx" or not parsed.netloc or parsed.query or parsed.fragment:
         raise ValueError("数据库连接必须使用 dbx:// 引用")
-    return connection_ref.removeprefix(prefix)
+    database = unquote(parsed.path.removeprefix("/")) or None
+    if database and "/" in database:
+        raise ValueError("DBX 数据库名不能包含路径分隔符")
+    return parsed.netloc, database

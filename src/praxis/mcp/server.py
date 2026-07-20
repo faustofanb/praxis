@@ -208,7 +208,9 @@ def create_server(root: Path | str) -> FastMCP:
 
     @server.resource("praxis://skills/{skill_type}/{skill_id}")
     def skill_resource(skill_type: str, skill_id: str) -> str:
-        return SkillRegistry.bundled().resource(f"praxis://skills/{skill_type}/{skill_id}")
+        return SkillRegistry.workspace(workspace).resource(
+            f"praxis://skills/{skill_type}/{skill_id}"
+        )
 
     @server.resource("praxis://contexts/{context_id}")
     def context_resource(context_id: str) -> str:

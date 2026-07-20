@@ -45,6 +45,9 @@ class PraxisApplication:
     def __init__(self, root: Path | str):
         self.root = Path(root)
 
+    def _skills(self) -> SkillRegistry:
+        return SkillRegistry.workspace(self.root)
+
     def execute(self, operation: str, arguments: dict[str, Any] | None = None) -> Result:
         values = arguments or {}
         try:
@@ -110,12 +113,35 @@ class PraxisApplication:
         if operation == "workspace.bootstrap":
             workspace = WorkspaceService(self.root).load()
             initialized = []
+            candidates = []
+            promoted = []
+            catalog = self.root / workspace["knowledge_root"] / "skills"
             for project in workspace.get("projects", []):
                 result = CodeGraphService(self.root, project["id"]).ensure_fresh(initialize=True)
                 if not result.ok:
                     return result
                 initialized.append(project["id"])
-            return Result(True, data={"projects": initialized})
+                candidate = SkillCandidateService(self.root).generate(project["id"])
+                if not candidate.ok:
+                    return candidate
+                candidates.append(candidate.data["id"])
+                if values.get("approve_skills") and candidate.data.get("source_files"):
+                    approved = SkillCandidateService(self.root).promote(
+                        candidate.data["id"], catalog, approved=True
+                    )
+                    if not approved.ok:
+                        return approved
+                    promoted.append(approved.data["id"])
+            database = DatabaseService(self.root).discover()
+            return Result(
+                True,
+                data={
+                    "projects": initialized,
+                    "skill_candidates": candidates,
+                    "business_skills": promoted,
+                    "database_discovery": database.to_dict(),
+                },
+            )
         if operation in {"requirement.create", "requirement.new"}:
             return RequirementService(self.root).create(
                 values["short_name"],
@@ -161,11 +187,11 @@ class PraxisApplication:
         if operation == "repair.projections":
             return RequirementService(self.root).repair_projections()
         if operation == "skill.inspect":
-            return Result(True, data=_skill_data(SkillRegistry.bundled().inspect(values["id"])))
+            return Result(True, data=_skill_data(self._skills().inspect(values["id"])))
         if operation == "skill.list":
             return Result(
                 True,
-                data={"skills": [_skill_data(skill) for skill in SkillRegistry.bundled().all()]},
+                data={"skills": [_skill_data(skill) for skill in self._skills().all()]},
             )
         if operation == "skill.search":
             return Result(
@@ -173,20 +199,20 @@ class PraxisApplication:
                 data={
                     "skills": [
                         _skill_data(skill)
-                        for skill in SkillRegistry.bundled().search(values["query"])
+                        for skill in self._skills().search(values["query"])
                     ]
                 },
             )
         if operation == "skill.verify":
-            return SkillRegistry.bundled().verify()
+            return self._skills().verify()
         if operation == "skill.dedupe":
-            return SkillRegistry.bundled().duplicates()
+            return self._skills().duplicates()
         if operation == "skill.import":
             return SkillImportService(self.root).import_legacy(
                 values["source_root"], values["system_id"]
             )
         if operation == "skill.route":
-            skills = SkillRegistry.bundled().route(
+            skills = self._skills().route(
                 values["intent"], budget=values.get("budget", 2000)
             )
             return Result(
@@ -197,7 +223,7 @@ class PraxisApplication:
                 },
             )
         if operation == "skill.resource":
-            content = SkillRegistry.bundled().resource(values["uri"])
+            content = self._skills().resource(values["uri"])
             return Result(True, data={"uri": values["uri"], "content": content})
         if operation in {"skill.candidate", "skill.generate"}:
             return SkillCandidateService(self.root).generate(values["project_id"])
@@ -239,6 +265,14 @@ class PraxisApplication:
                 return getattr(PortraitService(self.root), action)(values["project_id"])
         if operation == "database.connections":
             return DatabaseService(self.root).connections(values["project_id"])
+        if operation == "database.discover":
+            return DatabaseService(self.root).discover()
+        if operation == "database.configure":
+            return WorkspaceService(self.root).set_database_connections(
+                values["project_id"],
+                values.get("connection_refs", []),
+                values.get("production_connection_refs", []),
+            )
         if operation == "database.query":
             return DatabaseService(self.root).query(
                 values["project_id"],

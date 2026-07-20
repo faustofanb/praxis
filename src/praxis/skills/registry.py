@@ -45,8 +45,11 @@ class SkillRoutingContext:
 
 
 class SkillRegistry:
-    def __init__(self, root: Path | str):
+    def __init__(
+        self, root: Path | str, *, additional_roots: tuple[Path | str, ...] = ()
+    ):
         self.root = Path(root)
+        self.roots = (self.root, *(Path(item) for item in additional_roots))
 
     @classmethod
     def bundled(cls) -> SkillRegistry:
@@ -54,9 +57,26 @@ class SkillRegistry:
         packaged_skills = Path(__file__).resolve().parents[1] / "bundled_skills"
         return cls(source_skills if source_skills.exists() else packaged_skills)
 
+    @classmethod
+    def workspace(cls, root: Path | str) -> SkillRegistry:
+        from praxis.workspace.service import WorkspaceService
+
+        bundled = cls.bundled()
+        workspace = Path(root)
+        if not (workspace / "praxis.toml").is_file():
+            return bundled
+        catalog = workspace / WorkspaceService(workspace).load()["knowledge_root"] / "skills"
+        return cls(bundled.root, additional_roots=(catalog,))
+
     def inspect(self, skill_id: str) -> Skill:
-        matches = list(self.root.glob(f"{skill_id}/skill.toml"))
-        matches.extend(self.root.glob(f"*/{skill_id}/skill.toml"))
+        matches = [
+            path
+            for root in self.roots
+            for path in (
+                *root.glob(f"{skill_id}/skill.toml"),
+                *root.glob(f"*/{skill_id}/skill.toml"),
+            )
+        ]
         if len(matches) != 1:
             raise KeyError(skill_id)
         metadata_path = matches[0]
@@ -137,7 +157,11 @@ class SkillRegistry:
         return matches
 
     def _metadata_paths(self) -> list[Path]:
-        return sorted((*self.root.glob("*/skill.toml"), *self.root.glob("*/*/skill.toml")))
+        return sorted(
+            path
+            for root in self.roots
+            for path in (*root.glob("*/skill.toml"), *root.glob("*/*/skill.toml"))
+        )
 
     def verify(self) -> Result:
         skills = self.all()
