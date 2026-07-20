@@ -1,6 +1,7 @@
 .coverage
 .hypothesis/
 .pytest_cache/
+.praxis/
 .ruff_cache/
 .venv/
 .worktrees/
@@ -8,4 +9,3 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-

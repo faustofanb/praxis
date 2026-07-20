@@ -1,0 +1,4 @@
+interface:
+  display_name: "Praxis System Development"
+  short_description: "Route system-development methods on demand"
+  default_prompt: "Route this task to the smallest installed development method."

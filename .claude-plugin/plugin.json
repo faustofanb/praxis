@@ -1,0 +1,6 @@
+{
+  "name": "praxis-next",
+  "version": "2.0.0",
+  "description": "Praxis V2 thin Claude Code adapter",
+  "author": { "name": "Fausto" }
+}

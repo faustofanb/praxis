@@ -1,0 +1,10 @@
+id = "ponytail"
+type = "workflow"
+version = "4.8.4-praxis.1"
+license = "MIT"
+source = "https://github.com/DietrichGebert/ponytail"
+source_version = "4.8.4"
+risk = "none"
+context_budget = 300
+required_tools = []
+triggers = ["YAGNI", "simplify", "over-engineering", "最小实现", "过度设计"]

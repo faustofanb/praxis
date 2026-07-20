@@ -1,0 +1,16 @@
+id = "dbx-database-investigation"
+type = "system"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "2.0.0"
+risk = "database-read"
+context_budget = 700
+required_tools = [
+  "dbx_list_connections",
+  "dbx_list_tables",
+  "dbx_describe_table",
+  "dbx_get_schema_context",
+  "dbx_execute_query",
+]
+triggers = ["数据库", "表结构", "SQL", "Flyway", "执行计划", "报表口径", "DTO"]

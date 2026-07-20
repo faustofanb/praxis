@@ -1,0 +1,1 @@
+"""Worktrunk-only worktree boundary."""

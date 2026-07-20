@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ponytail"
+  short_description: "Prefer the smallest correct implementation"
+  default_prompt: "Use Ponytail minimalism for this task."

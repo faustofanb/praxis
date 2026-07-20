@@ -17,11 +17,10 @@ run = "uv run ruff check ."
 run = "uv run ty check"
 
 [tasks.test]
-run = "uv run pytest"
+run = "uv run pytest && node --test tests-js/*.test.js"
 
 [tasks.audit]
-run = "uv run pip-audit"
+run = "uv run pip-audit --cache-dir .praxis/cache/pip-audit"
 
 [tasks.verify]
-depends = ["lint", "typecheck", "test"]
-
+depends = ["lint", "typecheck", "test", "audit"]

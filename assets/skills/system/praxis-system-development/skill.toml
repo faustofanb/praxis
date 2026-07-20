@@ -1,0 +1,23 @@
+id = "praxis-system-development"
+type = "system"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "2.0.0"
+risk = "none"
+context_budget = 450
+required_tools = []
+triggers = ["brainstorm", "review", "context", "search", "prompt", "subagent", "debug", "test", "设计", "评审", "上下文", "搜索", "调试", "测试"]
+delegates = [
+  "brainstorming",
+  "code-quality-review",
+  "context-degradation",
+  "context-optimization",
+  "file-search",
+  "find-skills",
+  "karpathy-guidelines",
+  "prompt-engineering",
+  "subagent-driven-development",
+  "systematic-debugging",
+  "testing-writing-guidelines",
+]

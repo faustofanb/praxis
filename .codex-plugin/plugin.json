@@ -1,0 +1,24 @@
+{
+  "name": "praxis-next",
+  "version": "2.0.0",
+  "description": "Clean-room Praxis V2 workflow and business knowledge kernel",
+  "author": { "name": "Fausto" },
+  "license": "MIT",
+  "keywords": ["workflow", "worktrunk", "codegraph", "knowledge"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Praxis V2",
+    "shortDescription": "Bounded AI development workflow",
+    "longDescription": "Worktrunk lifecycle, structured requirements, code gates, skills, portraits, and fresh CodeGraph context.",
+    "developerName": "Fausto",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Initialize or inspect this Praxis workspace.",
+      "Route this task to the smallest relevant Skill set.",
+      "Verify CodeGraph freshness before impact analysis."
+    ],
+    "brandColor": "#315CFF"
+  }
+}
