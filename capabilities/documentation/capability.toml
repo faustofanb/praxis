@@ -1,7 +1,0 @@
-id = "documentation"
-version = "0.1.0"
-kind = "reusable"
-requires = ["requirement-lifecycle"]
-rules = []
-templates = []
-executors = []

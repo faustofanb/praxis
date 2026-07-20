@@ -1,7 +1,0 @@
-id = "migration-checks"
-version = "0.1.0"
-kind = "reusable"
-requires = ["database-change-classification"]
-rules = []
-templates = []
-executors = []

@@ -1,7 +1,0 @@
-id = "magicapi"
-version = "0.1.0"
-kind = "domain"
-requires = ["verification"]
-rules = []
-templates = []
-executors = []

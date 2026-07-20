@@ -1,3 +1,0 @@
-# 本地私有配置示例。不要提交 .mise.local.toml。
-# [env]
-# PRAXIS_LOCAL_CACHE = "/tmp/praxis-cache"

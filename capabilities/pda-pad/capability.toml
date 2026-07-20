@@ -1,7 +1,0 @@
-id = "pda-pad"
-version = "0.1.0"
-kind = "domain"
-requires = ["pnpm-uniapp"]
-rules = []
-templates = []
-executors = []

@@ -1,7 +1,0 @@
-id = "delivery"
-version = "0.1.0"
-kind = "reusable"
-requires = ["verification"]
-rules = []
-templates = []
-executors = []

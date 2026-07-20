@@ -1,7 +1,0 @@
-id = "worktree-lifecycle"
-version = "0.1.0"
-kind = "reusable"
-requires = ["task-policy", "project-registry"]
-rules = []
-templates = []
-executors = []

@@ -1,5 +1,0 @@
-id = "aotu"
-version = "0.1.0"
-extends = ["manufacturing"]
-[parameters]
-delivery_contract = "strict-confirmation"

@@ -1,7 +1,0 @@
-id = "docs"
-version = "0.1.0"
-kind = "stack"
-requires = ["documentation"]
-rules = []
-templates = []
-executors = []

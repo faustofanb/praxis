@@ -1,1 +1,4 @@
-__version__ = "0.1.0"
+"""Praxis V2 clean-room package."""
+
+__version__ = "2.0.0"
+

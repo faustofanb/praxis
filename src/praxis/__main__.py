@@ -1,3 +1,3 @@
-from praxis.cli import main
+from praxis.cli import main  # pragma: no cover
 
-raise SystemExit(main())
+raise SystemExit(main())  # pragma: no cover

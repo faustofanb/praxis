@@ -1,5 +1,0 @@
-id = "mom"
-version = "0.1.0"
-extends = ["manufacturing"]
-[parameters]
-delivery_contract = "standard"

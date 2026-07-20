@@ -1,6 +1,0 @@
----
-description: 检查当前 Praxis Next 工作区
----
-<!-- Generated from commands/praxis-check.toml by adapters/render.mjs; do not edit. -->
-
-使用中文运行并总结当前工作区 Praxis Next 检查。优先执行 `praxis workspace check --json`；若需要完整环境提示，再执行 `praxis doctor --json`。只总结通过/失败、cache 重建、state JSON 可读性和第一个可执行失败项。
