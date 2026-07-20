@@ -9,11 +9,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_codex_manifest_exposes_single_skill_source_and_mcp() -> None:
     manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text())
     assert manifest["name"] == "praxis-next"
-    assert manifest["version"] == "3.0.0"
+    assert manifest["version"].partition("+")[0] == "3.0.0"
     assert manifest["skills"] == "./skills/"
-    assert (ROOT / "skills" / "dbx-database-investigation").resolve() == (
-        ROOT / "assets" / "skills" / "system" / "dbx-database-investigation"
-    )
+    skills = {path.name: path for path in (ROOT / "skills").iterdir()}
+    assert set(skills) == {
+        "dbx-database-investigation",
+        "ponytail",
+        "praxis-system-development",
+    }
+    assert all(path.is_dir() and not path.is_symlink() for path in skills.values())
+    assert all((path / "SKILL.md").is_file() for path in skills.values())
     assert manifest["mcpServers"] == "./.mcp.json"
 
 

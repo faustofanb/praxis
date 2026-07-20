@@ -28,7 +28,7 @@ dev = [
 packages = ["src/praxis"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"assets/skills" = "praxis/assets/skills"
+"skills" = "praxis/bundled_skills"
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers --cov=praxis --cov-report=term-missing --cov-fail-under=85"

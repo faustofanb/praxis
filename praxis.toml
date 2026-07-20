@@ -1,0 +1,27 @@
+schema_version = 3
+
+[workspace]
+id = "praxis-next"
+name = "Praxis V3插件开发工作空间"
+language = "zh-CN"
+knowledge_root = "知识库"
+artifact_root = "产出物"
+generated_root = "生成内容"
+state_root = ".praxis"
+worktree_root = ".worktrees"
+
+[[systems]]
+id = "praxis-next"
+name = "Praxis V3插件系统"
+domains = ["plugin-development"]
+
+[[systems.repositories]]
+id = "praxis-next"
+name = "Praxis V3插件"
+kind = "python-plugin"
+path = "."
+default_branch = "main"
+release_branches = ["main"]
+lint_commands = ["uv run ruff check ."]
+typecheck_commands = ["uv run ty check"]
+test_commands = ["uv run pytest -q"]

@@ -50,12 +50,13 @@ class SkillRegistry:
 
     @classmethod
     def bundled(cls) -> SkillRegistry:
-        source_assets = Path(__file__).resolve().parents[3] / "assets" / "skills"
-        packaged_assets = Path(__file__).resolve().parents[1] / "assets" / "skills"
-        return cls(source_assets if source_assets.exists() else packaged_assets)
+        source_skills = Path(__file__).resolve().parents[3] / "skills"
+        packaged_skills = Path(__file__).resolve().parents[1] / "bundled_skills"
+        return cls(source_skills if source_skills.exists() else packaged_skills)
 
     def inspect(self, skill_id: str) -> Skill:
-        matches = list(self.root.glob(f"*/{skill_id}/skill.toml"))
+        matches = list(self.root.glob(f"{skill_id}/skill.toml"))
+        matches.extend(self.root.glob(f"*/{skill_id}/skill.toml"))
         if len(matches) != 1:
             raise KeyError(skill_id)
         metadata_path = matches[0]
@@ -86,13 +87,13 @@ class SkillRegistry:
         )
 
     def all(self) -> list[Skill]:
-        return [self.inspect(path.parent.name) for path in sorted(self.root.glob("*/*/skill.toml"))]
+        return [self.inspect(path.parent.name) for path in self._metadata_paths()]
 
     def route(self, intent: str, *, budget: int = 2000) -> list[Skill]:
         normalized = intent.casefold()
         routed: list[Skill] = []
         used = 0
-        for metadata in sorted(self.root.glob("*/*/skill.toml")):
+        for metadata in self._metadata_paths():
             skill = self.inspect(metadata.parent.name)
             matches = any(trigger.casefold() in normalized for trigger in skill.triggers)
             if matches and used + skill.context_budget <= budget:
@@ -134,6 +135,9 @@ class SkillRegistry:
             if normalized in haystack:
                 matches.append(skill)
         return matches
+
+    def _metadata_paths(self) -> list[Path]:
+        return sorted((*self.root.glob("*/skill.toml"), *self.root.glob("*/*/skill.toml")))
 
     def verify(self) -> Result:
         skills = self.all()

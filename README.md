@@ -104,7 +104,7 @@ praxis skill verify --json
 praxis skill inspect dbx-database-investigation --json
 praxis skill candidate --project backend --json
 praxis skill approve business.ifc_mom.backend.development \
-  --catalog-root ./assets/skills --yes --json
+  --catalog-root ./skills --yes --json
 ```
 
 The `dbx-database-investigation` Skill supplies the investigation workflow; the database service owns

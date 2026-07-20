@@ -1,0 +1,13 @@
+{
+  "requirement_id": "REQ-20260720-001",
+  "command": "uv run praxis --root . version --json",
+  "exit_code": 0,
+  "result": {
+    "ok": true,
+    "code": "OK",
+    "data": {
+      "version": "3.0.0"
+    },
+    "diagnostics": []
+  }
+}

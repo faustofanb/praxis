@@ -1,10 +1,17 @@
 {
   "name": "praxis-next",
-  "version": "3.0.0",
+  "version": "3.0.0+codex.20260720082326",
   "description": "Praxis V3 workflow governance and business knowledge platform",
-  "author": { "name": "Fausto" },
+  "author": {
+    "name": "Fausto"
+  },
   "license": "MIT",
-  "keywords": ["workflow", "worktrunk", "codegraph", "knowledge"],
+  "keywords": [
+    "workflow",
+    "worktrunk",
+    "codegraph",
+    "knowledge"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -13,7 +20,10 @@
     "longDescription": "Worktrunk lifecycle, structured requirements, code gates, skills, portraits, and fresh CodeGraph context.",
     "developerName": "Fausto",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "defaultPrompt": [
       "Initialize or inspect this Praxis workspace.",
       "Route this task to the smallest relevant Skill set.",
