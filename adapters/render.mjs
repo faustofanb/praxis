@@ -56,21 +56,6 @@ function expectedFiles() {
         locale: "zh-CN",
       }),
     ],
-    [
-      ".orca-plugin/plugin.json",
-      dumpsJson({
-        id: "com.fausto.praxis-next",
-        name: "praxis-next",
-        version: "0.1.0",
-        description: "Praxis Next Orca 薄适配器与本地命令源",
-        main: "main.js",
-        commandsDir: "../commands",
-      }),
-    ],
-    [
-      ".orca-plugin/main.js",
-      "export default function activate() {}\n",
-    ],
   ]);
 
   for (const entry of readdirSync("commands", { withFileTypes: true })) {

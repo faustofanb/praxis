@@ -15,7 +15,7 @@ def init_git_repo(path):
     subprocess.run(["git", "commit", "-m", "init"], cwd=path, check=True, stdout=subprocess.PIPE)
 
 
-def test_worktree_service_create_reuse_and_safe_cleanup(tmp_path):
+def test_worktree_service_uses_worktrunk_json_interface(tmp_path):
     from praxis.tasks.service import TaskService
     from praxis.workspace.service import WorkspaceService
     from praxis.worktrees.service import WorktreeService
@@ -27,14 +27,35 @@ def test_worktree_service_create_reuse_and_safe_cleanup(tmp_path):
         profile_id="base", projects=[{"id": "repo", "type": "java-maven", "path": "repo"}]
     )
     TaskService(tmp_path).quick_start({"id": "t1", "title": "工作树任务"})
-    service = WorktreeService(tmp_path)
+    calls = []
+
+    def run(args, cwd):
+        calls.append((args, cwd))
+        return subprocess.CompletedProcess(
+            args,
+            0,
+            stdout='{"path": "' + str(tmp_path / "repo.t1") + '"}',
+            stderr="",
+        )
+
+    service = WorktreeService(tmp_path, run=run)
     created = service.create(project_id="repo", task_id="t1")
-    reused = service.reuse(project_id="repo", task_id="t1")
-    assert created.path == reused.path
-    (created.path / "dirty.txt").write_text("dirty")
-    blocked = service.cleanup(project_id="repo", task_id="t1")
-    assert blocked.ok is False
-    assert blocked.code == "WORKTREE_DIRTY"
+    assert created.path == tmp_path / "repo.t1"
+    assert calls == [
+        (
+            [
+                "wt",
+                "switch",
+                "--create",
+                "t1",
+                "--base",
+                "HEAD",
+                "--no-cd",
+                "--format=json",
+            ],
+            repo,
+        )
+    ]
 
 
 def test_process_runner_rtk_fallback_and_machine_git_bypass(tmp_path):
@@ -65,7 +86,7 @@ def test_platform_adapters_call_same_runtime_and_propagate_exit(tmp_path):
     fake.chmod(0o755)
     env = os.environ.copy()
     env["PRAXIS_BIN"] = str(fake)
-    for adapter in ["codex", "claude-code", "omp", "orca"]:
+    for adapter in ["codex", "claude-code", "omp"]:
         proc = subprocess.run(
             [
                 "node",
@@ -78,4 +99,4 @@ def test_platform_adapters_call_same_runtime_and_propagate_exit(tmp_path):
             text=True,
         )
         assert proc.returncode == 7
-    assert capture.read_text().count("workspace") == 4
+    assert capture.read_text().count("workspace") == 3
