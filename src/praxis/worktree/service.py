@@ -819,12 +819,6 @@ class WorktreeService:
         if not resolved:
             return Result(False, "WORKTREE_BINDING_NOT_FOUND", data={"binding_id": binding_id})
         binding_key, binding = resolved
-        if binding.get("status") not in {"active", "blocked", "initializing"}:
-            return Result(
-                False,
-                "WORKTREE_MIGRATION_STATUS_INVALID",
-                data={"status": binding.get("status")},
-            )
         names = self._names_for_requirement(store, requirement, repository_id)
         repo = (self.root / project.path).resolve()
         display_names = self._validate_display_names(names, repository_id, repo)
@@ -834,6 +828,22 @@ class WorktreeService:
         expected_repository = (
             expected_workspace / names.worktree_display_name
         ).resolve()
+        if binding.get("status") == "migrating":
+            return self._recover_interrupted_name_migration(
+                store=store,
+                binding_key=binding_key,
+                binding=binding,
+                requirement_id=requirement_id,
+                repository_id=repository_id,
+                expected_repository=expected_repository,
+                expected_branch=names.branch_name,
+            )
+        if binding.get("status") not in {"active", "blocked", "initializing"}:
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_STATUS_INVALID",
+                data={"status": binding.get("status")},
+            )
         if self._binding_matches_names(binding, names):
             return Result(
                 True,
@@ -912,7 +922,16 @@ class WorktreeService:
         backup_graph = expected_repository / ".codegraph.praxis-name-migration"
         moved = False
         branch_renamed = False
-        binding.update(status="migrating", migration_started_at=datetime.now(UTC).isoformat())
+        binding.update(
+            status="migrating",
+            migration_started_at=datetime.now(UTC).isoformat(),
+            migration_previous_status=old_status,
+            migration_old_workspace_path=str(old_workspace),
+            migration_old_repository_path=str(old_repository),
+            migration_old_branch=old_branch,
+            migration_target_repository_path=str(expected_repository),
+            migration_target_branch=names.branch_name,
+        )
         store.set("worktree", binding_key, binding)
         store.audit(
             "worktree.name_migration_started",
@@ -963,7 +982,7 @@ class WorktreeService:
                 branch=names.branch_name,
                 path=str(expected_workspace),
                 repository_path=str(expected_repository),
-                status="initializing",
+                status="migrating",
             )
             store.set("worktree", binding_key, binding)
             self._relocate_artifacts(artifact_snapshots, old_repository, expected_repository)
@@ -1034,6 +1053,132 @@ class WorktreeService:
                 data={**details, "audit_id": audit_id},
                 diagnostics=failure.diagnostics if failure else [],
             )
+
+    def _recover_interrupted_name_migration(
+        self,
+        *,
+        store: StateStore,
+        binding_key: str,
+        binding: dict[str, Any],
+        requirement_id: str,
+        repository_id: str,
+        expected_repository: Path,
+        expected_branch: str,
+    ) -> Result:
+        required = (
+            "migration_old_workspace_path",
+            "migration_old_repository_path",
+            "migration_old_branch",
+            "migration_previous_status",
+        )
+        missing = [key for key in required if not binding.get(key)]
+        if missing:
+            return Result(
+                False,
+                "WORKTREE_NAME_MIGRATION_RECOVERY_DATA_MISSING",
+                data={"binding_id": binding_key, "missing": missing},
+            )
+        old_workspace = Path(str(binding["migration_old_workspace_path"])).resolve()
+        old_repository = Path(str(binding["migration_old_repository_path"])).resolve()
+        old_branch = str(binding["migration_old_branch"])
+        old_binding = dict(binding)
+        old_binding.update(
+            status=str(binding["migration_previous_status"]),
+            path=str(old_workspace),
+            repository_path=str(old_repository),
+            branch=old_branch,
+        )
+        for key in tuple(old_binding):
+            if key.startswith("migration_"):
+                old_binding.pop(key)
+        moved = expected_repository.is_dir() and not old_repository.exists()
+        branch_renamed = False
+        if moved:
+            current = self._git(
+                ["branch", "--show-current"],
+                cwd=expected_repository,
+                failure_code="WORKTREE_MIGRATION_BRANCH_READ_FAILED",
+            )
+            branch_renamed = bool(
+                current.ok and str(current.data["stdout"]) == expected_branch
+            )
+        relocated_artifacts = self._artifact_snapshots(
+            requirement_id,
+            expected_repository,
+        )
+        artifact_snapshots: dict[str, dict[str, Any]] = {}
+        for artifact_id, artifact in relocated_artifacts.items():
+            restored = dict(artifact)
+            relative = Path(str(artifact["source_path"])).resolve().relative_to(
+                expected_repository
+            )
+            restored["source_path"] = str(old_repository / relative)
+            artifact_snapshots[artifact_id] = restored
+        old_graph = CodeGraphService(
+            self.root,
+            repository_id,
+            repo=old_repository,
+            codegraph_version="unknown",
+        )
+        rollback = self._rollback_name_migration(
+            store=store,
+            binding_key=binding_key,
+            old_binding=old_binding,
+            old_repository=old_repository,
+            expected_repository=expected_repository,
+            old_branch=old_branch,
+            moved=moved,
+            branch_renamed=branch_renamed,
+            backup_graph=expected_repository / ".codegraph.praxis-name-migration",
+            old_graph_key=old_graph.key,
+            old_graph_metadata=store.get("codegraph", old_graph.key),
+            old_graph_operation=store.get("codegraph_operation", old_graph.key),
+            artifact_snapshots=artifact_snapshots,
+        )
+        if not rollback.ok:
+            audit_id = store.audit(
+                "worktree.name_migration_recovery_failed",
+                rollback.code,
+                {"binding_id": binding_key, "rollback": rollback.data},
+            )
+            return Result(
+                False,
+                "WORKTREE_NAME_MIGRATION_RECOVERY_FAILED",
+                data={"rollback": rollback.data, "audit_id": audit_id},
+            )
+        graph = self.initialize_graph(repository_id, old_repository)
+        recovered = store.get("worktree", binding_key) or old_binding
+        if not graph.ok:
+            recovered.update(
+                status="blocked",
+                codegraph_status=graph.code,
+                migration_recovery_failed=True,
+            )
+            store.set("worktree", binding_key, recovered)
+            audit_id = store.audit(
+                "worktree.name_migration_recovery_failed",
+                graph.code,
+                recovered,
+            )
+            return Result(
+                False,
+                "WORKTREE_NAME_MIGRATION_RECOVERY_FAILED",
+                data={**recovered, "cause": graph.code, "audit_id": audit_id},
+                diagnostics=graph.diagnostics,
+            )
+        recovered.update(
+            status=str(binding["migration_previous_status"]),
+            codegraph_status=graph.code,
+            migration_recovered_at=datetime.now(UTC).isoformat(),
+        )
+        store.set("worktree", binding_key, recovered)
+        audit_id = store.audit("worktree.name_migration_recovered", "OK", recovered)
+        return Result(
+            True,
+            "WORKTREE_NAME_MIGRATION_RECOVERED",
+            data={**recovered, "audit_id": audit_id},
+            diagnostics=graph.diagnostics,
+        )
 
     def _artifact_snapshots(
         self, requirement_id: str, old_repository: Path

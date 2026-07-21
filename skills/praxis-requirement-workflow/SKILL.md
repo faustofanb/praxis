@@ -42,6 +42,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
   内部身份始终使用 `WT-<需求编号>--<仓库ID>`，不得从目录名或分支名反向推断。
 - 旧名称必须通过 `praxis worktree migrate-name` 正式迁移，完整移动 Git worktree、重命名分支、
   更新 binding 和产出物路径并重建 CodeGraph；任一步失败必须补偿回旧名称或明确报告回滚不完整。
+- 迁移全程保持 binding 为 `migrating` 并持久化旧路径、分支和状态；进程中断后重复执行同一
+  migrate-name 命令完成旧名称恢复与旧路径 CodeGraph 重建，create 在恢复前必须 fail-closed。
 - 创建成功后核对需求编号、仓库、阶段、分支、需求工作空间和仓库工作树路径；将 Agent 工作目录切换到需求工作空间，实际 Git 操作切换到对应仓库子目录。
 - 仓库配置了 `local_files` 时，在 CodeGraph 初始化前只从 `project.path` 指向的主仓库复制这些
   ignored 本地运行文件到相同相对路径；不得扫描或批量复制 `.env*`。源缺失、越界、目录或

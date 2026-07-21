@@ -103,6 +103,9 @@ rename does not silently move paths or branches. Internal identity remains
 moves the Git worktree, renames the branch, rewrites affected artifact source paths, rebuilds
 CodeGraph for the new path, updates the binding only after the move, and compensates back to the old
 name when any required step fails.
+The binding remains `migrating` for the full operation and persists its old path, branch, and
+status. Re-running the same migration command after a process interruption compensates back to the
+old name and rebuilds CodeGraph there before normal creation can continue.
 
 Repositories may declare ignored local runtime files explicitly. Praxis copies only these paths
 from the configured main repository into a newly created requirement worktree before CodeGraph
