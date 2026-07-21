@@ -57,6 +57,12 @@ class FakeWorktree:
     def list(self) -> Result:
         return Result(True, data={"items": []})
 
+    def status(self, *, binding_id: str = "", worktree_path: str = "") -> Result:
+        return Result(
+            True,
+            data={"items": [], "binding_id": binding_id, "worktree": worktree_path},
+        )
+
     def remove(self, branch: str) -> Result:
         return Result(True, data={"removed": branch})
 

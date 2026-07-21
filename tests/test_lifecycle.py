@@ -58,7 +58,7 @@ def test_worktree_service_uses_only_worktrunk_json_commands(tmp_path: Path) -> N
     assert all(command[0] == "wt" and "--format=json" in command for command in calls)
 
 
-def test_worktree_remove_reports_branch_delete_mismatch_and_cleans_binding(
+def test_worktree_remove_falls_back_to_git_branch_delete_and_cleans_binding(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "repo"
@@ -88,7 +88,10 @@ def test_worktree_remove_reports_branch_delete_mismatch_and_cleans_binding(
         },
     )
 
+    calls: list[list[str]] = []
+
     def run(command, cwd, environment):
+        calls.append(command)
         if command[0] == "wt":
             repository_path.rmdir()
             return subprocess.CompletedProcess(
@@ -99,18 +102,68 @@ def test_worktree_remove_reports_branch_delete_mismatch_and_cleans_binding(
             )
         if command[:3] == ["git", "branch", "--list"]:
             return subprocess.CompletedProcess(command, 0, f"  {branch}\n", "")
+        if command[:3] == ["git", "branch", "-D"]:
+            return subprocess.CompletedProcess(command, 0, f"Deleted branch {branch}\n", "")
         raise AssertionError(command)
 
     result = WorktreeService(tmp_path, run=run).remove(branch)
 
-    assert not result.ok
-    assert result.code == "WORKTREE_BRANCH_DELETE_MISMATCH"
-    assert result.data["branch"] == branch
-    assert result.data["branch_deleted"] is False
+    assert result.ok
+    assert ["git", "branch", "-D", branch] in calls
     assert store.get("worktree", "WT-REQ-TEST--app") is None
     assert not workspace_path.exists()
     event = store.audit_events()[-1]
-    assert event["event"] == "worktree.remove_incomplete"
+    assert event["event"] == "worktree.removed"
+
+
+def test_worktree_status_filters_binding_and_projects_bound_active_state(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "local")],
+    )
+    repository_path = tmp_path / ".worktrees" / "REQ-TEST" / "REQ-TEST__app"
+    StateStore(tmp_path).set(
+        "worktree",
+        "WT-REQ-TEST--app",
+        {
+            "binding_id": "WT-REQ-TEST--app",
+            "requirement_id": "REQ-TEST",
+            "repository_id": "app",
+            "branch": "praxis/REQ-TEST",
+            "path": str(repository_path.parent),
+            "repository_path": str(repository_path),
+            "status": "active",
+        },
+    )
+
+    def run(command, cwd, environment):
+        assert cwd == repo
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            '{"items": [{"branch": "praxis/REQ-TEST", "path": "'
+            + str(repository_path)
+            + '", "worktree": {"state": "branch_worktree_mismatch"}, "symbols": "⚑"}]}',
+            "",
+        )
+
+    result = WorktreeService(tmp_path, run=run).status(
+        binding_id="WT-REQ-TEST--app"
+    )
+
+    assert result.ok
+    assert result.data["binding_id"] == "WT-REQ-TEST--app"
+    assert len(result.data["items"]) == 1
+    item = result.data["items"][0]
+    assert item["worktree"]["state"] == "bound_active"
+    assert item["worktrunk_state"] == "bound_active"
+    assert item["worktrunk_raw_state"] == "branch_worktree_mismatch"
 
 
 def test_worktree_creation_binds_requirement_repository_and_stage(
@@ -306,7 +359,8 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
 
     listed = service.list().data["items"][0]
     assert listed["worktree"]["state"] == "bound_active"
-    assert listed["worktrunk_state"] == "branch_worktree_mismatch"
+    assert listed["worktrunk_state"] == "bound_active"
+    assert listed["worktrunk_raw_state"] == "branch_worktree_mismatch"
     assert "⚑" not in listed["symbols"]
     assert "⚑" not in listed["statusline"]
 

@@ -4,6 +4,7 @@ import fcntl
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -329,6 +330,37 @@ class CodeGraphService:
                     data={**job, "fallback": "rg"},
                 )
             time.sleep(min(0.1, max(deadline - time.monotonic(), 0)))
+
+    def cancel(self) -> Result:
+        """Stop this worktree's background graph process before removing the worktree."""
+        job = self.store.get("codegraph_background", self.key)
+        if not job or job.get("status") not in {"queued", "running"}:
+            return Result(True, "CODEGRAPH_BACKGROUND_NOT_ACTIVE", data=job or {})
+        pid = int(job.get("pid") or 0)
+        if pid and pid != os.getpid() and self._background_active(job):
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            except OSError as error:
+                return Result(
+                    False,
+                    "CODEGRAPH_BACKGROUND_CANCEL_FAILED",
+                    data={**job, "error_type": type(error).__name__},
+                )
+        completed_at = datetime.now(UTC).isoformat()
+        job.update(
+            status="cancelled",
+            code="CODEGRAPH_BACKGROUND_CANCELLED",
+            completed_at=completed_at,
+        )
+        self.store.set("codegraph_background", self.key, job)
+        operation = self._operation()
+        if operation and operation.get("status") == "running":
+            operation.update(status="cancelled", completed_at=completed_at)
+            self.store.set("codegraph_operation", self.key, operation)
+        audit_id = self.store.audit("codegraph.background_cancelled", job["code"], job)
+        return Result(True, job["code"], data={**job, "audit_id": audit_id})
 
     @staticmethod
     def _background_active(job: dict[str, Any]) -> bool:

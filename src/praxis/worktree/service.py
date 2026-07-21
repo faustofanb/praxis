@@ -1199,34 +1199,75 @@ class WorktreeService:
                 return result
             listed = result.data.get("items", result.data.get("worktrees", []))
             for item in listed:
-                enriched = {**item, "repository_id": raw["id"]}
-                identifier = str(item.get("branch") or item.get("name") or "")
-                worktree_path = item.get("path")
-                resolved = resolve_worktree_binding(
-                    StateStore(self.root),
-                    identifier,
-                    repository_id=raw["id"],
-                    worktree_path=worktree_path,
-                )
-                if resolved:
-                    worktrunk_state = str(item.get("worktree", {}).get("state", ""))
-                    enriched.update(
-                        binding_id=resolved[0],
-                        workspace_path=resolved[1]["path"],
-                        binding_status=resolved[1]["status"],
-                        worktrunk_state=worktrunk_state,
-                    )
-                    if resolved[1].get("status") == "active":
-                        enriched["worktree"] = {
-                            **item.get("worktree", {}),
-                            "state": "bound_active",
-                        }
-                        enriched["symbols"] = str(item.get("symbols", "")).replace("⚑", "")
-                        enriched["statusline"] = str(item.get("statusline", "")).replace(
-                            "⚑", ""
-                        )
-                items.append(enriched)
+                items.append(self._enrich_list_item(item, str(raw["id"])))
         return Result(True, data={"items": items})
+
+    def status(self, *, binding_id: str = "", worktree_path: str = "") -> Result:
+        if not binding_id and not worktree_path:
+            return self.list()
+        store = StateStore(self.root)
+        resolved = resolve_worktree_binding(
+            store,
+            binding_id,
+            worktree_path=worktree_path or None,
+        )
+        if not resolved:
+            return Result(False, "WORKTREE_BINDING_INVALID")
+        binding_key, binding = resolved
+        project = WorkspaceService(self.root).project(str(binding["repository_id"]))
+        result = self._execute(["list"], cwd=(self.root / project.path).resolve())
+        if not result.ok:
+            return result
+        expected_path = Path(
+            str(binding.get("repository_path") or binding.get("path", ""))
+        ).resolve()
+        listed = result.data.get("items", result.data.get("worktrees", []))
+        matches = [
+            self._enrich_list_item(item, project.id)
+            for item in listed
+            if str(item.get("branch") or item.get("name") or "")
+            == str(binding.get("branch", ""))
+            or (
+                item.get("path")
+                and Path(str(item["path"])).resolve() == expected_path
+            )
+        ]
+        if not matches:
+            return Result(
+                False,
+                "WORKTREE_NOT_FOUND",
+                data={"binding_id": binding_key, "repository_id": project.id},
+            )
+        return Result(True, data={"items": matches, "binding_id": binding_key})
+
+    def _enrich_list_item(self, item: dict[str, Any], repository_id: str) -> dict[str, Any]:
+        enriched = {**item, "repository_id": repository_id}
+        identifier = str(item.get("branch") or item.get("name") or "")
+        resolved = resolve_worktree_binding(
+            StateStore(self.root),
+            identifier,
+            repository_id=repository_id,
+            worktree_path=item.get("path"),
+        )
+        if not resolved:
+            return enriched
+        raw_state = str(item.get("worktree", {}).get("state", ""))
+        active = resolved[1].get("status") == "active"
+        enriched.update(
+            binding_id=resolved[0],
+            workspace_path=resolved[1]["path"],
+            binding_status=resolved[1]["status"],
+            worktrunk_raw_state=raw_state,
+            worktrunk_state="bound_active" if active else raw_state,
+        )
+        if active:
+            enriched["worktree"] = {
+                **item.get("worktree", {}),
+                "state": "bound_active",
+            }
+            enriched["symbols"] = str(item.get("symbols", "")).replace("⚑", "")
+            enriched["statusline"] = str(item.get("statusline", "")).replace("⚑", "")
+        return enriched
 
     def migrate_name(self, requirement_id: str, repository_id: str) -> Result:
         store = StateStore(self.root)
@@ -1743,16 +1784,24 @@ class WorktreeService:
         resolved = resolve_worktree_binding(store, branch)
         binding = resolved[1] if resolved else None
         cwd = self.root
+        graph_cleanup = Result(True, "CODEGRAPH_BACKGROUND_NOT_ACTIVE")
         if binding:
             project = WorkspaceService(self.root).project(binding["repository_id"])
             cwd = (self.root / project.path).resolve()
+            graph_cleanup = CodeGraphService(
+                self.root,
+                project.id,
+                repo=binding.get("repository_path", binding["path"]),
+                codegraph_version="unknown",
+            ).cancel()
+            if not graph_cleanup.ok:
+                return graph_cleanup
         result = self._execute(
             ["remove", str(binding.get("branch", branch)) if binding else branch],
             cwd=cwd,
         )
         if result.ok and resolved is not None:
             binding = resolved[1]
-            store.delete("worktree", resolved[0])
             workspace_path = Path(str(binding["path"]))
             with suppress(OSError):
                 workspace_path.rmdir()
@@ -1774,19 +1823,33 @@ class WorktreeService:
                     data={**remaining.data, "audit_id": audit_id},
                 )
             if remaining.data["stdout"]:
-                details = {
-                    **binding,
-                    "branch": branch_name,
-                    "branch_deleted": False,
-                    "worktrunk": result.data,
-                }
-                details["audit_id"] = store.audit(
-                    "worktree.remove_incomplete",
-                    "WORKTREE_BRANCH_DELETE_MISMATCH",
-                    details,
+                deleted = self._git(
+                    ["branch", "-D", branch_name],
+                    cwd=cwd,
+                    failure_code="WORKTREE_BRANCH_DELETE_FAILED",
                 )
-                return Result(False, "WORKTREE_BRANCH_DELETE_MISMATCH", data=details)
-            store.audit("worktree.removed", "OK", binding)
+                if not deleted.ok:
+                    binding.update(status="remove_cleanup_failed")
+                    store.set("worktree", resolved[0], binding)
+                    details = {
+                        **binding,
+                        "branch": branch_name,
+                        "branch_deleted": False,
+                        "worktrunk": result.data,
+                        "git": deleted.data,
+                    }
+                    details["audit_id"] = store.audit(
+                        "worktree.remove_incomplete",
+                        deleted.code,
+                        details,
+                    )
+                    return Result(False, deleted.code, data=details)
+            store.delete("worktree", resolved[0])
+            store.audit(
+                "worktree.removed",
+                "OK",
+                {**binding, "codegraph_cleanup": graph_cleanup.to_dict()},
+            )
         return result
 
     def merge(self, target: str, *, branch: str | None = None) -> Result:

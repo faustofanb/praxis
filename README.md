@@ -83,6 +83,7 @@ praxis worktree ensure REQ-20260720-001 --repository backend --repository web \
 praxis worktree prepare REQ-20260720-001 --repository web --json
 praxis worktree migrate-name REQ-20260720-001 --repository backend --json
 praxis worktree list --json
+praxis worktree status --binding WT-REQ-20260720-001--backend --json
 praxis worktree install-hooks --project backend --json
 praxis worktree merge main --json       # run inside the source worktree
 praxis worktree remove feature/example --json
@@ -139,6 +140,9 @@ setup fingerprint.
 
 Git isolation, local-file preparation, and an active binding are the synchronous development boundary.
 CodeGraph is queued in a detached worker and exposes persisted status, PID, duration, and log path.
+Removing a bound worktree first cancels that worktree's background graph process, then verifies and,
+if necessary, explicitly deletes the exact bound branch. It never trusts Worktrunk's cleanup claim
+without a Git ref check.
 Normal investigation uses `rg`; semantic operations may explicitly wait for the graph:
 
 ```bash

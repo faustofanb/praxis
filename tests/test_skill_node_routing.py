@@ -67,6 +67,78 @@ def test_investigating_node_routes_required_and_contextual_skills(tmp_path: Path
     assert "code-quality-review" not in decisions
 
 
+def test_node_alias_is_canonicalized_and_unknown_node_is_rejected(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    aliased = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="investigation",
+            requirement_id="REQ-ALIAS",
+            available_skills=("brainstorming", "grilling"),
+            token_budget=4_000,
+        )
+    )
+    unknown = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(node="invented", requirement_id="REQ-BAD")
+    )
+
+    assert aliased.ok
+    assert aliased.data["node"] == "investigating"
+    assert StateStore(tmp_path).get("skill_route", "REQ-ALIAS:investigating")
+    required = {
+        item["id"]
+        for item in aliased.data["decisions"]
+        if item["mode"] == "required"
+    }
+    completed = SkillInvocationService(tmp_path).complete_node(
+        "REQ-ALIAS",
+        "investigation",
+        {skill_id: "alias completed" for skill_id in required},
+    )
+    assert completed.ok
+    assert completed.data["node"] == "investigating"
+    assert not unknown.ok
+    assert unknown.code == "SKILL_NODE_INVALID"
+
+
+def test_default_budget_reserves_context_for_matching_business_skill(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    skill = tmp_path / "知识库" / "skills" / "business" / "business.demo.backend.development"
+    skill.mkdir(parents=True)
+    (skill / "skill.toml").write_text(
+        'id = "business.demo.backend.development"\n'
+        'type = "business"\nversion = "1.0.0"\nlicense = "Proprietary"\n'
+        'risk = "none"\ncontext_budget = 500\nrequired_tools = []\n'
+        'source = "test"\nsource_version = "1"\ntriggers = ["backend"]\n'
+        'systems = ["demo"]\nprojects = ["backend"]\n'
+        'repository_roles = ["java-maven"]\n'
+    )
+    (skill / "SKILL.md").write_text("# Backend business context\n")
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="investigating",
+            intent="回归缺陷并定位代码",
+            project_id="backend",
+            system_id="demo",
+            repository_kind="java-maven",
+            agent_role="investigator",
+            available_skills=(
+                "brainstorming",
+                "grilling",
+                "systematic-debugging",
+                "file-search",
+            ),
+            token_budget=4_000,
+        )
+    )
+
+    decisions = {item["id"]: item for item in result.data["decisions"]}
+    assert decisions["business.demo.backend.development"]["status"] == "available"
+    assert decisions["file-search"]["status"] == "omitted_budget"
+    assert result.data["used_budget"] == 4_000
+
+
 def test_installed_skill_is_discovered_with_content_hash(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "home"
     skill = home / ".codex" / "skills" / "external-brainstorming" / "SKILL.md"

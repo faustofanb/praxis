@@ -712,6 +712,11 @@ class PraxisApplication:
             )
         if action == "list":
             return worktree.list()
+        if action == "status":
+            return worktree.status(
+                binding_id=values.get("binding_id", ""),
+                worktree_path=values.get("worktree", ""),
+            )
         if action == "remove":
             return worktree.remove(values["branch"])
         if action == "merge":

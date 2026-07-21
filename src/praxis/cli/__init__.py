@@ -240,7 +240,10 @@ def _parser() -> argparse.ArgumentParser:
 
     worktree = commands.add_parser("worktree").add_subparsers(dest="action", required=True)
     _json_flag(worktree.add_parser("list"))
-    _json_flag(worktree.add_parser("status"))
+    status_worktree = worktree.add_parser("status")
+    status_worktree.add_argument("--binding", default="")
+    status_worktree.add_argument("--worktree", default="")
+    _json_flag(status_worktree)
     create_worktree = worktree.add_parser("create")
     create_worktree.add_argument("requirement_id")
     create_worktree.add_argument("--repository", required=True)
@@ -736,7 +739,10 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "repository_id": args.repository,
             }
         if args.action == "status":
-            return "worktree.list", {}
+            return "worktree.status", {
+                "binding_id": args.binding,
+                "worktree": args.worktree,
+            }
         keys = ("branch", "target")
         return f"worktree.{args.action}", {key: values[key] for key in keys if key in values}
     if args.group == "hook":

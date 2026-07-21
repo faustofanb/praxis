@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import threading
 import time
@@ -204,6 +205,40 @@ def test_build_sync_remove_and_query_error_contracts(tmp_path: Path) -> None:
     assert service.node("A").code == "CODEGRAPH_QUERY_FAILED"
     assert service.remove_metadata().ok
     assert service.status().data["fresh"] is False
+
+
+def test_cancel_stops_background_process_group_and_updates_state(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _workspace(tmp_path)
+
+    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 0, "{}", "")
+
+    service = CodeGraphService(tmp_path, "app", repo=repo, run=run)
+    service.store.set(
+        "codegraph_background",
+        service.key,
+        {"job_id": "CGJ-TEST", "status": "running", "pid": 4321},
+    )
+    service.store.set(
+        "codegraph_operation",
+        service.key,
+        {"operation_id": "CGO-TEST", "status": "running", "pid": 4322},
+    )
+    signals = []
+    monkeypatch.setattr(service, "_background_active", lambda job: True)
+    monkeypatch.setattr(os, "killpg", lambda pid, sig: signals.append((pid, sig)))
+
+    result = service.cancel()
+
+    assert result.ok
+    assert result.code == "CODEGRAPH_BACKGROUND_CANCELLED"
+    assert signals and signals[0][0] == 4321
+    background = service.store.get("codegraph_background", service.key)
+    operation = service.store.get("codegraph_operation", service.key)
+    assert background and background["status"] == "cancelled"
+    assert operation and operation["status"] == "cancelled"
 
 
 def test_missing_codegraph_binary_never_marks_index_fresh(tmp_path: Path) -> None:

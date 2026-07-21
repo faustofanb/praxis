@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tomllib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -14,6 +14,13 @@ from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
 
 _MODES = {"required", "conditional", "approval_required"}
+_NODE_ALIASES = {
+    "investigation": "investigating",
+    "analysis": "analyzed",
+    "planning": "planned",
+    "development": "in_progress",
+    "verification": "verifying",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +98,10 @@ class NodeSkillRouter:
         return tuple(policies)
 
     @staticmethod
+    def canonical_node(node: str) -> str:
+        return _NODE_ALIASES.get(node, node)
+
+    @staticmethod
     def policy_path() -> Path:
         source = (
             Path(__file__).resolve().parents[3]
@@ -109,6 +120,16 @@ class NodeSkillRouter:
         return source if source.is_file() else packaged
 
     def route(self, request: NodeSkillRoutingRequest) -> Result:
+        canonical_node = self.canonical_node(request.node)
+        known_nodes = {node for policy in self.policies() for node in policy.nodes}
+        if canonical_node not in known_nodes:
+            return Result(
+                False,
+                "SKILL_NODE_INVALID",
+                data={"node": request.node, "allowed_nodes": sorted(known_nodes)},
+            )
+        if canonical_node != request.node:
+            request = replace(request, node=canonical_node)
         registry = SkillRegistry.workspace(self.root)
         registered = {skill.id: skill for skill in registry.all()}
         bundled = set(registered)
@@ -153,18 +174,40 @@ class NodeSkillRouter:
                 )
         available = bundled | set(installed) | set(request.available_skills)
         approved = set(request.approved_skills)
+        matched_policies = [
+            (policy, reasons)
+            for policy in sorted(self.policies(), key=lambda item: (-item.priority, item.id))
+            if (reasons := self._matches(policy, request)) is not None
+        ]
+        required_budget = sum(
+            policy.context_budget
+            for policy, _ in matched_policies
+            if policy.mode == "required"
+        )
+        business = registry.route_context(
+            SkillRoutingContext(
+                system_id=request.system_id,
+                project_id=request.project_id,
+                business_domains=request.business_domains,
+                repository_role=request.repository_kind,
+                stage=request.node,
+                agent_role=request.agent_role,
+                risks=request.risks,
+                artifact_types=request.artifact_types,
+                token_budget=max(0, request.token_budget - required_budget),
+            )
+        )
+        business_budget = sum(skill.context_budget for skill in business)
+        policy_budget = max(0, request.token_budget - business_budget)
         decisions: list[dict[str, Any]] = []
         used = 0
-        for policy in sorted(self.policies(), key=lambda item: (-item.priority, item.id)):
-            reasons = self._matches(policy, request)
-            if reasons is None:
-                continue
+        for policy, reasons in matched_policies:
             status = "planned"
             if policy.id not in available:
                 status = "unavailable"
             elif policy.mode == "approval_required" and policy.id not in approved:
                 status = "blocked_pending_approval"
-            elif used + policy.context_budget > request.token_budget:
+            elif used + policy.context_budget > policy_budget:
                 status = "omitted_budget"
             else:
                 status = "available"
@@ -184,19 +227,6 @@ class NodeSkillRouter:
                 }
             )
 
-        business = registry.route_context(
-            SkillRoutingContext(
-                system_id=request.system_id,
-                project_id=request.project_id,
-                business_domains=request.business_domains,
-                repository_role=request.repository_kind,
-                stage=request.node,
-                agent_role=request.agent_role,
-                risks=request.risks,
-                artifact_types=request.artifact_types,
-                token_budget=max(0, request.token_budget - used),
-            )
-        )
         known = {item["id"] for item in decisions}
         for skill in business:
             if skill.id in known:
@@ -346,6 +376,7 @@ class SkillInvocationService:
         session_id: str = "",
         approved: bool = False,
     ) -> Result:
+        node = NodeSkillRouter.canonical_node(node)
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
         if not route:
             return Result(False, "SKILL_ROUTE_NOT_FOUND")
@@ -398,6 +429,7 @@ class SkillInvocationService:
         session_id: str = "",
         approved_skills: tuple[str, ...] = (),
     ) -> Result:
+        node = NodeSkillRouter.canonical_node(node)
         if not outcomes or any(not value.strip() for value in outcomes.values()):
             return Result(False, "SKILL_NODE_OUTCOME_REQUIRED")
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
@@ -465,6 +497,7 @@ class SkillInvocationService:
         )
 
     def gate(self, requirement_id: str, node: str) -> Result:
+        node = NodeSkillRouter.canonical_node(node)
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
         if not route:
             data = {

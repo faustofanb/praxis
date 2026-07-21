@@ -83,6 +83,10 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 代码稳定后再登记产出物；`artifact add` 按“需求+路径” upsert 并刷新哈希。
 - 从 verifying 回开发使用带原因的 `requirement reopen`；同一问题默认最多一次恢复、一次重试。
 - 完成多个 Skill 后可用 `skill complete-node --used-skill <id>=<outcome>` 批量写入调用、完成和 gate 凭证。
+- 节点路由统一保存为需求状态名；`investigation`、`analysis`、`planning`、`development`、
+  `verification` 会规范化为对应状态，其他未知节点必须失败，不得静默退化为仅业务 Skill。
+- 查询单个工作树使用 `worktree status --binding <binding_id>`，避免扫描所有仓库；active binding
+  对外状态固定为 `bound_active`，原始 Worktrunk 状态仅作为诊断字段保留。
 - subagent 默认使用 `fork_turns=none` 和精简交接包；父节点单写需求状态与 Skill gate，
   子 Agent 只返回改动路径、决策、阻塞和后续请求收据。
 - 提交前确认改动只存在于绑定工作树，提交信息关联需求编号。
