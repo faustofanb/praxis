@@ -64,6 +64,12 @@ praxis workspace guidance --json
 Creating a requirement writes its knowledge documents immediately but does not create a worktree.
 Investigation and planning stay in the knowledge vault. Create an isolated worktree only after the
 plan confirms that code must change, and always before the first code edit.
+If validation reveals more development work, use the audited rollback instead of routing through a
+synthetic blocked state:
+
+```bash
+praxis requirement reopen REQ-20260720-001 --reason "validation found missing behavior" --json
+```
 
 ## Worktrunk and CodeGraph
 
@@ -71,6 +77,10 @@ Worktrunk is the only worktree implementation:
 
 ```bash
 praxis worktree create REQ-20260720-001 --repository backend --stage backend --json
+praxis worktree preview REQ-20260720-001 --repository backend --repository web --json
+praxis worktree ensure REQ-20260720-001 --repository backend --repository web \
+  --confirm WTP-20260721T120000-1234ABCD --json
+praxis worktree prepare REQ-20260720-001 --repository web --json
 praxis worktree migrate-name REQ-20260720-001 --repository backend --json
 praxis worktree list --json
 praxis worktree install-hooks --project backend --json
@@ -100,9 +110,9 @@ The first generated display slug is persisted in `worktree_group`, so a later re
 rename does not silently move paths or branches. Internal identity remains
 `WT-<requirement-id>--<repository-id>`. Existing bindings with legacy names must use
 `worktree migrate-name`; create fails closed with `WORKTREE_NAME_MIGRATION_REQUIRED`. Migration
-moves the Git worktree, renames the branch, rewrites affected artifact source paths, rebuilds
-CodeGraph for the new path, updates the binding only after the move, and compensates back to the old
-name when any required step fails.
+moves the Git worktree, renames the branch, rewrites affected artifact source paths, restores the
+binding to `active`, and queues CodeGraph for the new path. Git/path failures compensate back to the
+old name; a background graph failure does not invalidate an otherwise usable Git worktree.
 The binding remains `migrating` for the full operation and persists its old path, branch, and
 status. Re-running the same migration command after a process interruption compensates back to the
 old name and rebuilds CodeGraph there before normal creation can continue.
@@ -117,17 +127,24 @@ local_files = ["apps/web-antd/.env.development"]
 worktree_setup_commands = ["pnpm install --offline --frozen-lockfile"]
 ```
 
-After local files are prepared and before CodeGraph starts, Praxis runs only the configured setup
-commands as parsed argument vectors in the repository worktree. It does not invoke a shell, infer a
-package manager, or retry a failed offline command with network access. A missing executable or
-non-zero exit blocks the binding and records only the command index, executable, and exit code; command
-output and environment values are not written to the binding or audit log. A successfully completed
-setup is not rerun when an already-active binding is resolved with the same command configuration.
+Worktree creation performs only a fast setup preflight and leaves configured dependency installation
+deferred. `worktree prepare` runs the configured commands on first build as parsed argument vectors.
+It does not invoke a shell, infer an undeclared package manager, or retry a failed offline command with
+network access. Command output and environment values are never written to the binding or audit log.
 When an explicit command starts with `pnpm`, Praxis reads the repository root
 `package.json#packageManager`, resolves that exact pnpm version from PATH or an already-installed pnpm
 tool cache, and executes the resolved binary. It never downloads a missing pnpm version. A missing,
 invalid, mismatched, or unavailable declaration blocks setup, and a declaration change invalidates the
 setup fingerprint.
+
+Git isolation, local-file preparation, and an active binding are the synchronous development boundary.
+CodeGraph is queued in a detached worker and exposes persisted status, PID, duration, and log path.
+Normal investigation uses `rg`; semantic operations may explicitly wait for the graph:
+
+```bash
+praxis codegraph wait --project backend --timeout 30 --json
+praxis codegraph run-pending --project backend --binding WT-REQ-20260720-001--backend --json
+```
 
 Installed hooks enforce worktree binding, changed-path and secret gates plus the CodeGraph lifecycle
 at post-start, pre-commit, pre-merge, post-merge, and post-remove. They never start lint, format, typecheck,
@@ -197,6 +214,9 @@ praxis skill invoke brainstorming \
   --requirement REQ-20260721-001 --node investigating --json
 praxis skill complete SKI-20260721T120000-1234ABCD --json
 praxis skill gate --requirement REQ-20260721-001 --node investigating --json
+praxis skill complete-node --requirement REQ-20260721-001 --node investigating \
+  --project backend --used-skill brainstorming="方案已确认" \
+  --used-skill grilling="边界已确认" --used-skill ponytail="复用现有能力" --json
 ```
 
 `skill.route_planned`, `skill.invoked`, and `skill.completed` are distinct audit events. A command
@@ -207,6 +227,16 @@ tester Agents, subagents, verification, and branch-finishing Skills remain pendi
 explicitly approves the current scope. Bootstrap reports missing external providers and never
 installs them automatically. The router discovers installed providers in the standard Codex,
 shared Agent, and Claude Skill directories and records the selected `SKILL.md` path and content hash.
+Identical node inputs reuse a route fingerprint; reuse never manufactures invocation or approval
+evidence. Direct user authorization can be recorded once for an exact validation matrix, while
+evidence, recovery, and retry loops use explicit per-stage budgets:
+
+```bash
+praxis approval grant --requirement REQ-20260721-001 --scope verification \
+  --entry "uv run pytest -q" --user-evidence "user message id" --authorized-by-user --json
+praxis budget consume --requirement REQ-20260721-001 --node in_progress \
+  --kind retry --operation-key worktree:web --json
+```
 
 The `dbx-database-investigation` Skill supplies the investigation workflow; the database service owns
 connection registration, authorization, SQL safety, execution, and audit.
@@ -216,6 +246,10 @@ connection registration, authorization, SQL safety, execution, and audit.
 Context compilation keeps original requirements, task stage, modification scope, and gates as P0
 facts. It then deduplicates, redacts, ranks, fits optional portrait/analysis/skill fragments to the
 budget, and persists a source manifest and fingerprint:
+
+Subagent sessions default to `fork_turns=none`, render a compact `handoff.json`, and treat the parent
+session as the single writer for requirement transitions and Skill gates. A child returns a bounded
+parent receipt containing changed paths, decisions, blockers, and requested follow-up.
 
 ```bash
 praxis context build \
@@ -287,6 +321,9 @@ praxis artifact list --requirement REQ-20260720-001 --json
 praxis audit list --json
 praxis audit verify --json
 ```
+
+`artifact add` is an upsert keyed by requirement plus normalized source path. Re-adding a modified
+file preserves its artifact ID and creation time while refreshing hash, size, stage, and metadata.
 
 WITR is also opt-in through `praxis runtime diagnose`. Commands execute once: uncompressed,
 secret-redacted output is retained under `.praxis/raw-logs/`, while RTK filters only the copy returned

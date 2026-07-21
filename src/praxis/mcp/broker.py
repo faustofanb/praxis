@@ -12,8 +12,8 @@ from praxis.gates.policies import allowed_paths_gate
 from praxis.gates.sql import inspect_sql
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService
+from praxis.worktree.service import resolve_worktree_binding
 
 _SERVER_ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
 
@@ -31,6 +31,7 @@ _CAPABILITIES: dict[str, tuple[str, CapabilityRisk]] = {
     "requirement.create": ("requirement.new", CapabilityRisk.WORKSPACE_WRITE),
     "requirement.read": ("requirement.show", CapabilityRisk.READ),
     "requirement.transition": ("requirement.transition", CapabilityRisk.WORKSPACE_WRITE),
+    "requirement.reopen": ("requirement.reopen", CapabilityRisk.WORKSPACE_WRITE),
     "requirement.update_progress": ("task.progress", CapabilityRisk.WORKSPACE_WRITE),
     "code.search": ("codegraph.query", CapabilityRisk.READ),
     "code.explore": ("codegraph.explore", CapabilityRisk.READ),
@@ -44,6 +45,9 @@ _CAPABILITIES: dict[str, tuple[str, CapabilityRisk]] = {
     "runtime.port": ("runtime.diagnose", CapabilityRisk.READ),
     "runtime.container": ("runtime.diagnose", CapabilityRisk.READ),
     "worktree.create": ("worktree.create", CapabilityRisk.WORKSPACE_WRITE),
+    "worktree.preview": ("worktree.preview", CapabilityRisk.WORKSPACE_WRITE),
+    "worktree.ensure": ("worktree.ensure", CapabilityRisk.WORKSPACE_WRITE),
+    "worktree.prepare": ("worktree.prepare", CapabilityRisk.WORKSPACE_WRITE),
     "worktree.status": ("worktree.list", CapabilityRisk.READ),
     "gate.run": ("gate.run", CapabilityRisk.WORKSPACE_WRITE),
     "gate.explain": ("gate.explain", CapabilityRisk.READ),
@@ -57,6 +61,7 @@ _CAPABILITIES: dict[str, tuple[str, CapabilityRisk]] = {
     "skill.plan": ("skill.route-node", CapabilityRisk.WORKSPACE_WRITE),
     "skill.invoke": ("skill.invoke", CapabilityRisk.WORKSPACE_WRITE),
     "skill.complete": ("skill.complete", CapabilityRisk.WORKSPACE_WRITE),
+    "skill.complete_node": ("skill.complete-node", CapabilityRisk.WORKSPACE_WRITE),
     "skill.gate": ("skill.gate", CapabilityRisk.READ),
     "deployment.execute": ("deployment.execute", CapabilityRisk.DESTRUCTIVE),
 }
@@ -68,6 +73,7 @@ _ROLE_CAPABILITIES = {
         "requirement.create",
         "requirement.read",
         "requirement.transition",
+        "requirement.reopen",
         "context.build",
         "context.read",
         "context.diff",
@@ -76,11 +82,14 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
         "code.search",
         "code.explore",
         "code.impact",
         "worktree.status",
+        "worktree.preview",
+        "worktree.ensure",
     },
     "investigator": {
         "workspace.read",
@@ -95,6 +104,7 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
         "code.search",
         "code.explore",
@@ -125,6 +135,8 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
+        "worktree.prepare",
         "skill.gate",
     },
     "reviewer": {
@@ -141,6 +153,7 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
     },
     "tester": {
@@ -154,6 +167,7 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
     },
     "database": {
@@ -169,6 +183,7 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
     },
     "release": {
@@ -182,6 +197,7 @@ _ROLE_CAPABILITIES = {
         "skill.plan",
         "skill.invoke",
         "skill.complete",
+        "skill.complete_node",
         "skill.gate",
         "deployment.execute",
     },
@@ -219,7 +235,12 @@ class McpBrokerService:
                 if risk == CapabilityRisk.WORKSPACE_WRITE:
                     if capability == "requirement.create":
                         permitted = True
-                    elif capability in {"skill.plan", "skill.invoke", "skill.complete"}:
+                    elif capability in {
+                        "skill.plan",
+                        "skill.invoke",
+                        "skill.complete",
+                        "skill.complete_node",
+                    }:
                         permitted = bool(requirement_id)
                     else:
                         permitted = bool(requirement_id and worktree)
@@ -283,9 +304,14 @@ class McpBrokerService:
         scoped_capabilities = {
             "requirement.read",
             "requirement.transition",
+            "requirement.reopen",
             "skill.plan",
             "skill.invoke",
             "skill.gate",
+            "skill.complete_node",
+            "worktree.preview",
+            "worktree.ensure",
+            "worktree.prepare",
         }
         if capability in scoped_capabilities and values.get("requirement_id") != grant.get(
             "requirement_id"

@@ -80,6 +80,30 @@ class RequirementService:
         self.repair_projections()
         return Result(True, data={"requirement_id": requirement_id, "status": record["status"]})
 
+    def reopen(self, requirement_id: str, reason: str) -> Result:
+        if not reason.strip():
+            return Result(False, "REQUIREMENT_REOPEN_REASON_REQUIRED")
+        current = self.store.requirement(requirement_id)
+        if not current:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        if current["status"] != RequirementStatus.VERIFYING:
+            return Result(
+                False,
+                "REQUIREMENT_REOPEN_STATUS_INVALID",
+                data={"status": current["status"]},
+            )
+        record = self.store.reopen_requirement(requirement_id, reason.strip())
+        self.repair_projections()
+        return Result(
+            True,
+            "REQUIREMENT_REOPENED",
+            data={
+                "requirement_id": requirement_id,
+                "status": record["status"],
+                "reason": reason.strip(),
+            },
+        )
+
     def _ready_gate(self, record: dict[str, Any]) -> Result:
         workspace = WorkspaceService(self.root).load()
         systems = {item["id"]: item for item in workspace.get("systems", [])}

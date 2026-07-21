@@ -143,6 +143,34 @@ def test_skill_invocation_gate_requires_completed_evidence(tmp_path: Path) -> No
     assert invocations.gate("REQ-TEST", "investigating").ok
 
 
+def test_complete_node_records_required_skill_lifecycle_in_one_call(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    route = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="investigating",
+            intent="调查需求",
+            requirement_id="REQ-TEST",
+            available_skills=("brainstorming", "grilling"),
+            token_budget=5_000,
+        )
+    )
+    required = {
+        item["id"]
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    }
+
+    result = SkillInvocationService(tmp_path).complete_node(
+        "REQ-TEST",
+        "investigating",
+        {skill_id: f"已使用 {skill_id} 完成调查" for skill_id in required},
+    )
+
+    assert result.ok
+    assert {item["skill_id"] for item in result.data["completed"]} == required
+    assert result.data["gate"]["missing"] == []
+
+
 def test_skill_gate_missing_route_is_audited(tmp_path: Path) -> None:
     _workspace(tmp_path)
 

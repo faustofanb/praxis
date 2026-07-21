@@ -141,7 +141,7 @@ Files:
 
 Steps:
 
-1. Measure application operations with `time.monotonic_ns` and add `duration_ms` to the returned data.
+1. Measure core aggregate operations with `time.monotonic_ns` and add `duration_ms` to their returned data without changing stable utility-command payloads.
 2. Emit a compact `operation.timed` audit entry containing operation, result code, duration, requirement/project/binding identifiers when present.
 3. Prevent timing telemetry from recording command output, environment variables, SQL, or free-form request text.
 4. Update managed guidance and workflow Skill for preview-first naming, deferred setup, background CodeGraph, artifact upsert, scoped approvals, evidence budgets, concise updates, and parent single-writer behavior.

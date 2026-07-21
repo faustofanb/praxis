@@ -121,6 +121,16 @@ def create_server(root: Path | str) -> FastMCP:
         )
 
     @server.tool()
+    def praxis_requirement_reopen(
+        session_id: str, requirement_id: str, reason: str
+    ) -> dict[str, Any]:
+        return invoke(
+            session_id,
+            "requirement.reopen",
+            {"requirement_id": requirement_id, "reason": reason},
+        )
+
+    @server.tool()
     def praxis_requirement_update_progress(
         session_id: str, task_id: str, message: str
     ) -> dict[str, Any]:
@@ -151,6 +161,18 @@ def create_server(root: Path | str) -> FastMCP:
     @server.tool()
     def praxis_worktree_create(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return invoke(session_id, "worktree.create", arguments)
+
+    @server.tool()
+    def praxis_worktree_preview(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return invoke(session_id, "worktree.preview", arguments)
+
+    @server.tool()
+    def praxis_worktree_ensure(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return invoke(session_id, "worktree.ensure", arguments)
+
+    @server.tool()
+    def praxis_worktree_prepare(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return invoke(session_id, "worktree.prepare", arguments)
 
     @server.tool()
     def praxis_worktree_list(session_id: str) -> dict[str, Any]:
@@ -205,6 +227,13 @@ def create_server(root: Path | str) -> FastMCP:
         )
 
     @server.tool()
+    def praxis_skill_complete_node(
+        session_id: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
+        arguments = {**arguments, "session_id": session_id}
+        return invoke(session_id, "skill.complete_node", arguments)
+
+    @server.tool()
     def praxis_skill_gate(
         session_id: str, requirement_id: str, node: str
     ) -> dict[str, Any]:
@@ -239,6 +268,10 @@ def create_server(root: Path | str) -> FastMCP:
     @server.tool()
     def praxis_session_finish(session_id: str, status: str = "completed") -> dict[str, Any]:
         return AgentSessionService(workspace).finish(session_id, status).to_dict()
+
+    @server.tool()
+    def praxis_session_receipt(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return AgentSessionService(workspace).receipt(session_id, **arguments).to_dict()
 
     @server.tool()
     def codegraph_status(

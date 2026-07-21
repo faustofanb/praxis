@@ -66,6 +66,18 @@ class FakeWorktree:
     def install_hooks(self, project_id: str) -> Result:
         return Result(True, data={"project_id": project_id})
 
+    def preview_for_requirement(self, requirement_id: str, repository_ids) -> Result:
+        return Result(True, "WORKTREE_PREVIEWED", data={"repositories": repository_ids})
+
+    def ensure_for_requirement(self, requirement_id: str, repository_ids, *, preview_id) -> Result:
+        return Result(True, "WORKTREE_ENSURED", data={"preview_id": preview_id})
+
+    def prepare_for_requirement(self, requirement_id: str, repository_id: str) -> Result:
+        return Result(True, "WORKTREE_SETUP_COMPLETED", data={"repository_id": repository_id})
+
+    def migrate_name(self, requirement_id: str, repository_id: str) -> Result:
+        return Result(True, "WORKTREE_NAME_MIGRATED", data={"repository_id": repository_id})
+
 
 class FakeTask:
     def __init__(self, root):
@@ -293,6 +305,7 @@ def test_codegraph_status_resolves_bound_repository_worktree(
 
     assert result.ok
     assert result.data["binding_id"] == "WT-REQ-TEST--backend"
+    assert FakeGraph.last_repo is not None
     assert Path(FakeGraph.last_repo) == repository_path
 
     by_path = application.execute(
@@ -300,6 +313,161 @@ def test_codegraph_status_resolves_bound_repository_worktree(
     )
     assert by_path.ok
     assert by_path.data["binding_id"] == "WT-REQ-TEST--backend"
+
+
+def test_governance_operations_dispatch_with_timing_metadata(tmp_path: Path) -> None:
+    application = PraxisApplication(tmp_path)
+    assert application.execute(
+        "init", {"workspace_id": "demo", "name": "演示工作空间"}
+    ).ok
+    requirement = StateStore(tmp_path).create_requirement("验证批准", "运行验证", [], [])
+    requirement_id = requirement["requirement_id"]
+
+    granted = application.execute(
+        "approval.grant",
+        {
+            "requirement_id": requirement_id,
+            "scope": "verification",
+            "entries": ["pytest"],
+            "user_evidence": "用户批准",
+            "authorized_by_user": True,
+        },
+    )
+    checked = application.execute(
+        "approval.check",
+        {
+            "requirement_id": requirement_id,
+            "scope": "verification",
+            "entry": "pytest",
+        },
+    )
+    consumed = application.execute(
+        "budget.consume",
+        {
+            "requirement_id": requirement_id,
+            "node": "in_progress",
+            "kind": "retry",
+            "operation_key": "setup:backend",
+        },
+    )
+    status = application.execute(
+        "budget.status", {"requirement_id": requirement_id, "node": "in_progress"}
+    )
+
+    assert granted.ok and checked.ok and consumed.ok and status.ok
+    assert all(
+        "duration_ms" in result.data
+        for result in (granted, checked, consumed, status)
+    )
+    assert all(
+        "timing_audit_id" in result.data
+        for result in (granted, checked, consumed, status)
+    )
+
+
+def test_fast_path_operations_dispatch_through_public_application(
+    application: PraxisApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert application.execute(
+        "init", {"workspace_id": "demo", "name": "演示工作空间"}
+    ).ok
+    store = StateStore(application.root)
+    requirement = store.create_requirement("快速路径", "验证公共入口", [], [])
+    requirement_id = requirement["requirement_id"]
+    route = application.execute(
+        "skill.route-node",
+        {
+            "node": "in_progress",
+            "requirement_id": requirement_id,
+            "intent": "实现最小正确修改",
+            "budget": 5_000,
+        },
+    )
+    required = {
+        item["id"]
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    }
+    completed = application.execute(
+        "skill.complete-node",
+        {
+            "node": "in_progress",
+            "requirement_id": requirement_id,
+            "intent": "实现最小正确修改",
+            "outcomes": {skill_id: "已完成" for skill_id in required},
+            "budget": 5_000,
+        },
+    )
+    assert completed.ok
+
+    report = application.root / "report.txt"
+    report.write_text("passed")
+    artifact = application.execute(
+        "artifact.add",
+        {
+            "requirement_id": requirement_id,
+            "artifact_type": "test-report",
+            "source_path": report,
+            "stage": "verify",
+        },
+    )
+    assert application.execute(
+        "artifact.verify", {"artifact_id": artifact.data["artifact_id"]}
+    ).ok
+    assert application.execute(
+        "artifact.list", {"requirement_id": requirement_id}
+    ).ok
+
+    store.set(
+        "agent_session",
+        "SES-FAST",
+        {"session_id": "SES-FAST", "requirement_id": requirement_id},
+    )
+    assert application.execute(
+        "agent.receipt",
+        {"session_id": "SES-FAST", "changed_paths": ["src/app.py"]},
+    ).ok
+    assert application.execute("agent.sessions").ok
+
+    monkeypatch.setattr(
+        application,
+        "_gate_current_skill_route",
+        lambda requirement_id: Result(True),
+    )
+    assert application.execute(
+        "worktree.preview",
+        {"requirement_id": requirement_id, "repository_ids": ["backend"]},
+    ).ok
+    assert application.execute(
+        "worktree.ensure",
+        {
+            "requirement_id": requirement_id,
+            "repository_ids": ["backend"],
+            "preview_id": "WTP-FAST",
+        },
+    ).ok
+    assert application.execute(
+        "worktree.prepare",
+        {"requirement_id": requirement_id, "repository_id": "backend"},
+    ).ok
+    assert application.execute(
+        "worktree.migrate-name",
+        {"requirement_id": requirement_id, "repository_id": "backend"},
+    ).ok
+
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+        RequirementStatus.VERIFYING,
+    ):
+        store.transition_requirement(requirement_id, status)
+    assert application.execute(
+        "requirement.reopen",
+        {"requirement_id": requirement_id, "reason": "验证后继续开发"},
+    ).ok
 
 
 @pytest.mark.parametrize(

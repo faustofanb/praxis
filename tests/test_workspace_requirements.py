@@ -114,6 +114,31 @@ def test_requirement_transition_preserves_existing_progress_content(tmp_path: Pa
     assert "已完成调查证据。" in progress.read_text()
 
 
+def test_requirement_reopen_returns_verification_to_development_with_reason(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("重新开发", "验证阶段发现需调整", [], [])
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(tmp_path)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+        RequirementStatus.VERIFYING,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    reopened = requirements.reopen(requirement_id, "验证发现兼容性问题")
+
+    assert reopened.ok and reopened.code == "REQUIREMENT_REOPENED"
+    assert reopened.data["status"] == "in_progress"
+    assert reopened.data["reason"] == "验证发现兼容性问题"
+
+
 def test_requirement_path_and_commit_message_apply_shared_naming_rules(tmp_path: Path) -> None:
     policy = RequirementPathPolicy(tmp_path)
     assert policy.requirement_path("REQ-20260720-001", "金属平衡块复制").is_relative_to(tmp_path)

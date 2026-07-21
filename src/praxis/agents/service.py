@@ -13,8 +13,8 @@ from praxis.documents.atomic_writer import atomic_write_text
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService, _array, _quote
+from praxis.worktree.service import resolve_worktree_binding
 
 _AGENT_TYPES = {"codex", "claude-code", "oh-my-pi"}
 _AGENT_COMMANDS = {"codex": "codex", "claude-code": "claude", "oh-my-pi": "pi"}
@@ -71,6 +71,7 @@ class AgentSessionService:
         *,
         skills: list[str] | None = None,
         approved_external: bool = False,
+        parent_session_id: str = "",
     ) -> Result:
         if agent_type not in _AGENT_TYPES:
             return Result(False, "AGENT_TYPE_INVALID")
@@ -78,6 +79,22 @@ class AgentSessionService:
             return Result(False, "REQUIREMENT_NOT_FOUND")
         if not self.store.get("context", context_id):
             return Result(False, "CONTEXT_NOT_FOUND")
+        if parent_session_id and not self.store.get("agent_session", parent_session_id):
+            return Result(False, "AGENT_PARENT_SESSION_NOT_FOUND")
+        child_denied = {
+            "requirement.transition",
+            "requirement.reopen",
+            "skill.gate",
+            "worktree.create",
+            "worktree.ensure",
+        }
+        denied_requests = sorted(set(requested_capabilities) & child_denied)
+        if parent_session_id and denied_requests:
+            return Result(
+                False,
+                "AGENT_CHILD_STATE_WRITE_DENIED",
+                data={"capabilities": denied_requests},
+            )
         resolved = resolve_worktree_binding(self.store, worktree)
         binding = resolved[1] if resolved else None
         if not binding or binding.get("requirement_id") != requirement_id:
@@ -108,6 +125,14 @@ class AgentSessionService:
             "allowed_capabilities": grant.data["allowed_capabilities"],
             "status": "ready",
             "started_at": timestamp.isoformat(),
+            "coordination": {
+                "fork_turns": "none",
+                "context_mode": "compact_handoff",
+                "requirement_state_owner": parent_session_id or session_id,
+                "child_may_transition_requirement": False,
+                "child_may_close_skill_gate": False,
+            },
+            "parent_session_id": parent_session_id,
         }
         self.store.set("agent_session", session_id, data)
         audit_id = self.store.audit("agent.session_started", "OK", data)
@@ -129,8 +154,16 @@ class AgentSessionService:
             path = target / "oh-my-pi.json"
             content = self._json_config(session)
         atomic_write_text(path, content)
+        handoff_path = target / "handoff.json"
+        atomic_write_text(
+            handoff_path,
+            json.dumps(self._handoff(session), ensure_ascii=False, indent=2) + "\n",
+        )
         self.store.audit("agent.config_rendered", "OK", {"session_id": session_id})
-        return Result(True, data={"session_id": session_id, "files": [str(path)]})
+        return Result(
+            True,
+            data={"session_id": session_id, "files": [str(path), str(handoff_path)]},
+        )
 
     def launch(self, session_id: str, *, execute: bool = False) -> Result:
         session = self.store.get("agent_session", session_id)
@@ -200,6 +233,34 @@ class AgentSessionService:
     def sessions(self) -> Result:
         return Result(True, data={"sessions": self.store.list_scope("agent_session")})
 
+    def receipt(
+        self,
+        session_id: str,
+        *,
+        changed_paths: list[str],
+        decisions: list[str],
+        blockers: list[str],
+        follow_up: str = "",
+    ) -> Result:
+        session = self.store.get("agent_session", session_id)
+        if not session:
+            return Result(False, "AGENT_SESSION_NOT_FOUND")
+        payload = {
+            "session_id": session_id,
+            "requirement_id": session["requirement_id"],
+            "changed_paths": list(dict.fromkeys(changed_paths)),
+            "decisions": list(dict.fromkeys(decisions)),
+            "blockers": list(dict.fromkeys(blockers)),
+            "follow_up": follow_up.strip(),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        serialized = json.dumps(payload, ensure_ascii=False)
+        if len(serialized.encode("utf-8")) > 16_384:
+            return Result(False, "AGENT_RECEIPT_TOO_LARGE", data={"limit_bytes": 16_384})
+        self.store.set("agent_receipt", session_id, payload)
+        audit_id = self.store.audit("agent.parent_receipt", "OK", payload)
+        return Result(True, "AGENT_RECEIPT_RECORDED", data={**payload, "audit_id": audit_id})
+
     def _target(self, session_id: str) -> Path:
         workspace = WorkspaceService(self.root).load()["workspace"]
         return self.root / workspace["generated_root"] / "Agent配置" / session_id
@@ -211,6 +272,8 @@ class AgentSessionService:
                 f"context_id = {_quote(str(session['context_id']))}",
                 f"worktree = {_quote(str(session['worktree_path']))}",
                 f"capabilities = {_array(session['allowed_capabilities'])}",
+                'fork_turns = "none"',
+                'requirement_state_owner = "parent"',
                 "",
                 "[mcp_servers.praxis]",
                 'command = "praxis"',
@@ -226,6 +289,7 @@ class AgentSessionService:
                 "context_id": session["context_id"],
                 "worktree": session["worktree_path"],
                 "allowed_capabilities": session["allowed_capabilities"],
+                "coordination": session.get("coordination", {}),
                 "mcp": {
                     "command": "praxis",
                     "args": ["--root", str(self.root.resolve()), "mcp", "serve"],
@@ -256,3 +320,29 @@ class AgentSessionService:
                 "Stop": [hook("session-stop")],
             }
         return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+    def _handoff(self, session: dict[str, Any]) -> dict[str, Any]:
+        context = self.store.get("context", str(session["context_id"])) or {}
+        requirement = self.store.requirement(str(session["requirement_id"])) or {}
+        return {
+            "session_id": session["session_id"],
+            "parent_session_id": session.get("parent_session_id", ""),
+            "requirement": {
+                "id": requirement.get("requirement_id", ""),
+                "short_name": requirement.get("short_name", ""),
+                "status": requirement.get("status", ""),
+            },
+            "context": {
+                "id": context.get("context_id", ""),
+                "path": context.get("path", ""),
+                "fingerprint": context.get("fingerprint", ""),
+                "estimated_tokens": context.get("estimated_tokens", 0),
+            },
+            "worktree": {
+                "binding_id": session.get("worktree", ""),
+                "path": session.get("worktree_path", ""),
+            },
+            "skills": session.get("skills", []),
+            "allowed_capabilities": session.get("allowed_capabilities", []),
+            "coordination": session.get("coordination", {}),
+        }

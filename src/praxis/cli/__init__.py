@@ -111,6 +111,10 @@ def _parser() -> argparse.ArgumentParser:
     rename_requirement.add_argument("id")
     rename_requirement.add_argument("name")
     _json_flag(rename_requirement)
+    reopen_requirement = requirement.add_parser("reopen")
+    reopen_requirement.add_argument("id")
+    reopen_requirement.add_argument("--reason", required=True)
+    _json_flag(reopen_requirement)
 
     task = commands.add_parser("task").add_subparsers(dest="action", required=True)
     start = task.add_parser("start")
@@ -152,7 +156,7 @@ def _parser() -> argparse.ArgumentParser:
     route_node.add_argument("--risk", action="append", default=[])
     route_node.add_argument("--available-skill", action="append", default=[])
     route_node.add_argument("--approved-skill", action="append", default=[])
-    route_node.add_argument("--budget", type=int, default=4000)
+    route_node.add_argument("--budget", type=int, default=4000, help="context token budget")
     _json_flag(route_node)
     invoke_skill = skill.add_parser("invoke")
     invoke_skill.add_argument("id")
@@ -165,6 +169,23 @@ def _parser() -> argparse.ArgumentParser:
     complete_skill.add_argument("invocation_id")
     complete_skill.add_argument("--outcome", default="completed")
     _json_flag(complete_skill)
+    complete_node = skill.add_parser("complete-node")
+    complete_node.add_argument("--requirement", required=True)
+    complete_node.add_argument("--node", required=True)
+    complete_node.add_argument("--intent", default="")
+    complete_node.add_argument("--project")
+    complete_node.add_argument("--system")
+    complete_node.add_argument("--repository-kind")
+    complete_node.add_argument("--agent-role")
+    complete_node.add_argument("--domain", action="append", default=[])
+    complete_node.add_argument("--artifact", action="append", default=[])
+    complete_node.add_argument("--risk", action="append", default=[])
+    complete_node.add_argument("--available-skill", action="append", default=[])
+    complete_node.add_argument("--approved-skill", action="append", default=[])
+    complete_node.add_argument("--used-skill", action="append", required=True)
+    complete_node.add_argument("--session")
+    complete_node.add_argument("--budget", type=int, default=4000, help="context token budget")
+    _json_flag(complete_node)
     skill_gate = skill.add_parser("gate")
     skill_gate.add_argument("--requirement", required=True)
     skill_gate.add_argument("--node", required=True)
@@ -202,6 +223,15 @@ def _parser() -> argparse.ArgumentParser:
     fresh.add_argument("--project", required=True)
     fresh.add_argument("--initialize", action="store_true")
     _json_flag(fresh)
+    run_pending_graph = codegraph.add_parser("run-pending")
+    run_pending_graph.add_argument("--project")
+    run_pending_graph.add_argument("--binding", default="")
+    _json_flag(run_pending_graph)
+    wait_graph = codegraph.add_parser("wait")
+    wait_graph.add_argument("--project")
+    wait_graph.add_argument("--binding", default="")
+    wait_graph.add_argument("--timeout", type=float, default=0)
+    _json_flag(wait_graph)
     for action in ("query", "explore", "node"):
         child = codegraph.add_parser(action)
         child.add_argument("target")
@@ -216,6 +246,19 @@ def _parser() -> argparse.ArgumentParser:
     create_worktree.add_argument("--repository", required=True)
     create_worktree.add_argument("--stage")
     _json_flag(create_worktree)
+    preview_worktree = worktree.add_parser("preview")
+    preview_worktree.add_argument("requirement_id")
+    preview_worktree.add_argument("--repository", action="append", required=True)
+    _json_flag(preview_worktree)
+    ensure_worktree = worktree.add_parser("ensure")
+    ensure_worktree.add_argument("requirement_id")
+    ensure_worktree.add_argument("--repository", action="append", required=True)
+    ensure_worktree.add_argument("--confirm", required=True)
+    _json_flag(ensure_worktree)
+    prepare_worktree = worktree.add_parser("prepare")
+    prepare_worktree.add_argument("requirement_id")
+    prepare_worktree.add_argument("--repository", required=True)
+    _json_flag(prepare_worktree)
     migrate_worktree = worktree.add_parser("migrate-name")
     migrate_worktree.add_argument("requirement_id")
     migrate_worktree.add_argument("--repository", required=True)
@@ -357,6 +400,8 @@ def _parser() -> argparse.ArgumentParser:
     gate_run.add_argument("--allow-rg-fallback", action="store_true")
     gate_run.add_argument("--added-lines", type=int, default=0)
     gate_run.add_argument("--deleted-lines", type=int, default=0)
+    gate_run.add_argument("--requirement")
+    gate_run.add_argument("--verification-entry", action="append", default=[])
     _json_flag(gate_run)
     commit_message = gate.add_parser("commit-message")
     commit_message.add_argument("--message-file", type=Path, required=True)
@@ -403,6 +448,7 @@ def _parser() -> argparse.ArgumentParser:
     start_agent.add_argument("--capability", action="append", default=[], required=True)
     start_agent.add_argument("--skill", action="append", default=[])
     start_agent.add_argument("--approve-external", action="store_true")
+    start_agent.add_argument("--parent-session")
     _json_flag(start_agent)
     render_agent = agent.add_parser("render")
     render_agent.add_argument("session_id")
@@ -415,6 +461,13 @@ def _parser() -> argparse.ArgumentParser:
     finish_agent.add_argument("session_id")
     finish_agent.add_argument("--status", default="completed")
     _json_flag(finish_agent)
+    receipt_agent = agent.add_parser("receipt")
+    receipt_agent.add_argument("session_id")
+    receipt_agent.add_argument("--changed-path", action="append", default=[])
+    receipt_agent.add_argument("--decision", action="append", default=[])
+    receipt_agent.add_argument("--blocker", action="append", default=[])
+    receipt_agent.add_argument("--follow-up", default="")
+    _json_flag(receipt_agent)
     _json_flag(agent.add_parser("sessions"))
 
     artifact = commands.add_parser("artifact").add_subparsers(dest="action", required=True)
@@ -431,6 +484,36 @@ def _parser() -> argparse.ArgumentParser:
     verify_artifact = artifact.add_parser("verify")
     verify_artifact.add_argument("artifact_id")
     _json_flag(verify_artifact)
+
+    approval = commands.add_parser("approval").add_subparsers(dest="action", required=True)
+    approval_grant = approval.add_parser("grant")
+    approval_grant.add_argument("--requirement", required=True)
+    approval_grant.add_argument("--scope", required=True)
+    approval_grant.add_argument("--entry", action="append", required=True)
+    approval_grant.add_argument("--user-evidence", required=True)
+    approval_grant.add_argument("--authorized-by-user", action="store_true")
+    approval_grant.add_argument("--expires-at", default="")
+    _json_flag(approval_grant)
+    approval_check = approval.add_parser("check")
+    approval_check.add_argument("--requirement", required=True)
+    approval_check.add_argument("--scope", required=True)
+    approval_check.add_argument("--entry", required=True)
+    _json_flag(approval_check)
+    approval_list = approval.add_parser("list")
+    approval_list.add_argument("--requirement")
+    _json_flag(approval_list)
+
+    budget = commands.add_parser("budget").add_subparsers(dest="action", required=True)
+    budget_consume = budget.add_parser("consume")
+    budget_consume.add_argument("--requirement", required=True)
+    budget_consume.add_argument("--node", required=True)
+    budget_consume.add_argument("--kind", choices=("evidence", "recovery", "retry"), required=True)
+    budget_consume.add_argument("--operation-key", required=True)
+    _json_flag(budget_consume)
+    budget_status = budget.add_parser("status")
+    budget_status.add_argument("--requirement", required=True)
+    budget_status.add_argument("--node")
+    _json_flag(budget_status)
 
     audit = commands.add_parser("audit").add_subparsers(dest="action", required=True)
     list_audit = audit.add_parser("list")
@@ -513,6 +596,8 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             payload["message"] = args.message
         if args.action == "rename":
             payload["short_name"] = args.name
+        if args.action == "reopen":
+            payload["reason"] = args.reason
         return f"requirement.{args.action}", payload
     if args.group == "task":
         if args.action == "start":
@@ -571,6 +656,30 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "invocation_id": args.invocation_id,
                 "outcome": args.outcome,
             }
+        if args.action == "complete-node":
+            outcomes = {}
+            for item in args.used_skill:
+                skill_id, separator, outcome = item.partition("=")
+                if not separator or not skill_id.strip() or not outcome.strip():
+                    raise ValueError("--used-skill 必须使用 <skill-id>=<outcome>")
+                outcomes[skill_id.strip()] = outcome.strip()
+            return "skill.complete-node", {
+                "node": args.node,
+                "intent": args.intent,
+                "requirement_id": args.requirement,
+                "project_id": args.project or "",
+                "system_id": args.system or "",
+                "repository_kind": args.repository_kind or "",
+                "agent_role": args.agent_role or "",
+                "business_domains": args.domain,
+                "artifact_types": args.artifact,
+                "risks": args.risk,
+                "available_skills": args.available_skill,
+                "approved_skills": args.approved_skill,
+                "outcomes": outcomes,
+                "session_id": args.session or "",
+                "budget": args.budget,
+            }
         if args.action == "gate":
             return "skill.gate", {
                 "requirement_id": args.requirement,
@@ -593,6 +702,8 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             payload["target"] = args.target
         if hasattr(args, "initialize"):
             payload["initialize"] = args.initialize
+        if hasattr(args, "timeout"):
+            payload["timeout"] = args.timeout
         return f"codegraph.{args.action}", payload
     if args.group == "worktree":
         if args.action == "install-hooks":
@@ -602,6 +713,22 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "requirement_id": args.requirement_id,
                 "repository_id": args.repository,
                 "stage": args.stage,
+            }
+        if args.action == "preview":
+            return "worktree.preview", {
+                "requirement_id": args.requirement_id,
+                "repository_ids": args.repository,
+            }
+        if args.action == "ensure":
+            return "worktree.ensure", {
+                "requirement_id": args.requirement_id,
+                "repository_ids": args.repository,
+                "preview_id": args.confirm,
+            }
+        if args.action == "prepare":
+            return "worktree.prepare", {
+                "requirement_id": args.requirement_id,
+                "repository_id": args.repository,
             }
         if args.action == "migrate-name":
             return "worktree.migrate-name", {
@@ -707,6 +834,8 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             "project_id": args.project,
             "worktree": args.worktree,
             "graph_required": not args.allow_rg_fallback,
+            "requirement_id": args.requirement or "",
+            "verification_entries": args.verification_entry,
         }
     if args.group == "mcp":
         if args.action == "list":
@@ -742,6 +871,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "capabilities": args.capability,
                 "skills": args.skill,
                 "approved_external": args.approve_external,
+                "parent_session_id": args.parent_session or "",
             }
         if args.action == "render":
             return "agent.render", {"session_id": args.session_id}
@@ -752,6 +882,14 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             }
         if args.action == "finish":
             return "agent.finish", {"session_id": args.session_id, "status": args.status}
+        if args.action == "receipt":
+            return "agent.receipt", {
+                "session_id": args.session_id,
+                "changed_paths": args.changed_path,
+                "decisions": args.decision,
+                "blockers": args.blocker,
+                "follow_up": args.follow_up,
+            }
         return "agent.sessions", {}
     if args.group == "artifact":
         if args.action == "add":
@@ -765,6 +903,35 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
         if args.action == "list":
             return "artifact.list", {"requirement_id": args.requirement}
         return "artifact.verify", {"artifact_id": args.artifact_id}
+    if args.group == "approval":
+        if args.action == "grant":
+            return "approval.grant", {
+                "requirement_id": args.requirement,
+                "scope": args.scope,
+                "entries": args.entry,
+                "user_evidence": args.user_evidence,
+                "authorized_by_user": args.authorized_by_user,
+                "expires_at": args.expires_at,
+            }
+        if args.action == "check":
+            return "approval.check", {
+                "requirement_id": args.requirement,
+                "scope": args.scope,
+                "entry": args.entry,
+            }
+        return "approval.list", {"requirement_id": args.requirement or ""}
+    if args.group == "budget":
+        if args.action == "consume":
+            return "budget.consume", {
+                "requirement_id": args.requirement,
+                "node": args.node,
+                "kind": args.kind,
+                "operation_key": args.operation_key,
+            }
+        return "budget.status", {
+            "requirement_id": args.requirement,
+            "node": args.node or "",
+        }
     if args.group == "audit":
         if args.action == "list":
             return "audit.list", {"limit": args.limit}

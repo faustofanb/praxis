@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tomllib
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -11,7 +12,6 @@ from uuid import uuid4
 from praxis.result import Result
 from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
-from praxis.workspace.service import WorkspaceService
 
 _MODES = {"required", "conditional", "approval_required"}
 
@@ -113,6 +113,44 @@ class NodeSkillRouter:
         registered = {skill.id: skill for skill in registry.all()}
         bundled = set(registered)
         installed = self._installed_skills()
+        fingerprint = hashlib.sha256(
+            json_bytes(
+                {
+                    "request": asdict(request),
+                    "policy_hash": hashlib.sha256(
+                        self.policy_path().read_bytes()
+                    ).hexdigest(),
+                    "registered": {
+                        key: skill.content_hash for key, skill in sorted(registered.items())
+                    },
+                    "installed": {
+                        key: value.get("content_hash", "")
+                        for key, value in sorted(installed.items())
+                    },
+                }
+            )
+        ).hexdigest()
+        key = f"{request.requirement_id}:{request.node}"
+        if request.requirement_id:
+            cached = self.store.get("skill_route", key)
+            if cached and cached.get("route_fingerprint") == fingerprint:
+                data = {**cached, "cached": True}
+                blocked_value = data.get("blocked_required_skills", [])
+                blocked = blocked_value if isinstance(blocked_value, list) else []
+                data["audit_id"] = self.store.audit(
+                    "skill.route_reused",
+                    "SKILL_REQUIRED_UNAVAILABLE" if blocked else "OK",
+                    {
+                        "requirement_id": request.requirement_id,
+                        "node": request.node,
+                        "route_fingerprint": fingerprint,
+                    },
+                )
+                return Result(
+                    not blocked,
+                    "OK" if not blocked else "SKILL_REQUIRED_UNAVAILABLE",
+                    data,
+                )
         available = bundled | set(installed) | set(request.available_skills)
         approved = set(request.approved_skills)
         decisions: list[dict[str, Any]] = []
@@ -134,7 +172,7 @@ class NodeSkillRouter:
             decisions.append(
                 {
                     **asdict(policy),
-                    "content_hash": registered.get(policy.id).content_hash
+                    "content_hash": registered[policy.id].content_hash
                     if policy.id in registered
                     else installed.get(policy.id, {}).get("content_hash", ""),
                     "installed_path": str(registered[policy.id].path)
@@ -201,9 +239,10 @@ class NodeSkillRouter:
             "context_budget": request.token_budget,
             "used_budget": used,
             "blocked_required_skills": blocked,
+            "route_fingerprint": fingerprint,
+            "cached": False,
         }
         if request.requirement_id:
-            key = f"{request.requirement_id}:{request.node}"
             self.store.set("skill_route", key, data)
             data["audit_id"] = self.store.audit(
                 "skill.route_planned",
@@ -350,6 +389,81 @@ class SkillInvocationService:
         audit_id = self.store.audit("skill.completed", "OK", invocation)
         return Result(True, data={**invocation, "audit_id": audit_id})
 
+    def complete_node(
+        self,
+        requirement_id: str,
+        node: str,
+        outcomes: dict[str, str],
+        *,
+        session_id: str = "",
+        approved_skills: tuple[str, ...] = (),
+    ) -> Result:
+        if not outcomes or any(not value.strip() for value in outcomes.values()):
+            return Result(False, "SKILL_NODE_OUTCOME_REQUIRED")
+        route = self.store.get("skill_route", f"{requirement_id}:{node}")
+        if not route:
+            return Result(False, "SKILL_ROUTE_NOT_FOUND")
+        decisions = {item["id"]: item for item in route["decisions"]}
+        required = {
+            item["id"]
+            for item in route["decisions"]
+            if item["mode"] == "required"
+            or (item["mode"] == "approval_required" and item["status"] == "available")
+        }
+        missing_outcomes = sorted(required - outcomes.keys())
+        if missing_outcomes:
+            return Result(
+                False,
+                "SKILL_NODE_OUTCOME_MISSING",
+                data={"missing": missing_outcomes},
+            )
+        unknown = sorted(outcomes.keys() - decisions.keys())
+        if unknown:
+            return Result(False, "SKILL_NOT_ROUTED", data={"skills": unknown})
+        completed: list[dict[str, Any]] = []
+        approved = set(approved_skills)
+        for skill_id, outcome in outcomes.items():
+            existing = next(
+                (
+                    item
+                    for item in self.store.list_scope("skill_invocation")
+                    if item.get("requirement_id") == requirement_id
+                    and item.get("node") == node
+                    and item.get("skill_id") == skill_id
+                    and item.get("status") == "completed"
+                ),
+                None,
+            )
+            if existing:
+                completed.append(existing)
+                continue
+            invoked = self.start(
+                requirement_id,
+                node,
+                skill_id,
+                session_id=session_id,
+                approved=skill_id in approved,
+            )
+            if not invoked.ok:
+                return invoked
+            finished = self.complete(
+                str(invoked.data["invocation_id"]), outcome=outcome.strip()
+            )
+            if not finished.ok:
+                return finished
+            completed.append(finished.data)
+        gate = self.gate(requirement_id, node)
+        return Result(
+            gate.ok,
+            gate.code,
+            data={
+                "requirement_id": requirement_id,
+                "node": node,
+                "completed": completed,
+                "gate": gate.data,
+            },
+        )
+
     def gate(self, requirement_id: str, node: str) -> Result:
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
         if not route:
@@ -395,3 +509,12 @@ class SkillInvocationService:
             code,
             data=data,
         )
+
+
+def json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
