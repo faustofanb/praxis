@@ -48,7 +48,7 @@ class NodeSkillRoutingRequest:
     risks: tuple[str, ...] = ()
     available_skills: tuple[str, ...] = ()
     approved_skills: tuple[str, ...] = ()
-    token_budget: int = 2_000
+    token_budget: int = 4_000
 
 
 class NodeSkillRouter:

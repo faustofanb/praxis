@@ -150,7 +150,7 @@ def _parser() -> argparse.ArgumentParser:
     route_node.add_argument("--risk", action="append", default=[])
     route_node.add_argument("--available-skill", action="append", default=[])
     route_node.add_argument("--approved-skill", action="append", default=[])
-    route_node.add_argument("--budget", type=int, default=2000)
+    route_node.add_argument("--budget", type=int, default=4000)
     _json_flag(route_node)
     invoke_skill = skill.add_parser("invoke")
     invoke_skill.add_argument("id")
