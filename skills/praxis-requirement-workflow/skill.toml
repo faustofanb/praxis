@@ -1,0 +1,10 @@
+id = "praxis-requirement-workflow"
+type = "workflow"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "workspace-write"
+context_budget = 700
+required_tools = []
+triggers = ["需求", "开发", "实现", "修改", "修复", "新增", "重构", "代码", "bug", "feature"]

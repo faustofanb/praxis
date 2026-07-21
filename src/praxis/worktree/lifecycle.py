@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shlex
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +8,7 @@ from praxis.gates.policies import allowed_paths_gate, secret_gate
 from praxis.integrations.process import ProcessRunner
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.workspace.service import Project, WorkspaceService
+from praxis.workspace.service import WorkspaceService
 
 
 class WorktreeLifecycle:
@@ -26,7 +25,6 @@ class WorktreeLifecycle:
             return self._pre_start(binding, context)
 
         project_id = binding["repository_id"]
-        project = WorkspaceService(self.root).project(project_id)
         worktree = context.get("worktree_path")
         if not worktree:
             return Result(False, "LIFECYCLE_CONTEXT_INVALID", data={"field": "worktree_path"})
@@ -45,12 +43,19 @@ class WorktreeLifecycle:
             worktree=worktree,
             initialize=event == "worktree-post-start",
         )
-        if result.ok and event == "pre-commit":
+        if result.ok and event in {"pre-commit", "pre-merge"}:
             result = self._change_gates(binding, Path(str(worktree)))
-        if result.ok and event == "pre-commit":
-            result = self._run_commands(project, Path(str(worktree)), pre_merge=False)
-        if result.ok and event == "pre-merge":
-            result = self._run_commands(project, Path(str(worktree)), pre_merge=True)
+        if result.ok and event in {"pre-commit", "pre-merge"}:
+            check_kind = "quality" if event == "pre-commit" else "test"
+            self.store.audit(
+                f"{check_kind}.execution_skipped",
+                "USER_APPROVAL_REQUIRED",
+                {
+                    "branch": branch,
+                    "repository_id": project_id,
+                    "source": "worktree_hook",
+                },
+            )
         if result.ok and event == "post-remove":
             self.store.delete("worktree", branch)
         return result
@@ -76,25 +81,6 @@ class WorktreeLifecycle:
                 },
             )
         return Result(True, data=binding)
-
-    def _run_commands(self, project: Project, worktree: Path, *, pre_merge: bool) -> Result:
-        lint = project.lint_commands
-        typecheck = project.typecheck_commands
-        tests = project.test_commands
-        if not any((lint, typecheck, tests)):
-            lint, typecheck, tests = self._detected_commands(worktree)
-        commands = tests if pre_merge else (*lint, *typecheck)
-        results = []
-        for command in commands:
-            result = ProcessRunner(worktree, audit_root=self.root).run(
-                shlex.split(command), machine_output=True
-            )
-            results.append(result.data)
-            if not result.ok:
-                code = "TEST_GATE_FAILED" if pre_merge else "CODE_QUALITY_GATE_FAILED"
-                self.store.audit("gate.failed", code, result.data)
-                return Result(False, code, data={"results": results})
-        return Result(True, data={"results": results})
 
     def _change_gates(self, binding: dict[str, Any], worktree: Path) -> Result:
         runner = ProcessRunner(worktree, audit_root=self.root)
@@ -124,13 +110,3 @@ class WorktreeLifecycle:
             if path.is_file():
                 files[name] = path.read_text(encoding="utf-8", errors="ignore")
         return secret_gate(files)
-
-    @staticmethod
-    def _detected_commands(worktree: Path) -> tuple[tuple[str, ...], ...]:
-        if (worktree / "pyproject.toml").exists():
-            return (("uv run ruff check .",), ("uv run ty check",), ("uv run pytest",))
-        if (worktree / "pom.xml").exists():
-            return ((), (), ("mvn test",))
-        if (worktree / "package.json").exists():
-            return ((), (), ("npm test",))
-        return ((), (), ())

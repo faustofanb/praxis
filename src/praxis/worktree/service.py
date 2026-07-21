@@ -11,7 +11,7 @@ from typing import Any
 
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.workspace.service import WorkspaceService
+from praxis.workspace.service import Project, WorkspaceService
 
 Runner = Callable[[list[str], Path, dict[str, str] | None], subprocess.CompletedProcess[str]]
 
@@ -68,6 +68,118 @@ class WorktreeService:
     def create(self, branch: str, base: str) -> Result:
         return self._execute(["switch", "--create", branch, "--base", base, "--no-cd"])
 
+    def _git(self, arguments: Sequence[str], *, cwd: Path, failure_code: str) -> Result:
+        command = ["git", *arguments]
+        try:
+            process = self.run(command, cwd, None)
+        except FileNotFoundError:
+            return Result(False, "GIT_NOT_AVAILABLE")
+        if process.returncode:
+            return Result(
+                False,
+                failure_code,
+                data={
+                    "command": command,
+                    "cwd": str(cwd),
+                    "stderr": process.stderr.strip(),
+                },
+            )
+        return Result(
+            True,
+            data={
+                "command": command,
+                "cwd": str(cwd),
+                "stdout": process.stdout.strip(),
+            },
+        )
+
+    def _sync_default_branch(
+        self, project: Project, repository_id: str, repo: Path
+    ) -> Result:
+        if not project.template_branches:
+            return Result(False, "WORKTREE_TEMPLATE_BRANCH_REQUIRED")
+        if len(project.template_branches) != 1:
+            return Result(
+                False,
+                "WORKTREE_TEMPLATE_BRANCH_AMBIGUOUS",
+                data={"template_branches": list(project.template_branches)},
+            )
+        upstream = project.template_branches[0]
+        fetched = self._git(
+            ["fetch", "origin", upstream],
+            cwd=repo,
+            failure_code="WORKTREE_TEMPLATE_FETCH_FAILED",
+        )
+        if not fetched.ok:
+            return fetched
+
+        destination = (self.root / ".worktrees" / ".templates" / repository_id).resolve()
+        switched = self._execute(
+            ["switch", project.default_branch, "--no-cd", "--no-hooks"],
+            cwd=repo,
+            environment={"WORKTRUNK_WORKTREE_PATH": str(destination)},
+        )
+        if not switched.ok:
+            return Result(
+                False,
+                "WORKTREE_TEMPLATE_WORKTREE_FAILED",
+                data=switched.data,
+            )
+        worktree_value = switched.data.get("path")
+        if not worktree_value:
+            return Result(False, "WORKTREE_TEMPLATE_PATH_MISSING")
+        worktree = Path(str(worktree_value))
+        if not worktree.is_absolute():
+            worktree = repo / worktree
+        worktree = worktree.resolve()
+
+        status = self._git(
+            ["status", "--porcelain"],
+            cwd=worktree,
+            failure_code="WORKTREE_TEMPLATE_STATUS_FAILED",
+        )
+        if not status.ok:
+            return status
+        if status.data["stdout"]:
+            return Result(
+                False,
+                "WORKTREE_TEMPLATE_DIRTY",
+                data={"path": str(worktree), "branch": project.default_branch},
+            )
+
+        remote_branch = f"origin/{upstream}"
+        merged = self._git(
+            ["merge", "--no-edit", remote_branch],
+            cwd=worktree,
+            failure_code="WORKTREE_TEMPLATE_MERGE_FAILED",
+        )
+        if not merged.ok:
+            return Result(
+                False,
+                merged.code,
+                data={
+                    **merged.data,
+                    "path": str(worktree),
+                    "branch": project.default_branch,
+                },
+            )
+        revision = self._git(
+            ["rev-parse", "HEAD"],
+            cwd=worktree,
+            failure_code="WORKTREE_TEMPLATE_REVISION_FAILED",
+        )
+        if not revision.ok:
+            return revision
+        return Result(
+            True,
+            data={
+                "local_branch": project.default_branch,
+                "upstream_branch": remote_branch,
+                "path": str(worktree),
+                "revision": revision.data["stdout"],
+            },
+        )
+
     def create_for_requirement(
         self,
         requirement_id: str,
@@ -95,19 +207,43 @@ class WorktreeService:
             / repository_id
         ).resolve()
         repo = (self.root / project.path).resolve()
+        store = StateStore(self.root)
+        synchronized = self._sync_default_branch(project, repository_id, repo)
+        if not synchronized.ok:
+            store.audit(
+                "worktree.template_sync_failed",
+                synchronized.code,
+                {
+                    "requirement_id": requirement_id,
+                    "repository_id": repository_id,
+                    **synchronized.data,
+                },
+            )
+            return synchronized
+        store.audit(
+            "worktree.template_synced",
+            "OK",
+            {
+                "requirement_id": requirement_id,
+                "repository_id": repository_id,
+                **synchronized.data,
+            },
+        )
         binding = {
             "group_id": f"WTG-{requirement_id}",
             "requirement_id": requirement_id,
             "repository_id": repository_id,
             "stage": stage,
             "branch": branch,
+            "base_branch": project.default_branch,
+            "upstream_branch": synchronized.data["upstream_branch"],
+            "base_revision": synchronized.data["revision"],
             "path": str(destination),
             "status": "creating",
             # ponytail: whole-repo scope until requirement stages persist explicit path scopes.
             "allowed_paths": ["**"],
             "forbidden_paths": [".git", ".praxis", ".env", "**/.env"],
         }
-        store = StateStore(self.root)
         store.set("worktree", branch, binding)
         result = self._execute(
             ["switch", "--create", branch, "--base", project.default_branch, "--no-cd"],

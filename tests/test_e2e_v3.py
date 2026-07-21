@@ -36,6 +36,7 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
     (repo / "app.py").write_text("def total(values):\n    return sum(values)\n")
     subprocess.run(["git", "add", "app.py"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-m", "chore: initialize fixture"], cwd=repo, check=True)
+    subprocess.run(["git", "remote", "add", "origin", "."], cwd=repo, check=True)
 
     WorkspaceService(tmp_path).init(
         "demo",
@@ -46,6 +47,7 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
                 "python",
                 "backend",
                 "main",
+                template_branches=("main",),
                 lint_commands=("python -m py_compile app.py",),
                 test_commands=("python -c 'assert True'",),
             )

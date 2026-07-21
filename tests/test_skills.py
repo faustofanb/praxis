@@ -12,8 +12,18 @@ def test_dbx_skill_is_routed_only_for_database_intent() -> None:
     ordinary = registry.route("修改 WMS 页面按钮颜色")
 
     assert [skill.id for skill in routed] == ["dbx-database-investigation"]
-    assert ordinary == []
+    assert [skill.id for skill in ordinary] == ["praxis-requirement-workflow"]
     assert registry.route("debug failing tests", budget=100) == []
+
+
+def test_requirement_workflow_requires_documents_worktree_and_user_consent() -> None:
+    skill = SkillRegistry.bundled().inspect("praxis-requirement-workflow")
+    content = skill.path.read_text()
+
+    assert skill.type == "workflow"
+    assert "新建需求时不要创建工作树" in content
+    assert "第一次代码编辑前" in content
+    assert "不得执行 lint、format、typecheck、测试或覆盖率命令" in content
 
 
 def test_dbx_skill_metadata_and_resource_contract() -> None:

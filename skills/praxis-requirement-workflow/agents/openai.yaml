@@ -1,0 +1,4 @@
+interface:
+  display_name: "Praxis Requirement Workflow"
+  short_description: "Document requirements and isolate code changes safely"
+  default_prompt: "Use $praxis-requirement-workflow to start and execute this development requirement safely."

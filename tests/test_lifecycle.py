@@ -71,7 +71,8 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
                 "app",
                 "python",
                 "repo",
-                "main",
+                "local",
+                template_branches=("develop",),
                 lint_commands=("ruff check .",),
                 typecheck_commands=("ty check",),
             )
@@ -87,12 +88,20 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     ):
         store.transition_requirement(requirement["requirement_id"], status)
     calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
+    template_path = tmp_path / ".worktrees" / ".templates" / "app"
 
     def run(
         command: list[str], cwd: Path, environment: dict[str, str] | None
     ) -> subprocess.CompletedProcess[str]:
         calls.append((command, cwd, environment))
-        return subprocess.CompletedProcess(command, 0, '{"path": "created"}', "")
+        if command[:3] == ["git", "status", "--porcelain"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "abc123\n", "")
+        if command[0] == "git":
+            return subprocess.CompletedProcess(command, 0, "", "")
+        path = "created" if "--create" in command else str(template_path)
+        return subprocess.CompletedProcess(command, 0, f'{{"path": "{path}"}}', "")
 
     result = WorktreeService(tmp_path, run=run).create_for_requirement(
         requirement["requirement_id"], "app", "backend"
@@ -100,7 +109,25 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
 
     assert result.ok
     assert result.data["branch"] == f"req/{requirement['requirement_id']}/02-backend"
-    command, cwd, environment = calls[0]
+    assert result.data["base_branch"] == "local"
+    assert result.data["upstream_branch"] == "origin/develop"
+    assert result.data["base_revision"] == "abc123"
+    assert [call[0] for call in calls[:5]] == [
+        ["git", "fetch", "origin", "develop"],
+        [
+            "wt",
+            "switch",
+            "local",
+            "--no-cd",
+            "--no-hooks",
+            "--format=json",
+            "--yes",
+        ],
+        ["git", "status", "--porcelain"],
+        ["git", "merge", "--no-edit", "origin/develop"],
+        ["git", "rev-parse", "HEAD"],
+    ]
+    command, cwd, environment = calls[5]
     assert cwd == repo
     assert command[:5] == [
         "wt",
@@ -122,7 +149,7 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
 
     import praxis.worktree.lifecycle as lifecycle_module
 
-    quality_calls: list[list[str]] = []
+    process_calls: list[list[str]] = []
 
     class SuccessfulGraphHooks:
         def __init__(self, root: Path):
@@ -136,18 +163,69 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
             pass
 
         def run(self, command: list[str], *, machine_output: bool) -> Result:
-            quality_calls.append(command)
+            process_calls.append(command)
             return Result(True, data={"command": command, "stdout": ""})
 
     monkeypatch.setattr(lifecycle_module, "CodeGraphHooks", SuccessfulGraphHooks)
     monkeypatch.setattr(lifecycle_module, "ProcessRunner", SuccessfulProcessRunner)
     assert lifecycle.run("pre-commit", context).ok
-    assert quality_calls == [
+    assert lifecycle.run("pre-merge", context).ok
+    assert process_calls == [
         ["git", "diff", "--name-only", "HEAD"],
         ["git", "ls-files", "--others", "--exclude-standard"],
-        ["ruff", "check", "."],
-        ["ty", "check"],
+        ["git", "diff", "--name-only", "HEAD"],
+        ["git", "ls-files", "--others", "--exclude-standard"],
     ]
+    skipped = {
+        event["event"]
+        for event in StateStore(tmp_path).audit_events()
+        if event["code"] == "USER_APPROVAL_REQUIRED"
+    }
+    assert skipped == {"quality.execution_skipped", "test.execution_skipped"}
+    assert any(
+        event["event"] == "worktree.template_synced"
+        for event in StateStore(tmp_path).audit_events()
+    )
+
+
+def test_worktree_creation_blocks_when_local_template_branch_is_dirty(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    template_path = tmp_path / ".worktrees" / ".templates" / "app"
+    repo.mkdir()
+    template_path.mkdir(parents=True)
+    calls: list[list[str]] = []
+
+    def run(
+        command: list[str], cwd: Path, environment: dict[str, str] | None
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[0] == "wt":
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                f'{{"path": "{template_path}"}}',
+                "",
+            )
+        stdout = "local.env\n" if command[:3] == ["git", "status", "--porcelain"] else ""
+        return subprocess.CompletedProcess(command, 0, stdout, "")
+
+    project = Project(
+        "app",
+        "python",
+        "repo",
+        "local",
+        template_branches=("develop",),
+    )
+    result = WorktreeService(tmp_path, run=run)._sync_default_branch(
+        project, "app", repo
+    )
+
+    assert not result.ok
+    assert result.code == "WORKTREE_TEMPLATE_DIRTY"
+    assert result.data == {"path": str(template_path), "branch": "local"}
+    assert not any(command[:2] == ["git", "merge"] for command in calls)
 
 
 def test_codegraph_lifecycle_covers_worktrunk_and_verification_events() -> None:

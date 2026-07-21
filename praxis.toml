@@ -22,6 +22,7 @@ kind = "python-plugin"
 path = "."
 default_branch = "main"
 release_branches = ["main"]
+template_branches = ["main"]
 lint_commands = ["uv run ruff check ."]
 typecheck_commands = ["uv run ty check"]
 test_commands = ["uv run pytest -q"]

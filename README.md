@@ -35,6 +35,8 @@ praxis workspace add \
   --name "后端服务" \
   --kind backend \
   --path services/backend \
+  --default-branch local \
+  --template-branch develop \
   --test-command "pytest -q" \
   --json
 
@@ -48,6 +50,10 @@ praxis requirement new \
 
 `praxis.toml` stores workspace and system facts. Chinese Markdown/YAML under `知识库/` stores authoritative human knowledge. SQLite at `.praxis/workspace.db` stores requirement state, Outbox projection work, runtime state, and the audit hash chain.
 
+Creating a requirement writes its knowledge documents immediately but does not create a worktree.
+Investigation and planning stay in the knowledge vault. Create an isolated worktree only after the
+plan confirms that code must change, and always before the first code edit.
+
 ## Worktrunk and CodeGraph
 
 Worktrunk is the only worktree implementation:
@@ -60,7 +66,21 @@ praxis worktree merge main --json       # run inside the source worktree
 praxis worktree remove feature/example --json
 ```
 
-Installed hooks enforce the CodeGraph lifecycle at post-start, pre-merge, post-merge, and post-remove. Task/context, preflight, verify, and every graph query also call `ensure-fresh`. Freshness includes Git HEAD plus staged, unstaged, and untracked content. A failed sync blocks graph use; a simple task may explicitly allow an `rg` fallback, but never reads a stale graph.
+`default_branch` is the persistent local branch that keeps local runtime configuration.
+`template_branches` must contain exactly one upstream development or release branch. Before Praxis
+creates a requirement worktree, it fetches that branch from `origin`, merges it into the clean local
+default branch in the worktree that owns that branch, and then creates the requirement branch from
+the updated local default. If the local branch is not checked out, Worktrunk creates a stable template
+worktree for it; Praxis never switches the user's current branch for synchronization. Fetch failures,
+merge conflicts, dirty template worktrees, and ambiguous template configuration block creation
+instead of falling back to another base.
+
+Installed hooks enforce worktree binding, changed-path and secret gates plus the CodeGraph lifecycle
+at post-start, pre-commit, pre-merge, post-merge, and post-remove. They never start lint, format, typecheck,
+quality review, or tests. Those actions require explicit user approval for the named scope. Task/context,
+preflight, verify, and every graph query also call `ensure-fresh`. Freshness includes Git HEAD plus
+staged, unstaged, and untracked content. A failed sync blocks graph use; a simple task may explicitly
+allow an `rg` fallback, but never reads a stale graph.
 
 ```bash
 praxis codegraph status --project backend --json
