@@ -335,7 +335,8 @@ class SkillInvocationService:
         if not invocation:
             return Result(False, "SKILL_INVOCATION_NOT_FOUND")
         invocation.update(
-            status=outcome,
+            status="completed",
+            outcome=outcome,
             completed_at=datetime.now(UTC).isoformat(),
         )
         self.store.set("skill_invocation", invocation_id, invocation)
@@ -357,7 +358,7 @@ class SkillInvocationService:
             for item in self.store.list_scope("skill_invocation")
             if item["requirement_id"] == requirement_id
             and item["node"] == node
-            and item["status"] == "completed"
+            and (item.get("status") == "completed" or bool(item.get("completed_at")))
         }
         missing = sorted(required - completed)
         return Result(

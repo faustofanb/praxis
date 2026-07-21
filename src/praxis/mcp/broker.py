@@ -12,6 +12,7 @@ from praxis.gates.policies import allowed_paths_gate
 from praxis.gates.sql import inspect_sql
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
+from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService
 
 _SERVER_ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
@@ -251,7 +252,8 @@ class McpBrokerService:
         values = dict(arguments)
         if capability == "database.write":
             values["approved"] = True
-            binding = self.store.get("worktree", grant["worktree"])
+            resolved = resolve_worktree_binding(self.store, grant["worktree"])
+            binding = resolved[1] if resolved else None
             write_context = dict(values.get("write_context", {}))
             write_context.update(
                 {
@@ -303,9 +305,10 @@ class McpBrokerService:
                 return Result(False, sql.code, data=sql.data)
         paths = values.get("paths", [])
         if paths and grant.get("worktree"):
-            binding = self.store.get("worktree", grant["worktree"])
-            if not binding:
+            resolved = resolve_worktree_binding(self.store, grant["worktree"])
+            if not resolved:
                 return Result(False, "WORKTREE_BINDING_INVALID")
+            binding = resolved[1]
             path_gate = allowed_paths_gate(
                 paths, binding.get("allowed_paths", ["**"]), binding.get("forbidden_paths", [])
             )

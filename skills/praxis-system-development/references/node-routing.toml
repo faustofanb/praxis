@@ -23,6 +23,17 @@ priority = 95
 context_budget = 900
 
 [[providers]]
+id = "grilling"
+source = "https://github.com/mattpocock/skills"
+source_version = "1.1.0"
+license = "MIT"
+nodes = ["investigating"]
+mode = "required"
+availability = "external"
+priority = 93
+context_budget = 700
+
+[[providers]]
 id = "ponytail"
 source = "praxis"
 source_version = "4.8.4-praxis.1"

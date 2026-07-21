@@ -9,6 +9,7 @@ from praxis.integrations.process import ProcessRunner
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
+from praxis.worktree.service import resolve_worktree_binding
 
 
 class WorktreeLifecycle:
@@ -18,9 +19,14 @@ class WorktreeLifecycle:
 
     def run(self, event: str, context: dict[str, Any]) -> Result:
         branch = str(context.get("branch", ""))
-        binding = self.store.get("worktree", branch)
-        if not binding:
+        resolved = resolve_worktree_binding(
+            self.store,
+            branch,
+            worktree_path=context.get("worktree_path"),
+        )
+        if not resolved:
             return Result(False, "WORKTREE_BINDING_NOT_FOUND", data={"branch": branch})
+        binding_key, binding = resolved
         if event == "worktree-pre-start":
             return self._pre_start(binding, context)
 
@@ -57,7 +63,7 @@ class WorktreeLifecycle:
                 },
             )
         if result.ok and event == "post-remove":
-            self.store.delete("worktree", branch)
+            self.store.delete("worktree", binding_key)
         return result
 
     def _pre_start(self, binding: dict[str, Any], context: dict[str, Any]) -> Result:
@@ -66,7 +72,9 @@ class WorktreeLifecycle:
             return Result(False, "REQUIREMENT_NOT_READY")
         project = WorkspaceService(self.root).project(binding["repository_id"])
         expected_repo = (self.root / project.path).resolve()
-        expected_worktree = Path(binding["path"]).resolve()
+        expected_worktree = Path(
+            binding.get("repository_path", binding["path"])
+        ).resolve()
         actual_repo = Path(str(context.get("repo_path", ""))).resolve()
         actual_worktree = Path(str(context.get("worktree_path", ""))).resolve()
         if actual_repo != expected_repo or actual_worktree != expected_worktree:

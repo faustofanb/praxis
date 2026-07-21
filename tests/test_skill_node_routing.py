@@ -40,7 +40,12 @@ def test_investigating_node_routes_required_and_contextual_skills(tmp_path: Path
             system_id="demo",
             repository_kind="java-maven",
             agent_role="investigator",
-            available_skills=("brainstorming", "file-search", "systematic-debugging"),
+            available_skills=(
+                "brainstorming",
+                "grilling",
+                "file-search",
+                "systematic-debugging",
+            ),
             token_budget=5_000,
         )
     )
@@ -49,6 +54,7 @@ def test_investigating_node_routes_required_and_contextual_skills(tmp_path: Path
     decisions = {item["id"]: item for item in result.data["decisions"]}
     assert decisions["praxis-requirement-workflow"]["status"] == "available"
     assert decisions["brainstorming"]["mode"] == "required"
+    assert decisions["grilling"]["mode"] == "required"
     assert decisions["ponytail"]["status"] == "available"
     assert decisions["file-search"]["reasons"] == [
         "node:investigating",
@@ -104,15 +110,29 @@ def test_skill_invocation_gate_requires_completed_evidence(tmp_path: Path) -> No
     assert blocked.code == "SKILL_NODE_GATE_BLOCKED"
     assert blocked.data["missing"] == [
         "brainstorming",
+        "grilling",
         "ponytail",
         "praxis-requirement-workflow",
     ]
 
+    invocation_ids = []
     for skill_id in blocked.data["missing"]:
         started = invocations.start("REQ-TEST", "investigating", skill_id)
         assert started.ok
-        assert invocations.complete(started.data["invocation_id"]).ok
+        invocation_ids.append(started.data["invocation_id"])
+        completed = invocations.complete(
+            started.data["invocation_id"], outcome="需求边界已逐项确认"
+        )
+        assert completed.ok
+        assert completed.data["status"] == "completed"
+        assert completed.data["outcome"] == "需求边界已逐项确认"
 
+    assert invocations.gate("REQ-TEST", "investigating").ok
+
+    legacy = invocations.store.get("skill_invocation", invocation_ids[0])
+    assert legacy is not None
+    legacy["status"] = legacy.pop("outcome")
+    invocations.store.set("skill_invocation", invocation_ids[0], legacy)
     assert invocations.gate("REQ-TEST", "investigating").ok
 
 

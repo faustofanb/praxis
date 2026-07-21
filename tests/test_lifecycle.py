@@ -108,7 +108,8 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     )
 
     assert result.ok
-    assert result.data["branch"] == f"req/{requirement['requirement_id']}/02-backend"
+    assert result.data["branch"] == f"praxis/{requirement['requirement_id']}"
+    assert result.data["binding_id"] == f"WT-{requirement['requirement_id']}--app"
     assert result.data["base_branch"] == "local"
     assert result.data["upstream_branch"] == "origin/develop"
     assert result.data["base_revision"] == "abc123"
@@ -137,12 +138,18 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
         "--base",
     ]
     assert environment and environment["WORKTRUNK_WORKTREE_PATH"].endswith(
-        f"演示需求实现__{requirement['requirement_id']}/02-后端开发/app"
+        f"{requirement['requirement_id']}__演示需求实现/app"
+    )
+    assert result.data["path"].endswith(
+        f"{requirement['requirement_id']}__演示需求实现"
+    )
+    assert result.data["repository_path"].endswith(
+        f"{requirement['requirement_id']}__演示需求实现/app"
     )
     context = {
         "branch": result.data["branch"],
         "repo_path": str(repo),
-        "worktree_path": result.data["path"],
+        "worktree_path": result.data["repository_path"],
     }
     lifecycle = WorktreeLifecycle(tmp_path)
     assert lifecycle.run("worktree-pre-start", context).ok
@@ -186,6 +193,14 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
         event["event"] == "worktree.template_synced"
         for event in StateStore(tmp_path).audit_events()
     )
+
+    repeated = WorktreeService(tmp_path, run=run).create_for_requirement(
+        requirement["requirement_id"], "app", "frontend"
+    )
+    assert repeated.ok
+    assert repeated.code == "WORKTREE_ALREADY_ACTIVE"
+    assert repeated.data["branch"] == result.data["branch"]
+    assert repeated.data["stages"] == ["backend", "frontend"]
 
 
 def test_worktree_creation_blocks_when_local_template_branch_is_dirty(

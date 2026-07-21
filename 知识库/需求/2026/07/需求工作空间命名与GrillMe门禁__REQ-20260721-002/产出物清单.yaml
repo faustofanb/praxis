@@ -1,2 +1,14 @@
 需求编号: REQ-20260721-002
-产出物: []
+产出物:
+  - 类型: source
+    路径: src/praxis/worktree/service.py
+    说明: 需求工作空间、统一分支和稳定绑定
+  - 类型: source
+    路径: src/praxis/skills/routing.py
+    说明: Skill 完成状态与旧记录兼容
+  - 类型: policy
+    路径: skills/praxis-system-development/references/node-routing.toml
+    说明: 调查阶段 grilling 必需路由
+  - 类型: guidance
+    路径: src/praxis/agents/guidance.py
+    说明: Codex 与 Claude Code 工作流管理区块

@@ -26,6 +26,39 @@ _STAGES = {
 }
 
 
+def worktree_binding_id(requirement_id: str, repository_id: str) -> str:
+    return f"WT-{requirement_id}--{repository_id}"
+
+
+def resolve_worktree_binding(
+    store: StateStore,
+    identifier: str,
+    *,
+    repository_id: str = "",
+    worktree_path: str | Path | None = None,
+) -> tuple[str, dict[str, Any]] | None:
+    """Resolve both new stable binding IDs and legacy branch-keyed bindings."""
+    direct = store.get("worktree", identifier)
+    if direct:
+        return identifier, direct
+    expected_path = Path(worktree_path).resolve() if worktree_path else None
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for binding in store.list_scope("worktree"):
+        key = str(binding.get("binding_id") or binding.get("branch", ""))
+        if identifier not in {key, str(binding.get("branch", ""))}:
+            continue
+        if repository_id and binding.get("repository_id") != repository_id:
+            continue
+        if expected_path:
+            repository_path = Path(
+                str(binding.get("repository_path") or binding.get("path", ""))
+            ).resolve()
+            if repository_path != expected_path:
+                continue
+        candidates.append((key, binding))
+    return candidates[0] if len(candidates) == 1 else None
+
+
 class WorktreeService:
     def __init__(self, root: Path | str, *, run: Runner | None = None):
         self.root = Path(root)
@@ -197,17 +230,23 @@ class WorktreeService:
             return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
         if project.system_id not in requirement["systems"]:
             return Result(False, "WORKTREE_SYSTEM_MISMATCH")
-        number, stage_name = _STAGES[stage]
-        branch = f"req/{requirement_id}/{number:02d}-{stage}"
-        destination = (
+        branch = f"praxis/{requirement_id}"
+        workspace_path = (
             self.root
             / ".worktrees"
-            / f"{requirement['short_name']}__{requirement_id}"
-            / f"{number:02d}-{stage_name}"
-            / repository_id
+            / f"{requirement_id}__{requirement['short_name']}"
         ).resolve()
+        repository_path = (workspace_path / repository_id).resolve()
         repo = (self.root / project.path).resolve()
         store = StateStore(self.root)
+        binding_id = worktree_binding_id(requirement_id, repository_id)
+        existing = resolve_worktree_binding(store, binding_id)
+        if existing and existing[1].get("status") == "active":
+            binding = existing[1]
+            stages = list(dict.fromkeys([*binding.get("stages", []), stage]))
+            binding.update(stage=stage, stages=stages)
+            store.set("worktree", existing[0], binding)
+            return Result(True, "WORKTREE_ALREADY_ACTIVE", data=binding)
         synchronized = self._sync_default_branch(project, repository_id, repo)
         if not synchronized.ok:
             store.audit(
@@ -230,32 +269,35 @@ class WorktreeService:
             },
         )
         binding = {
+            "binding_id": binding_id,
             "group_id": f"WTG-{requirement_id}",
             "requirement_id": requirement_id,
             "repository_id": repository_id,
             "stage": stage,
+            "stages": [stage],
             "branch": branch,
             "base_branch": project.default_branch,
             "upstream_branch": synchronized.data["upstream_branch"],
             "base_revision": synchronized.data["revision"],
-            "path": str(destination),
+            "path": str(workspace_path),
+            "repository_path": str(repository_path),
             "status": "creating",
             # ponytail: whole-repo scope until requirement stages persist explicit path scopes.
             "allowed_paths": ["**"],
             "forbidden_paths": [".git", ".praxis", ".env", "**/.env"],
         }
-        store.set("worktree", branch, binding)
+        store.set("worktree", binding_id, binding)
         result = self._execute(
             ["switch", "--create", branch, "--base", project.default_branch, "--no-cd"],
             cwd=repo,
-            environment={"WORKTRUNK_WORKTREE_PATH": str(destination)},
+            environment={"WORKTRUNK_WORKTREE_PATH": str(repository_path)},
         )
         if not result.ok:
-            store.delete("worktree", branch)
+            store.delete("worktree", binding_id)
             store.audit("worktree.create_failed", result.code, binding)
             return result
         binding["status"] = "active"
-        store.set("worktree", branch, binding)
+        store.set("worktree", binding_id, binding)
         store.audit("worktree.created", "OK", binding)
         return Result(True, data=binding)
 
@@ -268,32 +310,52 @@ class WorktreeService:
             if not result.ok:
                 return result
             listed = result.data.get("items", result.data.get("worktrees", []))
-            items.extend({**item, "repository_id": raw["id"]} for item in listed)
+            for item in listed:
+                enriched = {**item, "repository_id": raw["id"]}
+                identifier = str(item.get("branch") or item.get("name") or "")
+                worktree_path = item.get("path")
+                resolved = resolve_worktree_binding(
+                    StateStore(self.root),
+                    identifier,
+                    repository_id=raw["id"],
+                    worktree_path=worktree_path,
+                )
+                if resolved:
+                    enriched.update(
+                        binding_id=resolved[0],
+                        workspace_path=resolved[1]["path"],
+                    )
+                items.append(enriched)
         return Result(True, data={"items": items})
 
     def remove(self, branch: str) -> Result:
-        binding = StateStore(self.root).get("worktree", branch)
+        store = StateStore(self.root)
+        resolved = resolve_worktree_binding(store, branch)
+        binding = resolved[1] if resolved else None
         cwd = self.root
         if binding:
             project = WorkspaceService(self.root).project(binding["repository_id"])
             cwd = (self.root / project.path).resolve()
-        result = self._execute(["remove", branch], cwd=cwd)
+        result = self._execute(
+            ["remove", str(binding.get("branch", branch)) if binding else branch],
+            cwd=cwd,
+        )
         if result.ok and binding:
-            store = StateStore(self.root)
-            store.delete("worktree", branch)
+            store.delete("worktree", resolved[0])
             store.audit("worktree.removed", "OK", binding)
         return result
 
     def merge(self, target: str, *, branch: str | None = None) -> Result:
-        binding = StateStore(self.root).get("worktree", branch) if branch else None
-        cwd = Path(binding["path"]) if binding else self.root
+        store = StateStore(self.root)
+        resolved = resolve_worktree_binding(store, branch) if branch else None
+        binding = resolved[1] if resolved else None
+        cwd = Path(binding.get("repository_path", binding["path"])) if binding else self.root
         result = self._execute(["merge", target], cwd=cwd)
         if result.ok and binding:
-            store = StateStore(self.root)
-            current = store.get("worktree", str(branch))
+            current = store.get("worktree", resolved[0])
             if current:
                 current["status"] = "merged"
-                store.set("worktree", str(branch), current)
+                store.set("worktree", resolved[0], current)
             store.audit("worktree.merged", "OK", {**binding, "target": target})
         return result
 

@@ -13,6 +13,7 @@ from praxis.documents.atomic_writer import atomic_write_text
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
+from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService, _array, _quote
 
 _AGENT_TYPES = {"codex", "claude-code", "oh-my-pi"}
@@ -77,9 +78,11 @@ class AgentSessionService:
             return Result(False, "REQUIREMENT_NOT_FOUND")
         if not self.store.get("context", context_id):
             return Result(False, "CONTEXT_NOT_FOUND")
-        binding = self.store.get("worktree", worktree)
+        resolved = resolve_worktree_binding(self.store, worktree)
+        binding = resolved[1] if resolved else None
         if not binding or binding.get("requirement_id") != requirement_id:
             return Result(False, "WORKTREE_BINDING_INVALID")
+        assert resolved is not None
         timestamp = datetime.now(UTC)
         session_id = f"SES-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
         grant = McpBrokerService(self.root).grant(
@@ -87,7 +90,7 @@ class AgentSessionService:
             role,
             requested_capabilities,
             requirement_id=requirement_id,
-            worktree=worktree,
+            worktree=resolved[0],
             approved_external=approved_external,
         )
         if not grant.ok:
@@ -98,7 +101,7 @@ class AgentSessionService:
             "role": role,
             "requirement_id": requirement_id,
             "context_id": context_id,
-            "worktree": worktree,
+            "worktree": resolved[0],
             "worktree_path": binding["path"],
             "skills": skills or [],
             "grant_id": grant.data["grant_id"],

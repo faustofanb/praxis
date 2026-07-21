@@ -47,6 +47,8 @@ class AgentGuidanceService:
             "- 只有确认需要改代码时，才在第一次代码编辑前创建绑定需求的 Worktrunk 工作树。",
             "- 工作树以仓库 `default_branch` 为本地运行模板；先合并唯一的",
             "  `origin/<template_branch>`，再从更新后的本地模板创建需求分支。",
+            "- 需求工作空间命名为 `.worktrees/<需求ID>__<简称>`；关联仓库作为其子目录，",
+            "  同一需求的开发阶段共用 `praxis/<需求ID>` 分支。",
             "- 禁止在工作空间根目录或未绑定目录修改业务代码。",
             "- 未经本次明确批准，不得启动 reviewer/tester Agent，也不得运行 lint、format、",
             "  typecheck、测试、覆盖率或质量复核。提交、推送、完成、继续不等于批准。",

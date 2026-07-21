@@ -40,6 +40,9 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "`backend/.cursor/rules`" in agents
     assert "`backend/skills`" in agents
     assert "`brainstorming`（必需）" in agents
+    assert "`grilling`（必需）" in agents
+    assert ".worktrees/<需求ID>__<简称>" in agents
+    assert "praxis/<需求ID>" in agents
     assert "praxis skill route-node" in agents
     assert "praxis skill invoke" in agents
     assert "praxis skill complete" in agents

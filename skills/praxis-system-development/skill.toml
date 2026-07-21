@@ -10,6 +10,7 @@ required_tools = []
 triggers = ["brainstorm", "review", "context", "search", "prompt", "subagent", "debug", "test", "设计", "评审", "上下文", "搜索", "调试", "测试"]
 delegates = [
   "brainstorming",
+  "grilling",
   "writing-plans",
   "code-quality-review",
   "context-degradation",
