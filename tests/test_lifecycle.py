@@ -287,6 +287,35 @@ def test_worktree_creation_keeps_binding_blocked_when_codegraph_initialization_f
     assert binding["codegraph_status"] == "CODEGRAPH_NOT_AVAILABLE"
 
 
+def test_worktree_codegraph_busy_keeps_binding_initializing(tmp_path: Path) -> None:
+    store = StateStore(tmp_path)
+    binding = {
+        "binding_id": "WT-REQ-TEST--app",
+        "requirement_id": "REQ-TEST",
+        "repository_id": "app",
+        "repository_path": str(tmp_path / "worktree"),
+    }
+    service = WorktreeService(
+        tmp_path,
+        initialize_graph=lambda project_id, path: Result(
+            False,
+            "CODEGRAPH_SYNC_BUSY",
+            data={"operation": {"status": "running"}},
+        ),
+    )
+
+    result = service._activate_binding(store, binding["binding_id"], binding)
+
+    assert not result.ok
+    assert result.code == "WORKTREE_CODEGRAPH_INITIALIZING"
+    persisted = store.get("worktree", binding["binding_id"])
+    assert persisted is not None
+    assert persisted["status"] == "initializing"
+    assert persisted["codegraph_attempt"] == 1
+    assert "codegraph_started_at" in persisted
+    assert "codegraph_completed_at" not in persisted
+
+
 def test_worktree_creation_blocks_when_local_template_branch_is_dirty(
     tmp_path: Path,
 ) -> None:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from praxis.codegraph.service import CodeGraphService, GitSnapshot
@@ -89,6 +91,7 @@ def test_query_never_uses_stale_index_after_sync_failure(tmp_path: Path) -> None
     assert not result.ok
     assert result.code == "CODEGRAPH_SYNC_FAILED"
     assert calls == [["codegraph", "sync", str(repo)]]
+    assert service.status().data["operation"]["status"] == "failed"
 
 
 def test_changed_worktree_syncs_before_affected_query(tmp_path: Path) -> None:
@@ -228,3 +231,115 @@ def test_build_and_sync_return_busy_when_lock_is_held(tmp_path: Path) -> None:
         assert service.sync().code == "CODEGRAPH_SYNC_BUSY"
     finally:
         lock.release()
+
+
+def test_ensure_fresh_recovers_completed_orphaned_index_without_sync(tmp_path: Path) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+    calls: list[list[str]] = []
+
+    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        payload = {
+            "initialized": True,
+            "projectPath": str(repo),
+            "pendingChanges": {"added": 0, "modified": 0, "removed": 0},
+            "worktreeMismatch": None,
+            "index": {"state": "complete", "pendingRefs": 0},
+        }
+        return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+    service = CodeGraphService(tmp_path, "app", run=run, codegraph_version="1.3.0")
+    result = service.ensure_fresh(initialize=True)
+
+    assert result.ok
+    assert result.code == "CODEGRAPH_RECOVERED"
+    assert calls == [["codegraph", "status", str(repo), "--json"]]
+    assert service.status().data["fresh"] is True
+    assert service.status().data["recovered_from_existing_index"] is True
+
+
+def test_ensure_fresh_does_not_race_recent_running_operation(tmp_path: Path) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+
+    def unexpected(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        raise AssertionError(command)
+
+    service = CodeGraphService(tmp_path, "app", run=unexpected)
+    timestamp = datetime.now(UTC).isoformat()
+    service.store.set(
+        "codegraph_operation",
+        service.key,
+        {
+            "operation_id": "CGO-ACTIVE",
+            "status": "running",
+            "heartbeat_at": timestamp,
+            "started_at": timestamp,
+        },
+    )
+
+    result = service.ensure_fresh(initialize=True)
+
+    assert not result.ok
+    assert result.code == "CODEGRAPH_SYNC_BUSY"
+    assert result.data["operation"]["operation_id"] == "CGO-ACTIVE"
+
+
+def test_default_runner_persists_operation_heartbeat_and_completion(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _workspace(tmp_path)
+
+    class FakeProcess:
+        pid = 321
+        returncode = 0
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def communicate(self, timeout: float):
+            self.calls += 1
+            if self.calls == 1:
+                raise subprocess.TimeoutExpired(["codegraph", "init"], timeout)
+            (repo / ".codegraph").mkdir()
+            return "", ""
+
+    real_popen = subprocess.Popen
+
+    def popen(command, *args, **kwargs):
+        if command[0] == "codegraph":
+            return FakeProcess()
+        return real_popen(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    service = CodeGraphService(
+        tmp_path,
+        "app",
+        codegraph_version="1.3.0",
+        heartbeat_interval=0.001,
+    )
+
+    assert service.ensure_fresh(initialize=True).ok
+    operation = service.status().data["operation"]
+    assert operation["status"] == "completed"
+    assert operation["pid"] == 321
+    assert operation["heartbeat_count"] >= 1
+
+
+def test_interrupted_sync_persists_operation_for_recovery(tmp_path: Path) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+
+    def interrupt(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        raise KeyboardInterrupt
+
+    service = CodeGraphService(tmp_path, "app", run=interrupt)
+
+    try:
+        service.ensure_fresh()
+    except KeyboardInterrupt:
+        pass
+    else:
+        raise AssertionError("expected KeyboardInterrupt")
+    assert service.status().data["operation"]["status"] == "interrupted"

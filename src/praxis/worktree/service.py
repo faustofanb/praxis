@@ -6,6 +6,7 @@ import re
 import shlex
 import subprocess
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -89,13 +90,40 @@ class WorktreeService:
         *,
         success_code: str = "OK",
     ) -> Result:
-        binding["status"] = "initializing"
+        started_at = datetime.now(UTC).isoformat()
+        binding.update(
+            status="initializing",
+            codegraph_attempt=int(binding.get("codegraph_attempt", 0)) + 1,
+            codegraph_started_at=started_at,
+        )
+        binding.pop("codegraph_completed_at", None)
         store.set("worktree", binding_key, binding)
+        store.audit("worktree.codegraph_initializing", "OK", binding)
         graph = self.initialize_graph(
             str(binding["repository_id"]),
             Path(str(binding["repository_path"])),
         )
         binding["codegraph_status"] = graph.code
+        if graph.code == "CODEGRAPH_SYNC_BUSY":
+            binding["status"] = "initializing"
+            store.set("worktree", binding_key, binding)
+            audit_id = store.audit(
+                "worktree.codegraph_initializing",
+                graph.code,
+                {**binding, "codegraph": graph.data},
+            )
+            return Result(
+                False,
+                "WORKTREE_CODEGRAPH_INITIALIZING",
+                data={
+                    **binding,
+                    "cause": graph.code,
+                    "codegraph": graph.data,
+                    "audit_id": audit_id,
+                },
+                diagnostics=graph.diagnostics,
+            )
+        binding["codegraph_completed_at"] = datetime.now(UTC).isoformat()
         if not graph.ok:
             binding["status"] = "blocked"
             store.set("worktree", binding_key, binding)

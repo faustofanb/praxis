@@ -9,9 +9,10 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
@@ -95,6 +96,8 @@ class CodeGraphService:
         store: StateStore | None = None,
         codegraph_version: str | None = None,
         lock_timeout: float = 30,
+        heartbeat_interval: float = 5,
+        operation_stale_after: float = 30,
         repo: Path | str | None = None,
     ):
         self.root = Path(root)
@@ -105,11 +108,14 @@ class CodeGraphService:
             Path(repo).resolve() if repo is not None else (self.root / project.path).resolve()
         )
         self.run = run or self._run
+        self._uses_default_runner = run is None
         self.store = store or StateStore(self.root)
         self.codegraph_version = codegraph_version or (
             self._detect_version() if run is None else "unknown"
         )
         self.lock_timeout = lock_timeout
+        self.heartbeat_interval = heartbeat_interval
+        self.operation_stale_after = operation_stale_after
         identity = f"{project_id}\0{self.repo}"
         self.key = hashlib.sha256(identity.encode()).hexdigest()
 
@@ -130,6 +136,9 @@ class CodeGraphService:
     def _metadata(self) -> dict[str, Any] | None:
         return self.store.get("codegraph", self.key)
 
+    def _operation(self) -> dict[str, Any] | None:
+        return self.store.get("codegraph_operation", self.key)
+
     def _fresh(self, snapshot: GitSnapshot, metadata: dict[str, Any] | None) -> bool:
         return bool(
             metadata
@@ -149,7 +158,129 @@ class CodeGraphService:
             "fresh": self._fresh(snapshot, metadata),
             **metadata,
         }
+        operation = self._operation()
+        if operation:
+            data["operation"] = operation
         return Result(True, data=data)
+
+    def _start_operation(self, action: str) -> dict[str, Any]:
+        started_at = datetime.now(UTC).isoformat()
+        operation = {
+            "operation_id": f"CGO-{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}",
+            "project_id": self.project_id,
+            "worktree": str(self.repo),
+            "action": action,
+            "status": "running",
+            "started_at": started_at,
+            "heartbeat_at": started_at,
+            "heartbeat_count": 0,
+        }
+        self.store.set("codegraph_operation", self.key, operation)
+        self.store.audit("codegraph.operation_started", "OK", operation)
+        return operation
+
+    def _heartbeat_operation(self, operation: dict[str, Any]) -> None:
+        operation["heartbeat_at"] = datetime.now(UTC).isoformat()
+        operation["heartbeat_count"] = int(operation.get("heartbeat_count", 0)) + 1
+        self.store.set("codegraph_operation", self.key, operation)
+
+    def _finish_operation(
+        self,
+        operation: dict[str, Any],
+        status: str,
+        code: str,
+        **details: Any,
+    ) -> None:
+        completed_at = datetime.now(UTC).isoformat()
+        operation.update(
+            status=status,
+            code=code,
+            heartbeat_at=completed_at,
+            completed_at=completed_at,
+            **details,
+        )
+        self.store.set("codegraph_operation", self.key, operation)
+        self.store.audit(f"codegraph.operation_{status}", code, operation)
+
+    def _operation_is_recent(self, operation: dict[str, Any]) -> bool:
+        try:
+            heartbeat = datetime.fromisoformat(str(operation["heartbeat_at"]))
+        except (KeyError, TypeError, ValueError):
+            return False
+        return datetime.now(UTC) - heartbeat <= timedelta(seconds=self.operation_stale_after)
+
+    def _run_with_heartbeat(
+        self,
+        command: list[str],
+        cwd: Path,
+        operation: dict[str, Any],
+    ) -> subprocess.CompletedProcess[str]:
+        process = subprocess.Popen(
+            command,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        operation["pid"] = process.pid
+        self._heartbeat_operation(operation)
+        while True:
+            try:
+                stdout, stderr = process.communicate(timeout=self.heartbeat_interval)
+                return subprocess.CompletedProcess(
+                    command,
+                    process.returncode,
+                    stdout or "",
+                    stderr or "",
+                )
+            except subprocess.TimeoutExpired:
+                self._heartbeat_operation(operation)
+
+    def _recover_existing_index(self, snapshot: GitSnapshot) -> Result | None:
+        command = ["codegraph", "status", str(self.repo), "--json"]
+        try:
+            process = self.run(command, self.repo)
+        except FileNotFoundError:
+            return None
+        if process.returncode:
+            return None
+        try:
+            payload = json.loads(process.stdout)
+            project_path = Path(str(payload["projectPath"])).resolve()
+            pending = payload["pendingChanges"]
+            index = payload["index"]
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            return None
+        if not isinstance(pending, dict) or not isinstance(index, dict):
+            return None
+        if not (
+            payload.get("initialized") is True
+            and project_path == self.repo
+            and index.get("state") == "complete"
+            and int(index.get("pendingRefs", -1)) == 0
+            and payload.get("worktreeMismatch") is None
+            and all(
+                int(pending.get(name, -1)) == 0
+                for name in ("added", "modified", "removed")
+            )
+        ):
+            return None
+        operation = self._operation()
+        metadata = {
+            "project_id": self.project_id,
+            "indexed_head": snapshot.head,
+            "indexed_dirty_fingerprint": snapshot.dirty_fingerprint,
+            "indexed_at": str(payload.get("lastIndexed") or datetime.now(UTC).isoformat()),
+            "codegraph_version": str(payload.get("version") or self.codegraph_version),
+            "recovered_from_existing_index": True,
+        }
+        if operation:
+            metadata["recovered_operation_id"] = operation.get("operation_id")
+        self.store.set("codegraph", self.key, metadata)
+        if operation and operation.get("status") in {"running", "interrupted"}:
+            self._finish_operation(operation, "recovered", "CODEGRAPH_RECOVERED")
+        self.store.audit("codegraph.recovered", "CODEGRAPH_RECOVERED", metadata)
+        return Result(True, "CODEGRAPH_RECOVERED", data=metadata)
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
@@ -188,6 +319,31 @@ class CodeGraphService:
                 initialized = (self.repo / ".codegraph").exists()
                 if not initialized and not initialize:
                     return Result(False, "CODEGRAPH_NOT_INITIALIZED")
+                operation = self._operation()
+                recovering = bool(
+                    initialized
+                    and (
+                        (initialize and self._metadata() is None)
+                        or (operation and operation.get("status") in {"running", "interrupted"})
+                    )
+                )
+                if operation and operation.get("status") == "running":
+                    if self._operation_is_recent(operation):
+                        return Result(
+                            False,
+                            "CODEGRAPH_SYNC_BUSY",
+                            data={"operation": operation, "worktree": str(self.repo)},
+                        )
+                if recovering and (self.repo / ".codegraph" / "lock").exists():
+                    return Result(
+                        False,
+                        "CODEGRAPH_SYNC_BUSY",
+                        data={"operation": operation or {}, "worktree": str(self.repo)},
+                    )
+                if recovering:
+                    recovered = self._recover_existing_index(snapshot)
+                    if recovered:
+                        return recovered
                 action = "sync" if initialized else "init"
                 return self._execute_sync(action)
         except _SyncBusy:
@@ -211,27 +367,50 @@ class CodeGraphService:
 
     def _execute_sync(self, action: str) -> Result:
         command = ["codegraph", action, str(self.repo)]
+        operation = self._start_operation(action)
         try:
-            process = self.run(command, self.repo)
-        except FileNotFoundError:
-            return Result(False, "CODEGRAPH_NOT_AVAILABLE")
-        if process.returncode:
-            return Result(
-                False,
-                "CODEGRAPH_SYNC_FAILED",
-                data={"action": action, "stderr": process.stderr.strip()},
+            process = (
+                self._run_with_heartbeat(command, self.repo, operation)
+                if self._uses_default_runner
+                else self.run(command, self.repo)
             )
-        snapshot = GitSnapshot.capture(self.repo)
-        metadata = {
-            "project_id": self.project_id,
-            "indexed_head": snapshot.head,
-            "indexed_dirty_fingerprint": snapshot.dirty_fingerprint,
-            "indexed_at": datetime.now(UTC).isoformat(),
-            "codegraph_version": self.codegraph_version,
-        }
-        self.store.set("codegraph", self.key, metadata)
-        self.store.audit(f"codegraph.{action}", "OK", metadata)
-        return Result(True, code=f"CODEGRAPH_{action.upper()}ED", data=metadata)
+            if process.returncode:
+                self._finish_operation(
+                    operation,
+                    "failed",
+                    "CODEGRAPH_SYNC_FAILED",
+                    returncode=process.returncode,
+                    stderr=process.stderr.strip(),
+                )
+                return Result(
+                    False,
+                    "CODEGRAPH_SYNC_FAILED",
+                    data={"action": action, "stderr": process.stderr.strip()},
+                )
+            snapshot = GitSnapshot.capture(self.repo)
+            metadata = {
+                "project_id": self.project_id,
+                "indexed_head": snapshot.head,
+                "indexed_dirty_fingerprint": snapshot.dirty_fingerprint,
+                "indexed_at": datetime.now(UTC).isoformat(),
+                "codegraph_version": self.codegraph_version,
+                "operation_id": operation["operation_id"],
+            }
+            self.store.set("codegraph", self.key, metadata)
+            self._finish_operation(operation, "completed", f"CODEGRAPH_{action.upper()}ED")
+            self.store.audit(f"codegraph.{action}", "OK", metadata)
+            return Result(True, code=f"CODEGRAPH_{action.upper()}ED", data=metadata)
+        except FileNotFoundError:
+            self._finish_operation(operation, "failed", "CODEGRAPH_NOT_AVAILABLE")
+            return Result(False, "CODEGRAPH_NOT_AVAILABLE")
+        except BaseException as error:
+            self._finish_operation(
+                operation,
+                "interrupted",
+                "CODEGRAPH_INTERRUPTED",
+                error_type=type(error).__name__,
+            )
+            raise
 
     def _query(self, arguments: list[str]) -> Result:
         freshness = self.ensure_fresh()
