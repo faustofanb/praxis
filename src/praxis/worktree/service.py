@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 from collections.abc import Callable, Sequence
 from contextlib import suppress
@@ -83,6 +84,71 @@ class WorktreeService:
             repo=repository_path,
         ).ensure_fresh(initialize=True)
 
+    @staticmethod
+    def _prepare_local_files(
+        project: Project,
+        source_root: Path,
+        destination_root: Path,
+    ) -> Result:
+        if not project.local_files:
+            return Result(True, "WORKTREE_LOCAL_FILES_NOT_CONFIGURED")
+        source_root = source_root.resolve()
+        destination_root = destination_root.resolve()
+        prepared: list[tuple[str, Path, Path]] = []
+        for relative in project.local_files:
+            source_candidate = source_root / relative
+            source = source_candidate.resolve()
+            destination = destination_root / relative
+            if not source.is_relative_to(source_root) or source_candidate.is_symlink():
+                return Result(
+                    False,
+                    "WORKTREE_LOCAL_FILE_SOURCE_UNSAFE",
+                    data={"path": relative},
+                )
+            if not source.is_file():
+                return Result(
+                    False,
+                    "WORKTREE_LOCAL_FILE_SOURCE_MISSING",
+                    data={"path": relative},
+                )
+            if not destination.resolve(strict=False).is_relative_to(destination_root):
+                return Result(
+                    False,
+                    "WORKTREE_LOCAL_FILE_TARGET_UNSAFE",
+                    data={"path": relative},
+                )
+            if destination.exists() and (
+                not destination.is_file() or destination.is_symlink()
+            ):
+                return Result(
+                    False,
+                    "WORKTREE_LOCAL_FILE_TARGET_UNSAFE",
+                    data={"path": relative},
+                )
+            prepared.append((relative, source, destination))
+
+        copied: list[str] = []
+        existing: list[str] = []
+        for relative, source, destination in prepared:
+            if destination.exists():
+                existing.append(relative)
+                continue
+            try:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+            except OSError as error:
+                return Result(
+                    False,
+                    "WORKTREE_LOCAL_FILE_COPY_FAILED",
+                    data={"path": relative, "message": str(error)},
+                )
+            copied.append(relative)
+        return Result(
+            True,
+            "WORKTREE_LOCAL_FILES_PREPARED",
+            data={"copied": copied, "existing": existing},
+        )
+
     def _activate_binding(
         self,
         store: StateStore,
@@ -91,6 +157,41 @@ class WorktreeService:
         *,
         success_code: str = "OK",
     ) -> Result:
+        project = WorkspaceService(self.root).project(str(binding["repository_id"]))
+        local_files = self._prepare_local_files(
+            project,
+            (self.root / project.path).resolve(),
+            Path(str(binding["repository_path"])),
+        )
+        binding["local_files_status"] = local_files.code
+        if project.local_files:
+            binding["local_files"] = list(project.local_files)
+        if not local_files.ok:
+            binding["status"] = "blocked"
+            store.set("worktree", binding_key, binding)
+            audit_id = store.audit(
+                "worktree.local_files_failed",
+                local_files.code,
+                {**binding, "local_files_result": local_files.data},
+            )
+            return Result(
+                False,
+                "WORKTREE_LOCAL_FILES_PREPARE_FAILED",
+                data={
+                    **binding,
+                    "cause": local_files.code,
+                    "local_files_result": local_files.data,
+                    "audit_id": audit_id,
+                },
+            )
+        if project.local_files:
+            binding["local_files_copied"] = local_files.data.get("copied", [])
+            binding["local_files_existing"] = local_files.data.get("existing", [])
+            store.audit(
+                "worktree.local_files_prepared",
+                local_files.code,
+                binding,
+            )
         started_at = datetime.now(UTC).isoformat()
         binding.update(
             status="initializing",

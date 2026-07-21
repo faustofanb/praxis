@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import tomllib
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -27,6 +27,7 @@ class Project:
     deployment_commands: tuple[str, ...] = ()
     release_branches: tuple[str, ...] = ()
     template_branches: tuple[str, ...] = ()
+    local_files: tuple[str, ...] = ()
     lint_commands: tuple[str, ...] = ()
     typecheck_commands: tuple[str, ...] = ()
     test_commands: tuple[str, ...] = ()
@@ -165,13 +166,16 @@ class WorkspaceService:
                     "deployment_commands",
                     "release_branches",
                     "template_branches",
+                    "local_files",
                     "lint_commands",
                     "typecheck_commands",
                     "test_commands",
                 )
             }
             facts = {key: value for key, value in raw.items() if key not in tuple_fields}
-            return Project(**facts, **tuple_fields)
+            project = Project(**facts, **tuple_fields)
+            self._validate_project(project)
+            return project
         raise KeyError(project_id)
 
     def inspect(self) -> Result:
@@ -227,6 +231,13 @@ class WorkspaceService:
         )
         if unknown_production:
             raise ValueError("生产数据库连接必须先登记为普通连接引用")
+        if len(set(project.local_files)) != len(project.local_files):
+            raise ValueError("本地文件白名单不能包含重复路径")
+        invalid_local_files = [
+            value for value in project.local_files if not _valid_local_file(value)
+        ]
+        if invalid_local_files:
+            raise ValueError("本地文件必须使用仓库内的规范相对路径")
 
     def _write(self, payload: dict[str, Any]) -> None:
         workspace = payload["workspace"]
@@ -264,6 +275,7 @@ class WorkspaceService:
                     "deployment_commands",
                     "release_branches",
                     "template_branches",
+                    "local_files",
                     "lint_commands",
                     "typecheck_commands",
                     "test_commands",
@@ -280,3 +292,15 @@ def _valid_dbx_reference(reference: str) -> bool:
         return False
     database = parsed.path.removeprefix("/")
     return "/" not in database
+
+
+def _valid_local_file(value: str) -> bool:
+    if not value or value != value.strip() or "\\" in value:
+        return False
+    segments = value.split("/")
+    path = PurePosixPath(value)
+    return (
+        not path.is_absolute()
+        and not re.match(r"^[A-Za-z]:", value)
+        and all(segment not in {"", ".", ".."} for segment in segments)
+    )

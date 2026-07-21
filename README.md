@@ -84,6 +84,15 @@ worktree for it; Praxis never switches the user's current branch for synchroniza
 merge conflicts, dirty template worktrees, and ambiguous template configuration block creation
 instead of falling back to another base.
 
+Repositories may declare ignored local runtime files explicitly. Praxis copies only these paths
+from the configured main repository into a newly created requirement worktree before CodeGraph
+initialization; it never scans `.env*` or copies undeclared files. Paths must be normalized,
+repository-relative files and cannot resolve outside either repository:
+
+```toml
+local_files = ["apps/web-antd/.env.development"]
+```
+
 Installed hooks enforce worktree binding, changed-path and secret gates plus the CodeGraph lifecycle
 at post-start, pre-commit, pre-merge, post-merge, and post-remove. They never start lint, format, typecheck,
 quality review, or tests. Those actions require explicit user approval for the named scope. Task/context,
