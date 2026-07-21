@@ -59,8 +59,22 @@ class ArtifactService:
             if missing:
                 return Result(False, "ARTIFACT_SQL_METADATA_REQUIRED", data={"missing": missing})
         timestamp = datetime.now(UTC)
-        artifact_id = f"ART-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
+        existing = next(
+            (
+                item
+                for item in self.store.list_scope("artifact")
+                if item.get("requirement_id") == requirement_id
+                and Path(str(item.get("source_path", ""))).resolve() == source
+            ),
+            None,
+        )
+        artifact_id = (
+            str(existing["artifact_id"])
+            if existing
+            else f"ART-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
+        )
         data = {
+            **(existing or {}),
             "artifact_id": artifact_id,
             "requirement_id": requirement_id,
             "type": artifact_type,
@@ -70,12 +84,19 @@ class ArtifactService:
             "content_hash": _hash(source),
             "size": source.stat().st_size,
             "metadata": facts,
-            "created_at": timestamp.isoformat(),
+            "created_at": (
+                existing.get("created_at", timestamp.isoformat())
+                if existing
+                else timestamp.isoformat()
+            ),
+            "updated_at": timestamp.isoformat(),
         }
         self.store.set("artifact", artifact_id, data)
         self._write_index(requirement)
-        audit_id = self.store.audit("artifact.registered", "OK", data)
-        return Result(True, data={**data, "audit_id": audit_id})
+        event = "artifact.refreshed" if existing else "artifact.registered"
+        code = "ARTIFACT_REFRESHED" if existing else "ARTIFACT_REGISTERED"
+        audit_id = self.store.audit(event, "OK", data)
+        return Result(True, code, data={**data, "audit_id": audit_id})
 
     def list(self, requirement_id: str | None = None) -> Result:
         artifacts = self.store.list_scope("artifact")

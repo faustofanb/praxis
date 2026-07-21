@@ -193,6 +193,48 @@ class StateStore:
             )
         return record
 
+    def reopen_requirement(
+        self,
+        requirement_id: str,
+        reason: str,
+        *,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        updated_at = (now or datetime.now(UTC)).isoformat()
+        with self._connect() as database:
+            database.execute("begin immediate")
+            row = database.execute(
+                "select * from requirements where requirement_id=?", (requirement_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(requirement_id)
+            current = Requirement(
+                row["requirement_id"],
+                row["short_name"],
+                RequirementStatus(row["status"]),
+            )
+            changed = current.reopen()
+            database.execute(
+                "update requirements set status=?, updated_at=? where requirement_id=?",
+                (changed.status.value, updated_at, requirement_id),
+            )
+            record = self._requirement_record(row)
+            record.update(status=changed.status.value, updated_at=updated_at)
+            self._enqueue(database, "requirement.project", record, updated_at)
+            self._audit(
+                database,
+                "requirement.reopened",
+                "OK",
+                {
+                    "requirement_id": requirement_id,
+                    "from": RequirementStatus.VERIFYING.value,
+                    "status": changed.status.value,
+                    "reason": reason,
+                },
+                created_at=updated_at,
+            )
+        return record
+
     def merge_domain(self, source: str, target: str) -> int:
         updated = 0
         timestamp = datetime.now(UTC).isoformat()

@@ -7,10 +7,11 @@ import re
 import shlex
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -321,9 +322,13 @@ class WorktreeService:
                 local_files.code,
                 binding,
             )
+        repository_path = Path(str(binding["repository_path"]))
+        excluded = self._exclude_generated_paths(repository_path)
+        binding["generated_paths_exclude_status"] = excluded.code
+        if not excluded.ok:
+            store.audit("worktree.generated_paths_exclude_failed", excluded.code, binding)
         package_manager = self._setup_package_manager_spec(
-            project.worktree_setup_commands,
-            Path(str(binding["repository_path"])),
+            project.worktree_setup_commands, repository_path
         )
         setup_fingerprint = hashlib.sha256(
             json.dumps(
@@ -335,12 +340,7 @@ class WorktreeService:
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest()
-        setup_already_prepared = (
-            bool(project.worktree_setup_commands)
-            and binding.get("status") == "active"
-            and binding.get("worktree_setup_status") == "WORKTREE_SETUP_COMPLETED"
-            and binding.get("worktree_setup_fingerprint") == setup_fingerprint
-        )
+        setup_ready_for_graph = True
         if not project.worktree_setup_commands:
             binding["worktree_setup_status"] = "WORKTREE_SETUP_NOT_CONFIGURED"
             binding["worktree_setup_commands_configured"] = 0
@@ -353,112 +353,219 @@ class WorktreeService:
                 "worktree_setup_package_managers",
             ):
                 binding.pop(key, None)
-        elif setup_already_prepared:
-            binding["worktree_setup_last_action"] = "WORKTREE_SETUP_ALREADY_PREPARED"
         else:
-            binding.pop("worktree_setup_last_action", None)
-            binding.pop("worktree_setup_package_managers", None)
+            preflight = self._preflight_worktree_setup(project, repository_path)
+            setup_ready_for_graph = preflight.ok
             binding.update(
-                status="initializing",
-                worktree_setup_status="WORKTREE_SETUP_RUNNING",
+                worktree_setup_status=(
+                    "WORKTREE_SETUP_DEFERRED" if preflight.ok else preflight.code
+                ),
+                worktree_setup_preflight_status=preflight.code,
                 worktree_setup_commands_configured=len(
                     project.worktree_setup_commands
                 ),
-                worktree_setup_commands_completed=0,
                 worktree_setup_fingerprint=setup_fingerprint,
-                worktree_setup_started_at=datetime.now(UTC).isoformat(),
+                worktree_setup_package_managers=preflight.data.get(
+                    "package_managers", []
+                ),
             )
-            binding.pop("worktree_setup_completed_at", None)
-            store.set("worktree", binding_key, binding)
-            store.audit("worktree.setup_started", "OK", binding)
-            setup = self._run_worktree_setup_commands(
-                project,
-                Path(str(binding["repository_path"])),
+            store.audit("worktree.setup_deferred", preflight.code, binding)
+        binding.pop("codegraph_completed_at", None)
+        binding.update(
+            status="active",
+            codegraph_status=(
+                "CODEGRAPH_QUEUED"
+                if setup_ready_for_graph
+                else "CODEGRAPH_DEFERRED_SETUP_PREFLIGHT_FAILED"
+            ),
+        )
+        store.set("worktree", binding_key, binding)
+        if not setup_ready_for_graph:
+            return Result(
+                True,
+                success_code,
+                data=binding,
+                diagnostics=(
+                    {
+                        "code": "WORKTREE_SETUP_PREFLIGHT_FAILED",
+                        "message": "Worktree is active; fix setup preflight before prepare or CodeGraph.",
+                    },
+                ),
             )
-            binding["worktree_setup_status"] = setup.code
-            binding["worktree_setup_commands_completed"] = setup.data.get(
-                "completed", 0
-            )
-            binding["worktree_setup_package_managers"] = setup.data.get(
-                "package_managers", []
-            )
-            if not setup.ok:
-                binding["status"] = "blocked"
-                store.set("worktree", binding_key, binding)
-                audit_id = store.audit(
-                    "worktree.setup_failed",
-                    setup.code,
-                    {**binding, "worktree_setup_result": setup.data},
+        graph = CodeGraphService(
+            self.root,
+            str(binding["repository_id"]),
+            repo=repository_path,
+        ).enqueue(binding_id=binding_key)
+        binding = store.get("worktree", binding_key) or binding
+        if not binding.get("codegraph_completed_at"):
+            binding["codegraph_status"] = graph.code
+            binding["codegraph_job_id"] = graph.data.get("job_id")
+        store.set("worktree", binding_key, binding)
+        return Result(
+            True,
+            success_code,
+            data=binding,
+            diagnostics=graph.diagnostics,
+        )
+
+    def _preflight_worktree_setup(self, project: Project, repository_path: Path) -> Result:
+        package_managers: list[dict[str, str]] = []
+        for index, configured in enumerate(project.worktree_setup_commands, start=1):
+            command = shlex.split(configured)
+            if command[0] == "pnpm":
+                resolved = self._resolve_pnpm(repository_path)
+                if not resolved.ok:
+                    return Result(
+                        False,
+                        resolved.code,
+                        data={**resolved.data, "command_index": index},
+                    )
+                lockfile = repository_path / "pnpm-lock.yaml"
+                if not lockfile.is_file():
+                    return Result(
+                        False,
+                        "WORKTREE_SETUP_LOCKFILE_MISSING",
+                        data={"command_index": index, "path": str(lockfile)},
+                    )
+                try:
+                    lockfile_header = lockfile.read_text(encoding="utf-8")[:65_536]
+                except (OSError, UnicodeDecodeError) as error:
+                    return Result(
+                        False,
+                        "WORKTREE_SETUP_LOCKFILE_INVALID",
+                        data={
+                            "command_index": index,
+                            "path": str(lockfile),
+                            "error_type": type(error).__name__,
+                        },
+                    )
+                if "lockfileVersion:" not in lockfile_header or any(
+                    marker in lockfile_header for marker in ("<<<<<<<", "=======", ">>>>>>>")
+                ):
+                    return Result(
+                        False,
+                        "WORKTREE_SETUP_LOCKFILE_INVALID",
+                        data={"command_index": index, "path": str(lockfile)},
+                    )
+                package_managers.append(
+                    {
+                        "name": "pnpm",
+                        "version": str(resolved.data["version"]),
+                        "source": str(resolved.data["source"]),
+                    }
                 )
+            elif shutil.which(command[0]) is None:
                 return Result(
                     False,
-                    "WORKTREE_SETUP_FAILED",
-                    data={
-                        **binding,
-                        "cause": setup.code,
-                        "worktree_setup_result": setup.data,
-                        "audit_id": audit_id,
-                    },
+                    "WORKTREE_SETUP_COMMAND_NOT_FOUND",
+                    data={"command_index": index, "executable": command[0]},
                 )
-            binding["worktree_setup_completed_at"] = datetime.now(UTC).isoformat()
+        return Result(
+            True,
+            "WORKTREE_SETUP_PREFLIGHT_OK",
+            data={"package_managers": package_managers},
+        )
+
+    def _exclude_generated_paths(self, repository_path: Path) -> Result:
+        common = self._git(
+            ["rev-parse", "--git-common-dir"],
+            cwd=repository_path,
+            failure_code="WORKTREE_GIT_COMMON_DIR_FAILED",
+        )
+        if not common.ok:
+            return common
+        common_path = Path(str(common.data["stdout"]))
+        if not common_path.is_absolute():
+            common_path = repository_path / common_path
+        exclude_path = common_path.resolve() / "info" / "exclude"
+        try:
+            exclude_path.parent.mkdir(parents=True, exist_ok=True)
+            current = exclude_path.read_text(encoding="utf-8") if exclude_path.is_file() else ""
+            entries = {line.strip() for line in current.splitlines()}
+            missing = [item for item in (".codegraph/", ".praxis/") if item not in entries]
+            if missing:
+                with exclude_path.open("a", encoding="utf-8") as stream:
+                    if current and not current.endswith("\n"):
+                        stream.write("\n")
+                    stream.write("\n".join(missing) + "\n")
+        except OSError as error:
+            return Result(
+                False,
+                "WORKTREE_GENERATED_PATH_EXCLUDE_FAILED",
+                data={"error_type": type(error).__name__},
+            )
+        return Result(
+            True,
+            "WORKTREE_GENERATED_PATHS_EXCLUDED",
+            data={"path": str(exclude_path)},
+        )
+
+    def prepare_for_requirement(self, requirement_id: str, repository_id: str) -> Result:
+        store = StateStore(self.root)
+        binding_id = worktree_binding_id(requirement_id, repository_id)
+        resolved = resolve_worktree_binding(store, binding_id)
+        if not resolved:
+            return Result(False, "WORKTREE_BINDING_NOT_FOUND", data={"binding_id": binding_id})
+        binding_key, binding = resolved
+        if binding.get("status") != "active":
+            return Result(False, "WORKTREE_NOT_ACTIVE", data=binding)
+        setup_status = str(binding.get("worktree_setup_status", ""))
+        if setup_status == "WORKTREE_SETUP_COMPLETED":
+            return Result(True, "WORKTREE_SETUP_ALREADY_PREPARED", data=binding)
+        if setup_status not in {
+            "WORKTREE_SETUP_DEFERRED",
+            "WORKTREE_SETUP_NOT_CONFIGURED",
+        }:
+            from praxis.governance.service import ExecutionBudgetService
+
+            retry = ExecutionBudgetService(self.root).consume(
+                requirement_id,
+                "in_progress",
+                "retry",
+                f"worktree-setup:{repository_id}",
+            )
+            if not retry.ok:
+                return retry
+        project = WorkspaceService(self.root).project(repository_id)
+        repository_path = Path(str(binding["repository_path"]))
+        preflight = self._preflight_worktree_setup(project, repository_path)
+        if not preflight.ok:
+            binding["worktree_setup_status"] = preflight.code
             store.set("worktree", binding_key, binding)
-            store.audit("worktree.setup_completed", setup.code, binding)
-        started_at = datetime.now(UTC).isoformat()
+            return Result(False, "WORKTREE_SETUP_PREFLIGHT_FAILED", data=preflight.data)
         binding.update(
-            status="initializing",
-            codegraph_attempt=int(binding.get("codegraph_attempt", 0)) + 1,
-            codegraph_started_at=started_at,
+            worktree_setup_status="WORKTREE_SETUP_RUNNING",
+            worktree_setup_started_at=datetime.now(UTC).isoformat(),
         )
-        binding.pop("codegraph_completed_at", None)
         store.set("worktree", binding_key, binding)
-        store.audit("worktree.codegraph_initializing", "OK", binding)
-        graph = self.initialize_graph(
-            str(binding["repository_id"]),
-            Path(str(binding["repository_path"])),
+        setup = self._run_worktree_setup_commands(project, repository_path)
+        binding.update(
+            worktree_setup_status=setup.code,
+            worktree_setup_commands_completed=setup.data.get("completed", 0),
+            worktree_setup_package_managers=setup.data.get("package_managers", []),
+            worktree_setup_completed_at=datetime.now(UTC).isoformat(),
         )
-        binding["codegraph_status"] = graph.code
-        if graph.code == "CODEGRAPH_SYNC_BUSY":
-            binding["status"] = "initializing"
-            store.set("worktree", binding_key, binding)
-            audit_id = store.audit(
-                "worktree.codegraph_initializing",
-                graph.code,
-                {**binding, "codegraph": graph.data},
-            )
-            return Result(
-                False,
-                "WORKTREE_CODEGRAPH_INITIALIZING",
-                data={
-                    **binding,
-                    "cause": graph.code,
-                    "codegraph": graph.data,
-                    "audit_id": audit_id,
-                },
-                diagnostics=graph.diagnostics,
-            )
-        binding["codegraph_completed_at"] = datetime.now(UTC).isoformat()
-        if not graph.ok:
-            binding["status"] = "blocked"
-            store.set("worktree", binding_key, binding)
-            store.audit(
-                "worktree.codegraph_init_failed",
-                graph.code,
-                {**binding, "codegraph": graph.data},
-            )
-            return Result(
-                False,
-                "WORKTREE_CODEGRAPH_INIT_FAILED",
-                data={**binding, "cause": graph.code, "codegraph": graph.data},
-                diagnostics=graph.diagnostics,
-            )
-        binding["status"] = "active"
         store.set("worktree", binding_key, binding)
-        store.audit(
-            "worktree.codegraph_initialized",
-            graph.code,
-            {**binding, "codegraph": graph.data},
+        if setup.ok and binding.get("codegraph_status") == (
+            "CODEGRAPH_DEFERRED_SETUP_PREFLIGHT_FAILED"
+        ):
+            graph = CodeGraphService(
+                self.root,
+                repository_id,
+                repo=repository_path,
+            ).enqueue(binding_id=binding_key)
+            binding = store.get("worktree", binding_key) or binding
+            if not binding.get("codegraph_completed_at"):
+                binding["codegraph_status"] = graph.code
+                binding["codegraph_job_id"] = graph.data.get("job_id")
+        store.set("worktree", binding_key, binding)
+        audit_id = store.audit(
+            "worktree.setup_completed" if setup.ok else "worktree.setup_failed",
+            setup.code,
+            binding,
         )
-        return Result(True, success_code, data=binding, diagnostics=graph.diagnostics)
+        return Result(setup.ok, setup.code, data={**binding, "audit_id": audit_id})
 
     def _run_worktree_setup_commands(
         self, project: Project, repository_path: Path
@@ -909,6 +1016,175 @@ class WorktreeService:
             store.audit("worktree.created", "OK", activated.data)
         return activated
 
+    def preview_for_requirement(
+        self,
+        requirement_id: str,
+        repository_ids: Sequence[str],
+    ) -> Result:
+        store = StateStore(self.root)
+        requirement = store.requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        repositories = list(dict.fromkeys(repository_ids))
+        if not repositories:
+            return Result(False, "WORKTREE_REPOSITORY_REQUIRED")
+        items: list[dict[str, Any]] = []
+        for repository_id in repositories:
+            project = WorkspaceService(self.root).project(repository_id)
+            if project.system_id not in requirement["systems"]:
+                return Result(
+                    False,
+                    "WORKTREE_SYSTEM_MISMATCH",
+                    data={"repository_id": repository_id},
+                )
+            names = self._names_for_requirement(store, requirement, repository_id)
+            item = asdict(names)
+            item.update(
+                repository_id=repository_id,
+                workspace_path=str((self.root / ".worktrees" / names.workspace_name).resolve()),
+                repository_path=str(
+                    (
+                        self.root
+                        / ".worktrees"
+                        / names.workspace_name
+                        / names.worktree_display_name
+                    ).resolve()
+                ),
+            )
+            items.append(item)
+        created_at = datetime.now(UTC)
+        fingerprint = hashlib.sha256(
+            json.dumps(
+                {
+                    "requirement_id": requirement_id,
+                    "repositories": repositories,
+                    "items": items,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        preview_id = f"WTP-{created_at:%Y%m%dT%H%M%S}-{fingerprint[:8].upper()}"
+        preview = {
+            "preview_id": preview_id,
+            "requirement_id": requirement_id,
+            "repositories": repositories,
+            "items": items,
+            "fingerprint": fingerprint,
+            "created_at": created_at.isoformat(),
+            "expires_at": (created_at + timedelta(hours=24)).isoformat(),
+        }
+        store.set("worktree_preview", preview_id, preview)
+        audit_id = store.audit("worktree.previewed", "OK", preview)
+        return Result(True, "WORKTREE_PREVIEWED", data={**preview, "audit_id": audit_id})
+
+    def ensure_for_requirement(
+        self,
+        requirement_id: str,
+        repository_ids: Sequence[str],
+        *,
+        preview_id: str,
+    ) -> Result:
+        store = StateStore(self.root)
+        preview = store.get("worktree_preview", preview_id)
+        repositories = list(dict.fromkeys(repository_ids))
+        if not preview:
+            return Result(False, "WORKTREE_PREVIEW_NOT_FOUND")
+        if (
+            preview.get("requirement_id") != requirement_id
+            or preview.get("repositories") != repositories
+        ):
+            return Result(False, "WORKTREE_PREVIEW_MISMATCH", data=preview)
+        try:
+            expired = datetime.fromisoformat(str(preview["expires_at"])) < datetime.now(UTC)
+        except (KeyError, TypeError, ValueError):
+            expired = True
+        if expired:
+            return Result(False, "WORKTREE_PREVIEW_EXPIRED", data=preview)
+        requirement = store.requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        current_names = {
+            repository_id: asdict(
+                self._names_for_requirement(store, requirement, repository_id)
+            )
+            for repository_id in repositories
+        }
+        preview_names = {
+            str(item["repository_id"]): {
+                key: item[key]
+                for key in (
+                    "requirement_id",
+                    "short_name_snapshot",
+                    "display_slug",
+                    "workspace_name",
+                    "worktree_display_name",
+                    "branch_name",
+                )
+            }
+            for item in preview.get("items", [])
+        }
+        if current_names != preview_names:
+            return Result(
+                False,
+                "WORKTREE_PREVIEW_STALE",
+                data={"preview": preview_names, "current": current_names},
+            )
+
+        def create(repository_id: str) -> tuple[str, Result]:
+            binding_id = worktree_binding_id(requirement_id, repository_id)
+            existing = resolve_worktree_binding(store, binding_id)
+            attempt_key = f"{requirement_id}:{repository_id}"
+            attempt = store.get("worktree_ensure_attempt", attempt_key) or {
+                "requirement_id": requirement_id,
+                "repository_id": repository_id,
+                "attempts": 0,
+                "limit": 2,
+            }
+            if not (existing and existing[1].get("status") == "active"):
+                if int(attempt["attempts"]) >= int(attempt["limit"]):
+                    return repository_id, Result(
+                        False,
+                        "WORKTREE_RETRY_BUDGET_EXHAUSTED",
+                        data=attempt,
+                    )
+                attempt["attempts"] = int(attempt["attempts"]) + 1
+                attempt["updated_at"] = datetime.now(UTC).isoformat()
+                store.set("worktree_ensure_attempt", attempt_key, attempt)
+            try:
+                result = self.create_for_requirement(
+                    requirement_id, repository_id, "development"
+                )
+            except (KeyError, OSError, TypeError, ValueError) as error:
+                result = Result(
+                    False,
+                    "WORKTREE_ENSURE_REPOSITORY_FAILED",
+                    data={"message": str(error)},
+                )
+            return repository_id, result
+
+        results: dict[str, Result] = {}
+        with ThreadPoolExecutor(max_workers=min(4, len(repositories))) as executor:
+            for repository_id, result in executor.map(create, repositories):
+                results[repository_id] = result
+        items = [
+            {
+                "repository_id": repository_id,
+                **results[repository_id].to_dict(),
+            }
+            for repository_id in repositories
+        ]
+        ok = all(result.ok for result in results.values())
+        code = "WORKTREE_ENSURED" if ok else "WORKTREE_ENSURE_PARTIAL"
+        data = {
+            "preview_id": preview_id,
+            "requirement_id": requirement_id,
+            "items": items,
+        }
+        data["audit_id"] = store.audit("worktree.ensured", code, data)
+        return Result(ok, code, data=data)
+
     def list(self) -> Result:
         if not (self.root / "praxis.toml").is_file():
             return self._execute(["list"])
@@ -971,6 +1247,16 @@ class WorktreeService:
             expected_workspace / names.worktree_display_name
         ).resolve()
         if binding.get("status") == "migrating":
+            from praxis.governance.service import ExecutionBudgetService
+
+            recovery = ExecutionBudgetService(self.root).consume(
+                requirement_id,
+                "in_progress",
+                "recovery",
+                f"worktree-name:{repository_id}",
+            )
+            if not recovery.ok:
+                return recovery
             return self._recover_interrupted_name_migration(
                 store=store,
                 binding_key=binding_key,
@@ -1132,15 +1418,6 @@ class WorktreeService:
             if not refreshed.ok:
                 failure = refreshed
                 raise RuntimeError(refreshed.code)
-            graph = self.initialize_graph(repository_id, expected_repository)
-            if not graph.ok:
-                failure = Result(
-                    False,
-                    "WORKTREE_MIGRATION_CODEGRAPH_FAILED",
-                    data={"cause": graph.code, "codegraph": graph.data},
-                    diagnostics=graph.diagnostics,
-                )
-                raise RuntimeError(failure.code)
             cleanup_pending = False
             if backup_graph.exists():
                 try:
@@ -1148,11 +1425,23 @@ class WorktreeService:
                 except OSError:
                     cleanup_pending = True
             binding.update(
-                status=old_status,
+                status="active",
+                migration_previous_status=old_status,
                 migration_completed_at=datetime.now(UTC).isoformat(),
-                codegraph_status=graph.code,
+                codegraph_status="CODEGRAPH_QUEUED",
                 codegraph_backup_cleanup_pending=cleanup_pending,
             )
+            binding.pop("codegraph_completed_at", None)
+            store.set("worktree", binding_key, binding)
+            graph = CodeGraphService(
+                self.root,
+                repository_id,
+                repo=expected_repository,
+            ).enqueue(binding_id=binding_key)
+            binding = store.get("worktree", binding_key) or binding
+            if not binding.get("codegraph_completed_at"):
+                binding["codegraph_status"] = graph.code
+                binding["codegraph_job_id"] = graph.data.get("job_id")
             store.set("worktree", binding_key, binding)
             with suppress(OSError):
                 old_workspace.rmdir()
@@ -1288,31 +1577,24 @@ class WorktreeService:
                 "WORKTREE_NAME_MIGRATION_RECOVERY_FAILED",
                 data={"rollback": rollback.data, "audit_id": audit_id},
             )
-        graph = self.initialize_graph(repository_id, old_repository)
         recovered = store.get("worktree", binding_key) or old_binding
-        if not graph.ok:
-            recovered.update(
-                status="blocked",
-                codegraph_status=graph.code,
-                migration_recovery_failed=True,
-            )
-            store.set("worktree", binding_key, recovered)
-            audit_id = store.audit(
-                "worktree.name_migration_recovery_failed",
-                graph.code,
-                recovered,
-            )
-            return Result(
-                False,
-                "WORKTREE_NAME_MIGRATION_RECOVERY_FAILED",
-                data={**recovered, "cause": graph.code, "audit_id": audit_id},
-                diagnostics=graph.diagnostics,
-            )
         recovered.update(
-            status=str(binding["migration_previous_status"]),
-            codegraph_status=graph.code,
+            status="active",
+            migration_previous_status=str(binding["migration_previous_status"]),
+            codegraph_status="CODEGRAPH_QUEUED",
             migration_recovered_at=datetime.now(UTC).isoformat(),
         )
+        recovered.pop("codegraph_completed_at", None)
+        store.set("worktree", binding_key, recovered)
+        graph = CodeGraphService(
+            self.root,
+            repository_id,
+            repo=old_repository,
+        ).enqueue(binding_id=binding_key)
+        recovered = store.get("worktree", binding_key) or recovered
+        if not recovered.get("codegraph_completed_at"):
+            recovered["codegraph_status"] = graph.code
+            recovered["codegraph_job_id"] = graph.data.get("job_id")
         store.set("worktree", binding_key, recovered)
         audit_id = store.audit("worktree.name_migration_recovered", "OK", recovered)
         return Result(

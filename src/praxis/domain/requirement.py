@@ -53,3 +53,8 @@ class Requirement:
         if target not in _NEXT_STATUS[self.status]:
             raise ValueError(f"非法需求状态转换：{self.status.value} -> {target.value}")
         return replace(self, status=target)
+
+    def reopen(self) -> Requirement:
+        if self.status != RequirementStatus.VERIFYING:
+            raise ValueError("只有验证中的需求可以重开到开发中")
+        return replace(self, status=RequirementStatus.IN_PROGRESS)

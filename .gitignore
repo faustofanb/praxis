@@ -2,6 +2,7 @@
 .hypothesis/
 .pytest_cache/
 .praxis/
+.codegraph/
 .ruff_cache/
 .venv/
 .worktrees/

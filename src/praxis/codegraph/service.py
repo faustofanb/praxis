@@ -3,7 +3,9 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import os
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -161,7 +163,200 @@ class CodeGraphService:
         operation = self._operation()
         if operation:
             data["operation"] = operation
+        background = self.store.get("codegraph_background", self.key)
+        if background:
+            data["background"] = background
         return Result(True, data=data)
+
+    def enqueue(self, *, binding_id: str = "") -> Result:
+        """Queue graph initialization without making it a worktree activation gate."""
+        current = self.store.get("codegraph_background", self.key)
+        if current and current.get("status") in {"queued", "running"}:
+            if self._background_active(current):
+                return Result(True, "CODEGRAPH_ALREADY_QUEUED", data=current)
+            budget = self._consume_background_budget(binding_id, "recovery")
+            if budget is not None and not budget.ok:
+                return budget
+            current.update(
+                status="stale",
+                code="CODEGRAPH_BACKGROUND_STALE",
+                completed_at=datetime.now(UTC).isoformat(),
+            )
+            self.store.set("codegraph_background", self.key, current)
+            self.store.audit("codegraph.background_stale", current["code"], current)
+        elif current and current.get("status") == "failed":
+            budget = self._consume_background_budget(binding_id, "retry")
+            if budget is not None and not budget.ok:
+                return budget
+        timestamp = datetime.now(UTC)
+        log_path = (
+            self.root
+            / ".praxis"
+            / "raw-logs"
+            / f"codegraph-background-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8]}.log"
+        )
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        job = {
+            "job_id": f"CGJ-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}",
+            "project_id": self.project_id,
+            "worktree": str(self.repo),
+            "binding_id": binding_id,
+            "status": "queued",
+            "queued_at": timestamp.isoformat(),
+            "log_path": str(log_path),
+        }
+        self.store.set("codegraph_background", self.key, job)
+        command = [
+            sys.executable,
+            "-m",
+            "praxis.codegraph.worker",
+            "--root",
+            str(self.root.resolve()),
+            "--project",
+            self.project_id,
+            "--worktree",
+            str(self.repo),
+        ]
+        if binding_id:
+            command.extend(("--binding", binding_id))
+        environment = os.environ.copy()
+        source_root = str(Path(__file__).resolve().parents[2])
+        environment["PYTHONPATH"] = os.pathsep.join(
+            value for value in (source_root, environment.get("PYTHONPATH", "")) if value
+        )
+        try:
+            with log_path.open("ab") as stream:
+                process = subprocess.Popen(
+                    command,
+                    cwd=self.repo,
+                    env=environment,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stream,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                )
+        except OSError as error:
+            job.update(
+                status="failed",
+                code="CODEGRAPH_BACKGROUND_START_FAILED",
+                completed_at=datetime.now(UTC).isoformat(),
+                error_type=type(error).__name__,
+            )
+            self.store.set("codegraph_background", self.key, job)
+            audit_id = self.store.audit(
+                "codegraph.background_start_failed", job["code"], job
+            )
+            return Result(False, job["code"], data={**job, "audit_id": audit_id})
+        current = self.store.get("codegraph_background", self.key) or job
+        if current.get("job_id") == job["job_id"] and current.get("status") == "queued":
+            current.update(
+                status="running",
+                pid=process.pid,
+                started_at=datetime.now(UTC).isoformat(),
+            )
+            self.store.set("codegraph_background", self.key, current)
+        audit_id = self.store.audit("codegraph.background_queued", "OK", current)
+        return Result(True, "CODEGRAPH_QUEUED", data={**current, "audit_id": audit_id})
+
+    def run_pending(self, *, binding_id: str = "") -> Result:
+        job = self.store.get("codegraph_background", self.key) or {
+            "job_id": f"CGJ-{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}",
+            "project_id": self.project_id,
+            "worktree": str(self.repo),
+            "binding_id": binding_id,
+            "queued_at": datetime.now(UTC).isoformat(),
+        }
+        job.update(
+            status="running",
+            pid=os.getpid(),
+            started_at=job.get("started_at") or datetime.now(UTC).isoformat(),
+        )
+        self.store.set("codegraph_background", self.key, job)
+        started = time.monotonic_ns()
+        result = self.ensure_fresh(initialize=True)
+        completed_at = datetime.now(UTC).isoformat()
+        job.update(
+            status="completed" if result.ok else "failed",
+            code=result.code,
+            completed_at=completed_at,
+            duration_ms=round((time.monotonic_ns() - started) / 1_000_000, 3),
+        )
+        self.store.set("codegraph_background", self.key, job)
+        target_binding = binding_id or str(job.get("binding_id", ""))
+        if target_binding:
+            binding = self.store.get("worktree", target_binding)
+            if binding:
+                binding.update(
+                    codegraph_status=result.code,
+                    codegraph_completed_at=completed_at,
+                    codegraph_job_id=job["job_id"],
+                )
+                self.store.set("worktree", target_binding, binding)
+        self.store.audit(
+            "codegraph.background_completed" if result.ok else "codegraph.background_failed",
+            result.code,
+            job,
+        )
+        return Result(result.ok, result.code, data={**job, "codegraph": result.data})
+
+    def wait(self, *, timeout: float = 0) -> Result:
+        deadline = time.monotonic() + max(timeout, 0)
+        while True:
+            job = self.store.get("codegraph_background", self.key)
+            if not job:
+                return Result(False, "CODEGRAPH_BACKGROUND_NOT_QUEUED")
+            if job.get("status") not in {"queued", "running"}:
+                return Result(
+                    job.get("status") == "completed",
+                    str(job.get("code", "CODEGRAPH_BACKGROUND_FAILED")),
+                    data=job,
+                )
+            if not self._background_active(job):
+                job.update(
+                    status="stale",
+                    code="CODEGRAPH_BACKGROUND_STALE",
+                    completed_at=datetime.now(UTC).isoformat(),
+                )
+                self.store.set("codegraph_background", self.key, job)
+                self.store.audit("codegraph.background_stale", job["code"], job)
+                return Result(False, job["code"], data={**job, "fallback": "rg"})
+            if time.monotonic() >= deadline:
+                return Result(
+                    False,
+                    "CODEGRAPH_BACKGROUND_PENDING",
+                    data={**job, "fallback": "rg"},
+                )
+            time.sleep(min(0.1, max(deadline - time.monotonic(), 0)))
+
+    @staticmethod
+    def _background_active(job: dict[str, Any]) -> bool:
+        if job.get("status") == "queued":
+            try:
+                queued_at = datetime.fromisoformat(str(job["queued_at"]))
+            except (KeyError, TypeError, ValueError):
+                return False
+            return datetime.now(UTC) - queued_at <= timedelta(seconds=30)
+        try:
+            pid = int(job["pid"])
+            os.kill(pid, 0)
+        except (KeyError, TypeError, ValueError, ProcessLookupError, PermissionError):
+            return False
+        return True
+
+    def _consume_background_budget(self, binding_id: str, kind: str) -> Result | None:
+        if not binding_id:
+            return None
+        binding = self.store.get("worktree", binding_id)
+        if not binding:
+            return None
+        from praxis.governance.service import ExecutionBudgetService
+
+        return ExecutionBudgetService(self.root).consume(
+            str(binding["requirement_id"]),
+            "in_progress",
+            kind,
+            f"codegraph:{self.project_id}",
+        )
 
     def _start_operation(self, action: str) -> dict[str, Any]:
         started_at = datetime.now(UTC).isoformat()
@@ -308,6 +503,17 @@ class CodeGraphService:
             thread_lock.release()
 
     def ensure_fresh(self, *, initialize: bool = False) -> Result:
+        background = self.store.get("codegraph_background", self.key)
+        if (
+            background
+            and background.get("status") in {"queued", "running"}
+            and background.get("pid") != os.getpid()
+        ):
+            return Result(
+                False,
+                "CODEGRAPH_BACKGROUND_PENDING",
+                data={**background, "fallback": "rg", "hint": "run codegraph wait explicitly"},
+            )
         snapshot = GitSnapshot.capture(self.repo)
         if self._fresh(snapshot, self._metadata()):
             return Result(True, code="CODEGRAPH_FRESH", data=self.status().data)
@@ -413,6 +619,19 @@ class CodeGraphService:
             raise
 
     def _query(self, arguments: list[str]) -> Result:
+        background = self.store.get("codegraph_background", self.key)
+        if background and background.get("status") in {"queued", "running"}:
+            return Result(
+                False,
+                "CODEGRAPH_BACKGROUND_PENDING",
+                data={**background, "fallback": "rg", "hint": "run codegraph wait explicitly"},
+            )
+        if background and background.get("status") == "failed":
+            return Result(
+                False,
+                str(background.get("code", "CODEGRAPH_BACKGROUND_FAILED")),
+                data={**background, "fallback": "rg"},
+            )
         freshness = self.ensure_fresh()
         if not freshness.ok:
             return freshness
@@ -439,6 +658,19 @@ class CodeGraphService:
         return self._query(["node", node_id])
 
     def affected(self) -> Result:
+        background = self.store.get("codegraph_background", self.key)
+        if background and background.get("status") in {"queued", "running"}:
+            return Result(
+                False,
+                "CODEGRAPH_BACKGROUND_PENDING",
+                data={**background, "fallback": "rg", "hint": "run codegraph wait explicitly"},
+            )
+        if background and background.get("status") == "failed":
+            return Result(
+                False,
+                str(background.get("code", "CODEGRAPH_BACKGROUND_FAILED")),
+                data={**background, "fallback": "rg"},
+            )
         freshness = self.ensure_fresh()
         if not freshness.ok:
             return freshness

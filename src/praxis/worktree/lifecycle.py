@@ -34,8 +34,15 @@ class WorktreeLifecycle:
         worktree = context.get("worktree_path")
         if not worktree:
             return Result(False, "LIFECYCLE_CONTEXT_INVALID", data={"field": "worktree_path"})
+        if event == "worktree-post-start":
+            from praxis.codegraph.service import CodeGraphService
+
+            return CodeGraphService(
+                self.root,
+                project_id,
+                repo=worktree,
+            ).enqueue(binding_id=binding_key)
         graph_event = {
-            "worktree-post-start": "post-start",
             "pre-commit": "change-preflight",
             "pre-merge": "pre-merge",
             "post-merge": "post-merge",
@@ -47,7 +54,7 @@ class WorktreeLifecycle:
             graph_event,
             project_id,
             worktree=worktree,
-            initialize=event == "worktree-post-start",
+            initialize=False,
         )
         if result.ok and event in {"pre-commit", "pre-merge"}:
             result = self._change_gates(binding, Path(str(worktree)))

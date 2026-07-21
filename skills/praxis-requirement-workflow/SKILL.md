@@ -32,6 +32,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 ## 3. 在首次代码修改前隔离
 
 - 只有确认需要修改代码时，才为实际受影响的仓库和阶段创建 Worktrunk 工作树。
+- 创建前必须用 `praxis worktree preview` 展示并固定最终工作空间、末级目录和
+  分支名；用户确认后以 preview ID 执行 `worktree ensure`，多仓 Git 准备并行。
 - 把仓库的 `default_branch` 视为保留本地运行配置的长期本地模板，把唯一的 `template_branches` 项视为上游开发或发布分支。
 - 创建需求工作树前，先获取上游最新提交，在承载 `default_branch` 的干净工作树中合并 `origin/<template_branch>`；该分支尚未检出时才创建固定的模板工作树，不得为了同步而切换用户当前分支。
 - 同步失败、发生冲突、模板工作树不干净或模板配置不唯一时停止，不得改用上游分支直接创建需求工作树。
@@ -41,23 +43,25 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 首次创建时持久化简称快照和 display slug；需求标题后续变化不得自动漂移已有路径或分支。
   内部身份始终使用 `WT-<需求编号>--<仓库ID>`，不得从目录名或分支名反向推断。
 - 旧名称必须通过 `praxis worktree migrate-name` 正式迁移，完整移动 Git worktree、重命名分支、
-  更新 binding 和产出物路径并重建 CodeGraph；任一步失败必须补偿回旧名称或明确报告回滚不完整。
+  更新 binding 和产出物路径。Git 交易成功即自动恢复 active，CodeGraph 后台重建；
+  Git/路径步骤失败才补偿回旧名称。
 - 迁移全程保持 binding 为 `migrating` 并持久化旧路径、分支和状态；进程中断后重复执行同一
   migrate-name 命令完成旧名称恢复与旧路径 CodeGraph 重建，create 在恢复前必须 fail-closed。
 - 创建成功后核对需求编号、仓库、阶段、分支、需求工作空间和仓库工作树路径；将 Agent 工作目录切换到需求工作空间，实际 Git 操作切换到对应仓库子目录。
 - 仓库配置了 `local_files` 时，在 CodeGraph 初始化前只从 `project.path` 指向的主仓库复制这些
   ignored 本地运行文件到相同相对路径；不得扫描或批量复制 `.env*`。源缺失、越界、目录或
   不安全符号链接必须阻断并保留 blocked 工作树，禁止静默创建不可运行的环境。
-- 仓库配置了 `worktree_setup_commands` 时，在本地文件准备完成后、CodeGraph 初始化前，
-  仅按参数向量执行这些显式命令；不得通过 shell 扩展，不得自动识别包管理器，也不得在离线
-  命令失败后回退联网安装。可执行文件缺失或非零退出必须将 binding 标记为 `blocked`，且审计
-  不得记录命令输出或环境变量。相同配置已成功准备的 active binding 不重复执行。
+- 仓库配置了 `worktree_setup_commands` 时，创建阶段只做命令、精确包管理器版本和锁文件
+  的快速 preflight，不安装依赖。首次需要构建时显式运行 `praxis worktree prepare`；
+  仍只按参数向量执行，不通过 shell，不联网回退，不审计命令输出或环境变量。
 - 显式准备命令以 `pnpm` 开头时，必须读取仓库根 `package.json#packageManager` 并使用其中
   声明的精确 pnpm 版本；只允许 PATH 中的匹配版本或已安装的 pnpm 工具缓存，不得联网下载。
   声明缺失、格式无效、包管理器不匹配或精确版本不可用时必须阻断；版本声明变化必须使既有
   准备指纹失效并重新准备。
 - `--stage` 可省略，缺省只记录内部 `development` 元数据；阶段变化不得创建新的开发分支。
-- 创建服务必须以仓库工作树路径初始化或同步 CodeGraph；只有图谱就绪后 binding 才能标记为 `active`。失败时保留工作树现场并标记 `blocked`，不得掩盖或回退。
+- Git 工作树、白名单本地文件和 binding 就绪即标记 `active`。CodeGraph 以仓库工作树
+  路径后台排队，失败只降级图谱能力，不取消 Git 可开发状态。普通调查先用 `rg`，
+  确实需要语义图谱时才显式 `codegraph wait`。
 - 查询 CodeGraph 状态时优先使用 binding ID 或仓库工作树路径，不得拿根仓库状态代替需求工作树状态。
 - 第一次代码编辑前再次检查当前目录位于已绑定工作树。禁止在根工作区或未绑定目录修改业务代码。
 - 工作树创建或绑定失败时停止，不回退到根工作区继续开发。
@@ -69,11 +73,18 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 验证、测试、代码质量复核、reviewer/tester Agent、子代理和分支收尾 Skill 命中后先标记
   `blocked_pending_approval`，不得以路由结果代替用户批准。
 - 获批时只执行用户同意的具体命令或复核范围；同意仅对当前需求和当前轮次有效，不跨需求复用。
+- 可在开发开始时把用户对精确验证矩阵的同意保存为当前需求的 approval receipt；
+  只有直接用户授权才能生成收据，“继续/提交/完成”不能推断为授权。
 - 工作树绑定、允许路径、密钥检测、提交信息和只读 CodeGraph 新鲜度属于安全门禁，可以自动执行，但不得借安全门禁触发项目质量命令或测试。
 
 ## 5. 进度和交付
 
 - 持续更新 `执行进度.md` 和产出物清单，不以聊天记录代替知识库。
+- 代码稳定后再登记产出物；`artifact add` 按“需求+路径” upsert 并刷新哈希。
+- 从 verifying 回开发使用带原因的 `requirement reopen`；同一问题默认最多一次恢复、一次重试。
+- 完成多个 Skill 后可用 `skill complete-node --used-skill <id>=<outcome>` 批量写入调用、完成和 gate 凭证。
+- subagent 默认使用 `fork_turns=none` 和精简交接包；父节点单写需求状态与 Skill gate，
+  子 Agent 只返回改动路径、决策、阻塞和后续请求收据。
 - 提交前确认改动只存在于绑定工作树，提交信息关联需求编号。
 - 未获质量或测试批准时如实记录“未执行”，不得写成“通过”。
 - 交付时报告需求文档路径、工作树路径、实际执行的门禁以及未执行项。

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
+from time import monotonic_ns
 from typing import Any
 
 from praxis import __version__
@@ -17,6 +18,7 @@ from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
 from praxis.gates.commit_message import validate_commit_message
 from praxis.gates.engine import GateEngine, GateEvent
+from praxis.governance.service import ApprovalService, ExecutionBudgetService
 from praxis.integrations.ponytail import diff_warning
 from praxis.integrations.witr import WitrService
 from praxis.knowledge.requirements import RequirementService
@@ -56,10 +58,54 @@ class PraxisApplication:
 
     def execute(self, operation: str, arguments: dict[str, Any] | None = None) -> Result:
         values = arguments or {}
+        started = monotonic_ns()
         try:
-            return self._execute(operation, values)
+            result = self._execute(operation, values)
         except (KeyError, OSError, TypeError, ValueError) as error:
-            return Result(False, "INVALID_REQUEST", data={"message": str(error)})
+            result = Result(False, "INVALID_REQUEST", data={"message": str(error)})
+        duration_ms = round((monotonic_ns() - started) / 1_000_000, 3)
+        identifiers = {
+            key: str(values[key])
+            for key in (
+                "requirement_id",
+                "project_id",
+                "repository_id",
+                "binding_id",
+                "session_id",
+            )
+            if values.get(key)
+        }
+        timing = {
+            "operation": operation,
+            "code": result.code,
+            "ok": result.ok,
+            "duration_ms": duration_ms,
+            **identifiers,
+        }
+        timing_audit_id = ""
+        timed_operations = {
+            "requirement.reopen",
+            "artifact.add",
+            "skill.complete-node",
+            "agent.start",
+            "agent.receipt",
+        }
+        if operation in timed_operations or operation.startswith(
+            ("worktree.", "codegraph.", "approval.", "budget.")
+        ):
+            timing_audit_id = StateStore(self.root).audit(
+                "operation.timed", result.code, timing
+            )
+        return Result(
+            result.ok,
+            result.code,
+            data={
+                **result.data,
+                "duration_ms": duration_ms,
+                **({"timing_audit_id": timing_audit_id} if timing_audit_id else {}),
+            },
+            diagnostics=result.diagnostics,
+        )
 
     def _execute(self, operation: str, values: dict[str, Any]) -> Result:
         if operation == "version":
@@ -174,6 +220,10 @@ class PraxisApplication:
         if operation == "requirement.rename":
             return RequirementService(self.root).rename(
                 values["requirement_id"], values["short_name"]
+            )
+        if operation == "requirement.reopen":
+            return RequirementService(self.root).reopen(
+                values["requirement_id"], values["reason"]
             )
         if operation == "requirement.transition":
             target = RequirementStatus(values["status"])
@@ -291,6 +341,39 @@ class PraxisApplication:
         if operation == "skill.complete":
             return SkillInvocationService(self.root).complete(
                 values["invocation_id"], outcome=values.get("outcome", "completed")
+            )
+        if operation == "skill.complete-node":
+            project_id = values.get("project_id", "")
+            project = WorkspaceService(self.root).project(project_id) if project_id else None
+            routed = NodeSkillRouter(self.root).route(
+                NodeSkillRoutingRequest(
+                    node=values["node"],
+                    intent=values.get("intent", ""),
+                    requirement_id=values["requirement_id"],
+                    project_id=project_id,
+                    system_id=values.get(
+                        "system_id", project.system_id if project else ""
+                    ),
+                    business_domains=tuple(values.get("business_domains", [])),
+                    repository_kind=values.get(
+                        "repository_kind", project.kind if project else ""
+                    ),
+                    agent_role=values.get("agent_role", ""),
+                    artifact_types=tuple(values.get("artifact_types", [])),
+                    risks=tuple(values.get("risks", [])),
+                    available_skills=tuple(values.get("available_skills", [])),
+                    approved_skills=tuple(values.get("approved_skills", [])),
+                    token_budget=values.get("budget", 4_000),
+                )
+            )
+            if not routed.ok:
+                return routed
+            return SkillInvocationService(self.root).complete_node(
+                values["requirement_id"],
+                values["node"],
+                values["outcomes"],
+                session_id=values.get("session_id", ""),
+                approved_skills=tuple(values.get("approved_skills", [])),
             )
         if operation == "skill.gate":
             return SkillInvocationService(self.root).gate(
@@ -414,6 +497,7 @@ class PraxisApplication:
                 values["capabilities"],
                 skills=values.get("skills", []),
                 approved_external=values.get("approved_external", False),
+                parent_session_id=values.get("parent_session_id", ""),
             )
         if operation == "agent.install":
             return AgentSessionService(self.root).install(values["agent_type"])
@@ -426,6 +510,14 @@ class PraxisApplication:
         if operation == "agent.finish":
             return AgentSessionService(self.root).finish(
                 values["session_id"], values.get("status", "completed")
+            )
+        if operation == "agent.receipt":
+            return AgentSessionService(self.root).receipt(
+                values["session_id"],
+                changed_paths=values.get("changed_paths", []),
+                decisions=values.get("decisions", []),
+                blockers=values.get("blockers", []),
+                follow_up=values.get("follow_up", ""),
             )
         if operation == "agent.sessions":
             return AgentSessionService(self.root).sessions()
@@ -441,6 +533,32 @@ class PraxisApplication:
             return ArtifactService(self.root).list(values.get("requirement_id"))
         if operation == "artifact.verify":
             return ArtifactService(self.root).verify(values["artifact_id"])
+        if operation == "approval.grant":
+            return ApprovalService(self.root).grant(
+                values["requirement_id"],
+                values["scope"],
+                values["entries"],
+                user_evidence=values["user_evidence"],
+                authorized_by_user=values.get("authorized_by_user", False),
+                expires_at=values.get("expires_at", ""),
+            )
+        if operation == "approval.check":
+            return ApprovalService(self.root).check(
+                values["requirement_id"], values["scope"], values["entry"]
+            )
+        if operation == "approval.list":
+            return ApprovalService(self.root).list(values.get("requirement_id", ""))
+        if operation == "budget.consume":
+            return ExecutionBudgetService(self.root).consume(
+                values["requirement_id"],
+                values["node"],
+                values["kind"],
+                values["operation_key"],
+            )
+        if operation == "budget.status":
+            return ExecutionBudgetService(self.root).status(
+                values["requirement_id"], values.get("node", "")
+            )
         if operation == "audit.list":
             events = StateStore(self.root).audit_events(values.get("limit", 100))
             return Result(True, data={"events": events})
@@ -548,6 +666,10 @@ class PraxisApplication:
             return graph.sync()
         if action == "ensure-fresh":
             return graph.ensure_fresh(initialize=values.get("initialize", False))
+        if action == "run-pending":
+            return graph.run_pending(binding_id=values.get("binding_id", ""))
+        if action == "wait":
+            return graph.wait(timeout=float(values.get("timeout", 0)))
         if action in {"query", "explore", "node"}:
             return getattr(graph, action)(values["target"])
         if action == "affected":
@@ -562,6 +684,23 @@ class PraxisApplication:
                 return skill_gate
             return worktree.create_for_requirement(
                 values["requirement_id"], values["repository_id"], values.get("stage")
+            )
+        if action == "preview":
+            return worktree.preview_for_requirement(
+                values["requirement_id"], values["repository_ids"]
+            )
+        if action == "ensure":
+            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            if not skill_gate.ok:
+                return skill_gate
+            return worktree.ensure_for_requirement(
+                values["requirement_id"],
+                values["repository_ids"],
+                preview_id=values["preview_id"],
+            )
+        if action == "prepare":
+            return worktree.prepare_for_requirement(
+                values["requirement_id"], values["repository_id"]
             )
         if action == "migrate-name":
             skill_gate = self._gate_current_skill_route(values["requirement_id"])
@@ -613,6 +752,22 @@ class PraxisApplication:
             GateEvent.DELIVERY: "verify",
         }
         engine = GateEngine()
+        if event == GateEvent.VERIFY:
+            requirement_id = str(values.get("requirement_id", ""))
+            entries = list(values.get("verification_entries", []))
+            if not requirement_id or not entries:
+                return Result(
+                    False,
+                    "VERIFICATION_SCOPE_REQUIRED",
+                    data={"requirement_id": requirement_id, "entries": entries},
+                )
+            for entry in entries:
+                engine.register(
+                    event,
+                    lambda context, entry=entry: ApprovalService(self.root).check(
+                        requirement_id, "verification", entry
+                    ),
+                )
         if event == GateEvent.WORKSPACE_SCAN:
             engine.register(event, lambda context: PortraitService(self.root).scan(project_id))
         else:
