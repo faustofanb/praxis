@@ -29,4 +29,4 @@
     说明: 工作树环境准备与离线失败阻断规则
   - 类型: source
     路径: src/praxis/worktree/service.py
-    说明: Fork 可见命名、稳定 group 与事务迁移
+    说明: Fork 可见命名、事务迁移与 pnpm 精确版本解析

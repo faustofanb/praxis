@@ -123,6 +123,11 @@ package manager, or retry a failed offline command with network access. A missin
 non-zero exit blocks the binding and records only the command index, executable, and exit code; command
 output and environment values are not written to the binding or audit log. A successfully completed
 setup is not rerun when an already-active binding is resolved with the same command configuration.
+When an explicit command starts with `pnpm`, Praxis reads the repository root
+`package.json#packageManager`, resolves that exact pnpm version from PATH or an already-installed pnpm
+tool cache, and executes the resolved binary. It never downloads a missing pnpm version. A missing,
+invalid, mismatched, or unavailable declaration blocks setup, and a declaration change invalidates the
+setup fingerprint.
 
 Installed hooks enforce worktree binding, changed-path and secret gates plus the CodeGraph lifecycle
 at post-start, pre-commit, pre-merge, post-merge, and post-remove. They never start lint, format, typecheck,

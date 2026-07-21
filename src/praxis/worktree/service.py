@@ -35,6 +35,7 @@ _STAGES = {
     "release": (7, "发布验证"),
 }
 _GIT_REF_UNSAFE = re.compile(r"[\x00-\x20\x7f~^:?*\[\]\\]+")
+_PNPM_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -320,9 +321,16 @@ class WorktreeService:
                 local_files.code,
                 binding,
             )
+        package_manager = self._setup_package_manager_spec(
+            project.worktree_setup_commands,
+            Path(str(binding["repository_path"])),
+        )
         setup_fingerprint = hashlib.sha256(
             json.dumps(
-                project.worktree_setup_commands,
+                {
+                    "commands": project.worktree_setup_commands,
+                    "package_manager": package_manager,
+                },
                 ensure_ascii=False,
                 separators=(",", ":"),
             ).encode("utf-8")
@@ -342,12 +350,14 @@ class WorktreeService:
                 "worktree_setup_started_at",
                 "worktree_setup_completed_at",
                 "worktree_setup_last_action",
+                "worktree_setup_package_managers",
             ):
                 binding.pop(key, None)
         elif setup_already_prepared:
             binding["worktree_setup_last_action"] = "WORKTREE_SETUP_ALREADY_PREPARED"
         else:
             binding.pop("worktree_setup_last_action", None)
+            binding.pop("worktree_setup_package_managers", None)
             binding.update(
                 status="initializing",
                 worktree_setup_status="WORKTREE_SETUP_RUNNING",
@@ -368,6 +378,9 @@ class WorktreeService:
             binding["worktree_setup_status"] = setup.code
             binding["worktree_setup_commands_completed"] = setup.data.get(
                 "completed", 0
+            )
+            binding["worktree_setup_package_managers"] = setup.data.get(
+                "package_managers", []
             )
             if not setup.ok:
                 binding["status"] = "blocked"
@@ -453,9 +466,32 @@ class WorktreeService:
         if not project.worktree_setup_commands:
             return Result(True, "WORKTREE_SETUP_NOT_CONFIGURED", data={"completed": 0})
         completed = 0
+        package_managers: list[dict[str, str]] = []
         for index, configured in enumerate(project.worktree_setup_commands, start=1):
             command = shlex.split(configured)
             executable = command[0]
+            if executable == "pnpm":
+                resolved = self._resolve_pnpm(repository_path)
+                if not resolved.ok:
+                    return Result(
+                        False,
+                        resolved.code,
+                        data={
+                            **resolved.data,
+                            "command_index": index,
+                            "executable": executable,
+                            "completed": completed,
+                            "package_managers": package_managers,
+                        },
+                    )
+                command[0] = str(resolved.data["executable"])
+                package_managers.append(
+                    {
+                        "name": "pnpm",
+                        "version": str(resolved.data["version"]),
+                        "source": str(resolved.data["source"]),
+                    }
+                )
             try:
                 process = self.run(command, repository_path, None)
             except FileNotFoundError:
@@ -466,6 +502,7 @@ class WorktreeService:
                         "command_index": index,
                         "executable": executable,
                         "completed": completed,
+                        "package_managers": package_managers,
                     },
                 )
             if process.returncode:
@@ -477,14 +514,119 @@ class WorktreeService:
                         "executable": executable,
                         "exit_code": process.returncode,
                         "completed": completed,
+                        "package_managers": package_managers,
                     },
                 )
             completed += 1
         return Result(
             True,
             "WORKTREE_SETUP_COMPLETED",
-            data={"completed": completed},
+            data={
+                "completed": completed,
+                "package_managers": package_managers,
+            },
         )
+
+    @staticmethod
+    def _setup_package_manager_spec(
+        commands: tuple[str, ...], repository_path: Path
+    ) -> str | None:
+        if not any(shlex.split(command)[0] == "pnpm" for command in commands):
+            return None
+        manifest = repository_path / "package.json"
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        value = payload.get("packageManager")
+        return value if isinstance(value, str) else None
+
+    def _resolve_pnpm(self, repository_path: Path) -> Result:
+        manifest = repository_path / "package.json"
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return Result(False, "WORKTREE_PACKAGE_MANAGER_MANIFEST_MISSING")
+        except (OSError, json.JSONDecodeError):
+            return Result(False, "WORKTREE_PACKAGE_MANAGER_MANIFEST_INVALID")
+        spec = payload.get("packageManager")
+        if not isinstance(spec, str) or not spec:
+            return Result(False, "WORKTREE_PACKAGE_MANAGER_VERSION_REQUIRED")
+        if not spec.startswith("pnpm@"):
+            return Result(
+                False,
+                "WORKTREE_PACKAGE_MANAGER_MISMATCH",
+                data={"declared": spec, "configured": "pnpm"},
+            )
+        version = spec.removeprefix("pnpm@").split("+", 1)[0]
+        if not _PNPM_VERSION.fullmatch(version):
+            return Result(
+                False,
+                "WORKTREE_PACKAGE_MANAGER_VERSION_INVALID",
+                data={"declared": spec, "configured": "pnpm"},
+            )
+
+        candidates: list[tuple[str, str]] = [("path", "pnpm")]
+        for pnpm_home in self._pnpm_home_candidates():
+            executable = pnpm_home / ".tools" / "pnpm" / version / "bin" / "pnpm"
+            if executable.is_file():
+                candidates.append(("pnpm_home", str(executable)))
+        local_pattern = f".pnpm-store/v*/links/@/pnpm/{version}/*/bin/pnpm"
+        candidates.extend(
+            ("workspace_store", str(path))
+            for path in sorted(self.root.glob(local_pattern))
+            if path.is_file()
+        )
+
+        detected: list[str] = []
+        probe_environment = {
+            "COREPACK_ENABLE_NETWORK": "0",
+            "pnpm_config_manage_package_manager_versions": "false",
+            "pnpm_config_pm_on_fail": "ignore",
+        }
+        for source, executable in candidates:
+            try:
+                process = self.run(
+                    [executable, "--version"],
+                    self.root,
+                    probe_environment,
+                )
+            except FileNotFoundError:
+                continue
+            actual = (process.stdout or "").strip()
+            if process.returncode == 0 and actual == version:
+                return Result(
+                    True,
+                    "WORKTREE_PACKAGE_MANAGER_RESOLVED",
+                    data={
+                        "executable": executable,
+                        "name": "pnpm",
+                        "version": version,
+                        "source": source,
+                    },
+                )
+            if actual and actual not in detected:
+                detected.append(actual)
+        return Result(
+            False,
+            "WORKTREE_PACKAGE_MANAGER_VERSION_UNAVAILABLE",
+            data={
+                "name": "pnpm",
+                "required_version": version,
+                "detected_versions": detected,
+            },
+        )
+
+    @staticmethod
+    def _pnpm_home_candidates() -> tuple[Path, ...]:
+        candidates: list[Path] = []
+        if configured := os.environ.get("PNPM_HOME"):
+            path = Path(configured).expanduser()
+            if path.is_absolute():
+                candidates.append(path)
+        home = Path.home()
+        candidates.extend((home / "Library" / "pnpm", home / ".local/share/pnpm"))
+        return tuple(dict.fromkeys(candidates))
 
     @staticmethod
     def _run(
