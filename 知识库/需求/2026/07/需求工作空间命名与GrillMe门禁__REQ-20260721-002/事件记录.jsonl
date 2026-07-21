@@ -3,3 +3,4 @@
 {"event": "requirement.projected", "requirement_id": "REQ-20260721-002", "status": "analyzed", "time": "2026-07-21T04:40:26.126483+00:00"}
 {"event": "requirement.projected", "requirement_id": "REQ-20260721-002", "status": "planned", "time": "2026-07-21T04:41:06.374193+00:00"}
 {"event": "requirement.projected", "requirement_id": "REQ-20260721-002", "status": "ready", "time": "2026-07-21T04:41:36.762529+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260721-002", "status": "in_progress", "time": "2026-07-21T05:55:40.183249+00:00"}
