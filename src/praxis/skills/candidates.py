@@ -67,6 +67,7 @@ class SkillCandidateService:
             "required_tools": [],
             "triggers": [data["project_id"], data["kind"]],
             "systems": [data.get("system_id", "")],
+            "projects": [data["project_id"]],
             "repository_roles": [data["kind"]],
         }
         atomic_write_text(target / "skill.toml", self._toml(metadata))

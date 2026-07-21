@@ -30,11 +30,13 @@ class Skill:
     stages: tuple[str, ...] = ()
     artifact_types: tuple[str, ...] = ()
     denied_risks: tuple[str, ...] = ()
+    projects: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class SkillRoutingContext:
     system_id: str = ""
+    project_id: str = ""
     business_domains: tuple[str, ...] = ()
     repository_role: str = ""
     stage: str = ""
@@ -104,6 +106,7 @@ class SkillRegistry:
             stages=tuple(payload.get("stages", [])),
             artifact_types=tuple(payload.get("artifact_types", [])),
             denied_risks=tuple(payload.get("denied_risks", [])),
+            projects=tuple(payload.get("projects", [])),
         )
 
     def all(self) -> list[Skill]:
@@ -126,6 +129,10 @@ class SkillRegistry:
         for skill in self.all():
             if set(context.risks) & set(skill.denied_risks):
                 continue
+            if skill.type == "business" and context.project_id:
+                projects = skill.projects or self._legacy_projects(skill.id)
+                if context.project_id not in projects:
+                    continue
             score = 0
             if context.system_id and context.system_id in skill.systems:
                 score += 40
@@ -144,6 +151,13 @@ class SkillRegistry:
                 selected.append(skill)
                 used += skill.context_budget
         return selected
+
+    @staticmethod
+    def _legacy_projects(skill_id: str) -> tuple[str, ...]:
+        parts = skill_id.split(".")
+        if len(parts) >= 4 and parts[0] == "business" and parts[-1] == "development":
+            return (parts[-2],)
+        return ()
 
     def search(self, query: str) -> list[Skill]:
         normalized = query.casefold()

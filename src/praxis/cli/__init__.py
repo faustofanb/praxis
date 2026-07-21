@@ -187,7 +187,12 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(approve)
 
     codegraph = commands.add_parser("codegraph").add_subparsers(dest="action", required=True)
-    for action in ("status", "build", "sync", "affected"):
+    status = codegraph.add_parser("status")
+    status.add_argument("--project")
+    status.add_argument("--binding")
+    status.add_argument("--worktree", type=Path)
+    _json_flag(status)
+    for action in ("build", "sync", "affected"):
         child = codegraph.add_parser(action)
         child.add_argument("--project", required=True)
         _json_flag(child)
@@ -207,7 +212,7 @@ def _parser() -> argparse.ArgumentParser:
     create_worktree = worktree.add_parser("create")
     create_worktree.add_argument("requirement_id")
     create_worktree.add_argument("--repository", required=True)
-    create_worktree.add_argument("--stage", required=True)
+    create_worktree.add_argument("--stage")
     _json_flag(create_worktree)
     remove_worktree = worktree.add_parser("remove")
     remove_worktree.add_argument("branch")
@@ -569,7 +574,13 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             payload["budget"] = args.budget
         return f"skill.{args.action}", payload
     if args.group == "codegraph":
-        payload = {"project_id": args.project}
+        payload = {}
+        if getattr(args, "project", None):
+            payload["project_id"] = args.project
+        if getattr(args, "binding", None):
+            payload["binding_id"] = args.binding
+        if getattr(args, "worktree", None):
+            payload["worktree"] = args.worktree
         if hasattr(args, "target"):
             payload["target"] = args.target
         if hasattr(args, "initialize"):

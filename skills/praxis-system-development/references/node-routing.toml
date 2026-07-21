@@ -101,6 +101,8 @@ nodes = ["planned", "in_progress"]
 mode = "conditional"
 availability = "external"
 repository_kinds = ["java", "java-maven", "spring-boot"]
+intent_triggers = ["Java代码", "Java 代码", "Java code", "修改代码", "实现代码", "修复代码", "重构代码"]
+condition_match = "all"
 priority = 70
 context_budget = 700
 

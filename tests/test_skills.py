@@ -69,6 +69,7 @@ def test_structured_skill_routing_scores_business_facts_and_denied_risk(tmp_path
         'license = "Proprietary"\nrisk = "none"\ncontext_budget = 100\n'
         'required_tools = []\nsource = "verified-doc"\nsource_version = "1"\n'
         'triggers = ["报表"]\nsystems = ["ifc-mom"]\nbusiness_domains = ["production"]\n'
+        'projects = ["backend"]\n'
         'repository_roles = ["java-backend"]\nstages = ["backend"]\n'
         'artifact_types = ["api"]\ndenied_risks = ["deployment"]\n'
     )
@@ -78,6 +79,7 @@ def test_structured_skill_routing_scores_business_facts_and_denied_risk(tmp_path
     matched = registry.route_context(
         SkillRoutingContext(
             system_id="ifc-mom",
+            project_id="backend",
             business_domains=("production",),
             repository_role="java-backend",
             stage="backend",
@@ -87,11 +89,20 @@ def test_structured_skill_routing_scores_business_facts_and_denied_risk(tmp_path
         )
     )
     denied = registry.route_context(
-        SkillRoutingContext(system_id="ifc-mom", risks=("deployment",), token_budget=200)
+        SkillRoutingContext(
+            system_id="ifc-mom",
+            project_id="other",
+            risks=("deployment",),
+            token_budget=200,
+        )
+    )
+    wrong_project = registry.route_context(
+        SkillRoutingContext(system_id="ifc-mom", project_id="other", token_budget=200)
     )
 
     assert [skill.id for skill in matched] == ["reporting"]
     assert denied == []
+    assert wrong_project == []
 
 
 def test_skill_registry_reports_normalized_duplicates_without_deleting(tmp_path: Path) -> None:

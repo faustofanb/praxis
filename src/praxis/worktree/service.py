@@ -9,13 +9,16 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from praxis.codegraph.service import CodeGraphService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
 
 Runner = Callable[[list[str], Path, dict[str, str] | None], subprocess.CompletedProcess[str]]
+GraphInitializer = Callable[[str, Path], Result]
 
 _STAGES = {
+    "development": (0, "开发"),
     "analysis": (1, "需求分析"),
     "backend": (2, "后端开发"),
     "frontend": (3, "前端开发"),
@@ -38,14 +41,14 @@ def resolve_worktree_binding(
     worktree_path: str | Path | None = None,
 ) -> tuple[str, dict[str, Any]] | None:
     """Resolve both new stable binding IDs and legacy branch-keyed bindings."""
-    direct = store.get("worktree", identifier)
+    direct = store.get("worktree", identifier) if identifier else None
     if direct:
         return identifier, direct
     expected_path = Path(worktree_path).resolve() if worktree_path else None
     candidates: list[tuple[str, dict[str, Any]]] = []
     for binding in store.list_scope("worktree"):
         key = str(binding.get("binding_id") or binding.get("branch", ""))
-        if identifier not in {key, str(binding.get("branch", ""))}:
+        if identifier and identifier not in {key, str(binding.get("branch", ""))}:
             continue
         if repository_id and binding.get("repository_id") != repository_id:
             continue
@@ -60,9 +63,61 @@ def resolve_worktree_binding(
 
 
 class WorktreeService:
-    def __init__(self, root: Path | str, *, run: Runner | None = None):
+    def __init__(
+        self,
+        root: Path | str,
+        *,
+        run: Runner | None = None,
+        initialize_graph: GraphInitializer | None = None,
+    ):
         self.root = Path(root)
         self.run = run or self._run
+        self.initialize_graph = initialize_graph or self._initialize_graph
+
+    def _initialize_graph(self, project_id: str, repository_path: Path) -> Result:
+        return CodeGraphService(
+            self.root,
+            project_id,
+            repo=repository_path,
+        ).ensure_fresh(initialize=True)
+
+    def _activate_binding(
+        self,
+        store: StateStore,
+        binding_key: str,
+        binding: dict[str, Any],
+        *,
+        success_code: str = "OK",
+    ) -> Result:
+        binding["status"] = "initializing"
+        store.set("worktree", binding_key, binding)
+        graph = self.initialize_graph(
+            str(binding["repository_id"]),
+            Path(str(binding["repository_path"])),
+        )
+        binding["codegraph_status"] = graph.code
+        if not graph.ok:
+            binding["status"] = "blocked"
+            store.set("worktree", binding_key, binding)
+            store.audit(
+                "worktree.codegraph_init_failed",
+                graph.code,
+                {**binding, "codegraph": graph.data},
+            )
+            return Result(
+                False,
+                "WORKTREE_CODEGRAPH_INIT_FAILED",
+                data={**binding, "cause": graph.code, "codegraph": graph.data},
+                diagnostics=graph.diagnostics,
+            )
+        binding["status"] = "active"
+        store.set("worktree", binding_key, binding)
+        store.audit(
+            "worktree.codegraph_initialized",
+            graph.code,
+            {**binding, "codegraph": graph.data},
+        )
+        return Result(True, success_code, data=binding, diagnostics=graph.diagnostics)
 
     @staticmethod
     def _run(
@@ -217,8 +272,9 @@ class WorktreeService:
         self,
         requirement_id: str,
         repository_id: str,
-        stage: str,
+        stage: str | None = None,
     ) -> Result:
+        stage = stage or "development"
         if stage not in _STAGES:
             raise ValueError(f"未知任务阶段：{stage}")
         workspace = WorkspaceService(self.root)
@@ -241,12 +297,20 @@ class WorktreeService:
         store = StateStore(self.root)
         binding_id = worktree_binding_id(requirement_id, repository_id)
         existing = resolve_worktree_binding(store, binding_id)
-        if existing and existing[1].get("status") == "active":
+        if existing and existing[1].get("status") in {
+            "active",
+            "blocked",
+            "initializing",
+        }:
             binding = existing[1]
             stages = list(dict.fromkeys([*binding.get("stages", []), stage]))
             binding.update(stage=stage, stages=stages)
-            store.set("worktree", existing[0], binding)
-            return Result(True, "WORKTREE_ALREADY_ACTIVE", data=binding)
+            return self._activate_binding(
+                store,
+                existing[0],
+                binding,
+                success_code="WORKTREE_ALREADY_ACTIVE",
+            )
         synchronized = self._sync_default_branch(project, repository_id, repo)
         if not synchronized.ok:
             store.audit(
@@ -296,10 +360,10 @@ class WorktreeService:
             store.delete("worktree", binding_id)
             store.audit("worktree.create_failed", result.code, binding)
             return result
-        binding["status"] = "active"
-        store.set("worktree", binding_id, binding)
-        store.audit("worktree.created", "OK", binding)
-        return Result(True, data=binding)
+        activated = self._activate_binding(store, binding_id, binding)
+        if activated.ok:
+            store.audit("worktree.created", "OK", activated.data)
+        return activated
 
     def list(self) -> Result:
         if not (self.root / "praxis.toml").is_file():
@@ -321,10 +385,22 @@ class WorktreeService:
                     worktree_path=worktree_path,
                 )
                 if resolved:
+                    worktrunk_state = str(item.get("worktree", {}).get("state", ""))
                     enriched.update(
                         binding_id=resolved[0],
                         workspace_path=resolved[1]["path"],
+                        binding_status=resolved[1]["status"],
+                        worktrunk_state=worktrunk_state,
                     )
+                    if resolved[1].get("status") == "active":
+                        enriched["worktree"] = {
+                            **item.get("worktree", {}),
+                            "state": "bound_active",
+                        }
+                        enriched["symbols"] = str(item.get("symbols", "")).replace("⚑", "")
+                        enriched["statusline"] = str(item.get("statusline", "")).replace(
+                            "⚑", ""
+                        )
                 items.append(enriched)
         return Result(True, data={"items": items})
 

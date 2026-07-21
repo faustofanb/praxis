@@ -35,7 +35,7 @@ from praxis.storage.sqlite import StateStore
 from praxis.tasks.service import TaskService
 from praxis.workspace.service import Project, WorkspaceService
 from praxis.worktree.lifecycle import WorktreeLifecycle
-from praxis.worktree.service import WorktreeService
+from praxis.worktree.service import WorktreeService, resolve_worktree_binding
 
 
 def _skill_data(skill: Skill) -> dict[str, Any]:
@@ -273,7 +273,7 @@ class PraxisApplication:
                     risks=tuple(values.get("risks", [])),
                     available_skills=tuple(values.get("available_skills", [])),
                     approved_skills=tuple(values.get("approved_skills", [])),
-                    token_budget=values.get("budget", 2_000),
+                    token_budget=values.get("budget", 4_000),
                 )
             )
         if operation == "skill.invoke":
@@ -497,9 +497,49 @@ class PraxisApplication:
         return SkillInvocationService(self.root).gate(requirement_id, node)
 
     def _codegraph(self, action: str, values: dict[str, Any]) -> Result:
-        graph = CodeGraphService(self.root, values["project_id"])
+        project_id = str(values.get("project_id") or "")
+        repository_path = values.get("worktree")
+        binding_id = str(values.get("binding_id") or "")
+        binding = None
+        if binding_id:
+            resolved = resolve_worktree_binding(StateStore(self.root), binding_id)
+            if not resolved:
+                return Result(False, "WORKTREE_BINDING_INVALID")
+            binding_id, binding = resolved
+            project_id = str(binding["repository_id"])
+            repository_path = binding.get("repository_path", binding["path"])
+        elif repository_path and not project_id:
+            resolved = resolve_worktree_binding(
+                StateStore(self.root),
+                "",
+                worktree_path=repository_path,
+            )
+            if not resolved:
+                return Result(False, "WORKTREE_BINDING_INVALID")
+            binding_id, binding = resolved
+            project_id = str(binding["repository_id"])
+            repository_path = binding.get("repository_path", binding["path"])
+        if not project_id:
+            return Result(False, "CODEGRAPH_PROJECT_REQUIRED")
+        graph = CodeGraphService(
+            self.root,
+            project_id,
+            repo=repository_path,
+        )
         if action == "status":
-            return graph.status()
+            result = graph.status()
+            if binding:
+                return Result(
+                    result.ok,
+                    result.code,
+                    data={
+                        **result.data,
+                        "binding_id": binding_id,
+                        "workspace_path": binding["path"],
+                    },
+                    diagnostics=result.diagnostics,
+                )
+            return result
         if action == "build":
             return graph.build()
         if action == "sync":
@@ -516,7 +556,7 @@ class PraxisApplication:
         worktree = WorktreeService(self.root)
         if action == "create":
             return worktree.create_for_requirement(
-                values["requirement_id"], values["repository_id"], values["stage"]
+                values["requirement_id"], values["repository_id"], values.get("stage")
             )
         if action == "list":
             return worktree.list()

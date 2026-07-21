@@ -10,8 +10,10 @@ from praxis.result import Result
 
 
 class FakeGraph:
+    last_repo = None
+
     def __init__(self, *args, **kwargs):
-        pass
+        type(self).last_repo = kwargs.get("repo")
 
     def status(self) -> Result:
         return Result(True, data={"action": "status"})
@@ -42,7 +44,7 @@ class FakeWorktree:
     def __init__(self, root):
         pass
 
-    def create_for_requirement(self, requirement_id: str, repository_id: str, stage: str) -> Result:
+    def create_for_requirement(self, requirement_id: str, repository_id: str, stage=None) -> Result:
         return Result(True, data={"requirement_id": requirement_id, "stage": stage})
 
     def list(self) -> Result:
@@ -180,6 +182,41 @@ def test_requirement_analyze_does_not_skip_investigating_node(
 )
 def test_codegraph_dispatch(application, operation, arguments, key) -> None:
     assert application.execute(operation, arguments).data["action"] == key
+
+
+def test_codegraph_status_resolves_bound_repository_worktree(
+    application: PraxisApplication,
+) -> None:
+    from praxis.storage.sqlite import StateStore
+
+    repository_path = application.root / ".worktrees" / "REQ-TEST" / "backend"
+    StateStore(application.root).set(
+        "worktree",
+        "WT-REQ-TEST--backend",
+        {
+            "binding_id": "WT-REQ-TEST--backend",
+            "requirement_id": "REQ-TEST",
+            "repository_id": "backend",
+            "repository_path": str(repository_path),
+            "path": str(repository_path.parent),
+            "branch": "praxis/REQ-TEST",
+            "status": "active",
+        },
+    )
+
+    result = application.execute(
+        "codegraph.status", {"binding_id": "WT-REQ-TEST--backend"}
+    )
+
+    assert result.ok
+    assert result.data["binding_id"] == "WT-REQ-TEST--backend"
+    assert Path(FakeGraph.last_repo) == repository_path
+
+    by_path = application.execute(
+        "codegraph.status", {"worktree": repository_path}
+    )
+    assert by_path.ok
+    assert by_path.data["binding_id"] == "WT-REQ-TEST--backend"
 
 
 @pytest.mark.parametrize(

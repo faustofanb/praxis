@@ -27,6 +27,7 @@ class SkillProviderPolicy:
     availability: str
     priority: int
     context_budget: int
+    condition_match: str = "any"
     intent_triggers: tuple[str, ...] = ()
     repository_kinds: tuple[str, ...] = ()
     agent_roles: tuple[str, ...] = ()
@@ -66,6 +67,8 @@ class NodeSkillRouter:
         for raw in payload.get("providers", []):
             if raw["mode"] not in _MODES:
                 raise ValueError(f"Unknown Skill routing mode: {raw['mode']}")
+            if raw.get("condition_match", "any") not in {"any", "all"}:
+                raise ValueError("Unknown Skill condition match mode")
             policies.append(
                 SkillProviderPolicy(
                     id=raw["id"],
@@ -77,6 +80,7 @@ class NodeSkillRouter:
                     availability=raw["availability"],
                     priority=int(raw.get("priority", 0)),
                     context_budget=int(raw.get("context_budget", 0)),
+                    condition_match=raw.get("condition_match", "any"),
                     intent_triggers=tuple(raw.get("intent_triggers", [])),
                     repository_kinds=tuple(raw.get("repository_kinds", [])),
                     agent_roles=tuple(raw.get("agent_roles", [])),
@@ -145,6 +149,7 @@ class NodeSkillRouter:
         business = registry.route_context(
             SkillRoutingContext(
                 system_id=request.system_id,
+                project_id=request.project_id,
                 business_domains=request.business_domains,
                 repository_role=request.repository_kind,
                 stage=request.node,
@@ -281,8 +286,10 @@ class NodeSkillRouter:
             conditions.append(match)
             if match:
                 reasons.append("risk")
-        if policy.mode != "required" and conditions and not any(conditions):
-            return None
+        if policy.mode != "required" and conditions:
+            matched = all(conditions) if policy.condition_match == "all" else any(conditions)
+            if not matched:
+                return None
         return reasons
 
 
@@ -361,8 +368,19 @@ class SkillInvocationService:
             and (item.get("status") == "completed" or bool(item.get("completed_at")))
         }
         missing = sorted(required - completed)
+        code = "OK" if not missing else "SKILL_NODE_GATE_BLOCKED"
+        data = {
+            "required": sorted(required),
+            "completed": sorted(completed),
+            "missing": missing,
+        }
+        data["audit_id"] = self.store.audit(
+            "skill.gate",
+            code,
+            {"requirement_id": requirement_id, "node": node, **data},
+        )
         return Result(
             not missing,
-            "OK" if not missing else "SKILL_NODE_GATE_BLOCKED",
-            data={"required": sorted(required), "completed": sorted(completed), "missing": missing},
+            code,
+            data=data,
         )

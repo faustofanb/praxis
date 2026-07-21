@@ -171,3 +171,29 @@ def test_agent_install_and_launch_cli_preserve_explicit_execution() -> None:
         "agent.launch",
         {"session_id": "SES-TEST", "execute": True},
     )
+
+
+def test_worktree_create_cli_allows_omitted_stage() -> None:
+    args = _parser().parse_args(
+        ["worktree", "create", "REQ-20260721-001", "--repository", "backend"]
+    )
+
+    assert _operation(args) == (
+        "worktree.create",
+        {
+            "requirement_id": "REQ-20260721-001",
+            "repository_id": "backend",
+            "stage": None,
+        },
+    )
+
+
+def test_codegraph_status_cli_accepts_binding_without_project() -> None:
+    args = _parser().parse_args(
+        ["codegraph", "status", "--binding", "WT-REQ-20260721-001--backend"]
+    )
+
+    assert _operation(args) == (
+        "codegraph.status",
+        {"binding_id": "WT-REQ-20260721-001--backend"},
+    )

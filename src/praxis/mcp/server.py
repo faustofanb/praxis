@@ -241,8 +241,19 @@ def create_server(root: Path | str) -> FastMCP:
         return AgentSessionService(workspace).finish(session_id, status).to_dict()
 
     @server.tool()
-    def codegraph_status(project_id: str) -> dict[str, Any]:
-        return execute(workspace, "codegraph.status", {"project_id": project_id})
+    def codegraph_status(
+        project_id: str = "",
+        binding_id: str = "",
+        worktree: str = "",
+    ) -> dict[str, Any]:
+        arguments = {}
+        if project_id:
+            arguments["project_id"] = project_id
+        if binding_id:
+            arguments["binding_id"] = binding_id
+        if worktree:
+            arguments["worktree"] = worktree
+        return execute(workspace, "codegraph.status", arguments)
 
     @server.tool()
     def skill_route(intent: str) -> dict[str, Any]:

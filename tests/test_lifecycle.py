@@ -88,6 +88,7 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     ):
         store.transition_requirement(requirement["requirement_id"], status)
     calls: list[tuple[list[str], Path, dict[str, str] | None]] = []
+    graph_calls: list[tuple[str, Path]] = []
     template_path = tmp_path / ".worktrees" / ".templates" / "app"
 
     def run(
@@ -100,10 +101,34 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
             return subprocess.CompletedProcess(command, 0, "abc123\n", "")
         if command[0] == "git":
             return subprocess.CompletedProcess(command, 0, "", "")
+        if command[1] == "list":
+            repository_path = (
+                tmp_path
+                / ".worktrees"
+                / f"{requirement['requirement_id']}__演示需求实现"
+                / "app"
+            ).resolve()
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                '{"worktrees": [{"branch": "praxis/'
+                + requirement["requirement_id"]
+                + '", "path": "'
+                + str(repository_path)
+                + '", "worktree": {"state": "branch_worktree_mismatch"}, '
+                '"symbols": "⚑", "statusline": "branch ⚑"}]}',
+                "",
+            )
         path = "created" if "--create" in command else str(template_path)
         return subprocess.CompletedProcess(command, 0, f'{{"path": "{path}"}}', "")
 
-    result = WorktreeService(tmp_path, run=run).create_for_requirement(
+    service = WorktreeService(
+        tmp_path,
+        run=run,
+        initialize_graph=lambda project_id, path: graph_calls.append((project_id, path))
+        or Result(True, "CODEGRAPH_INITED", data={"worktree": str(path)}),
+    )
+    result = service.create_for_requirement(
         requirement["requirement_id"], "app", "backend"
     )
 
@@ -113,6 +138,9 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     assert result.data["base_branch"] == "local"
     assert result.data["upstream_branch"] == "origin/develop"
     assert result.data["base_revision"] == "abc123"
+    assert result.data["status"] == "active"
+    assert result.data["codegraph_status"] == "CODEGRAPH_INITED"
+    assert graph_calls == [("app", Path(result.data["repository_path"]))]
     assert [call[0] for call in calls[:5]] == [
         ["git", "fetch", "origin", "develop"],
         [
@@ -194,13 +222,69 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
         for event in StateStore(tmp_path).audit_events()
     )
 
-    repeated = WorktreeService(tmp_path, run=run).create_for_requirement(
-        requirement["requirement_id"], "app", "frontend"
+    repeated = service.create_for_requirement(
+        requirement["requirement_id"], "app", None
     )
     assert repeated.ok
     assert repeated.code == "WORKTREE_ALREADY_ACTIVE"
     assert repeated.data["branch"] == result.data["branch"]
-    assert repeated.data["stages"] == ["backend", "frontend"]
+    assert repeated.data["stages"] == ["backend", "development"]
+    assert graph_calls == [
+        ("app", Path(result.data["repository_path"])),
+        ("app", Path(result.data["repository_path"])),
+    ]
+
+    listed = service.list().data["items"][0]
+    assert listed["worktree"]["state"] == "bound_active"
+    assert listed["worktrunk_state"] == "branch_worktree_mismatch"
+    assert "⚑" not in listed["symbols"]
+    assert "⚑" not in listed["statusline"]
+
+
+def test_worktree_creation_keeps_binding_blocked_when_codegraph_initialization_fails(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "local", template_branches=("develop",))],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("图谱失败", "原始需求", ["demo"], [])
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+    ):
+        store.transition_requirement(requirement["requirement_id"], status)
+
+    def run(command, cwd, environment):
+        if command[:3] == ["git", "status", "--porcelain"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:3] == ["git", "rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "abc123\n", "")
+        if command[0] == "git":
+            return subprocess.CompletedProcess(command, 0, "", "")
+        path = "created" if "--create" in command else str(tmp_path / ".templates" / "app")
+        return subprocess.CompletedProcess(command, 0, f'{{"path": "{path}"}}', "")
+
+    result = WorktreeService(
+        tmp_path,
+        run=run,
+        initialize_graph=lambda project_id, path: Result(
+            False, "CODEGRAPH_NOT_AVAILABLE"
+        ),
+    ).create_for_requirement(requirement["requirement_id"], "app", None)
+
+    assert result.code == "WORKTREE_CODEGRAPH_INIT_FAILED"
+    binding = store.get("worktree", f"WT-{requirement['requirement_id']}--app")
+    assert binding is not None
+    assert binding["status"] == "blocked"
+    assert binding["codegraph_status"] == "CODEGRAPH_NOT_AVAILABLE"
 
 
 def test_worktree_creation_blocks_when_local_template_branch_is_dirty(

@@ -31,7 +31,9 @@ class RequirementProjector:
         target.mkdir(parents=True, exist_ok=True)
         self._ensure_structure(target, record)
         atomic_write_text(target / "需求总览.md", self._overview(record))
-        atomic_write_text(target / "执行进度.md", self._progress(record))
+        progress = target / "执行进度.md"
+        if not progress.exists():
+            atomic_write_text(progress, self._progress(record))
         with (target / "事件记录.jsonl").open("a", encoding="utf-8", newline="\n") as stream:
             stream.write(
                 json.dumps(

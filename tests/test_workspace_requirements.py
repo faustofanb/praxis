@@ -100,6 +100,20 @@ def test_requirement_state_machine_rejects_skipped_transition() -> None:
         requirement.transition(RequirementStatus.READY)
 
 
+def test_requirement_transition_preserves_existing_progress_content(tmp_path: Path) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("进度保留", "保留已有执行记录", [], [])
+    progress = Path(created.data["path"]) / "执行进度.md"
+    progress.write_text(progress.read_text() + "\n- 已完成调查证据。\n")
+
+    assert requirements.transition(
+        created.data["requirement_id"], RequirementStatus.INVESTIGATING
+    ).ok
+
+    assert "已完成调查证据。" in progress.read_text()
+
+
 def test_requirement_path_and_commit_message_apply_shared_naming_rules(tmp_path: Path) -> None:
     policy = RequirementPathPolicy(tmp_path)
     assert policy.requirement_path("REQ-20260720-001", "金属平衡块复制").is_relative_to(tmp_path)
