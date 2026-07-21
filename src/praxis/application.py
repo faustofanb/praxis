@@ -101,6 +101,10 @@ class PraxisApplication:
                     deployment_commands=tuple(values.get("deployment_commands", [])),
                     release_branches=tuple(values.get("release_branches", [])),
                     template_branches=tuple(values.get("template_branches", [])),
+                    local_files=tuple(values.get("local_files", [])),
+                    worktree_setup_commands=tuple(
+                        values.get("worktree_setup_commands", [])
+                    ),
                     lint_commands=tuple(values.get("lint_commands", [])),
                     typecheck_commands=tuple(values.get("typecheck_commands", [])),
                     test_commands=tuple(values.get("test_commands", [])),

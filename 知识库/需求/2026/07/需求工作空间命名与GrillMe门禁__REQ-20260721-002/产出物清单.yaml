@@ -21,3 +21,9 @@
   - 类型: test
     路径: tests/test_lifecycle.py
     说明: CodeGraph active 不变量和 bound_active 状态回归
+  - 类型: source
+    路径: src/praxis/workspace/service.py
+    说明: 本地文件与工作树准备命令配置模型
+  - 类型: guidance
+    路径: skills/praxis-requirement-workflow/SKILL.md
+    说明: 工作树环境准备与离线失败阻断规则

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
@@ -28,6 +29,7 @@ class Project:
     release_branches: tuple[str, ...] = ()
     template_branches: tuple[str, ...] = ()
     local_files: tuple[str, ...] = ()
+    worktree_setup_commands: tuple[str, ...] = ()
     lint_commands: tuple[str, ...] = ()
     typecheck_commands: tuple[str, ...] = ()
     test_commands: tuple[str, ...] = ()
@@ -167,6 +169,7 @@ class WorkspaceService:
                     "release_branches",
                     "template_branches",
                     "local_files",
+                    "worktree_setup_commands",
                     "lint_commands",
                     "typecheck_commands",
                     "test_commands",
@@ -238,6 +241,15 @@ class WorkspaceService:
         ]
         if invalid_local_files:
             raise ValueError("本地文件必须使用仓库内的规范相对路径")
+        if len(set(project.worktree_setup_commands)) != len(
+            project.worktree_setup_commands
+        ):
+            raise ValueError("工作树准备命令不能重复")
+        if any(
+            not _valid_setup_command(command)
+            for command in project.worktree_setup_commands
+        ):
+            raise ValueError("工作树准备命令必须是可解析的非空 argv 命令")
 
     def _write(self, payload: dict[str, Any]) -> None:
         workspace = payload["workspace"]
@@ -276,6 +288,7 @@ class WorkspaceService:
                     "release_branches",
                     "template_branches",
                     "local_files",
+                    "worktree_setup_commands",
                     "lint_commands",
                     "typecheck_commands",
                     "test_commands",
@@ -304,3 +317,12 @@ def _valid_local_file(value: str) -> bool:
         and not re.match(r"^[A-Za-z]:", value)
         and all(segment not in {"", ".", ".."} for segment in segments)
     )
+
+
+def _valid_setup_command(value: str) -> bool:
+    if not value or value != value.strip():
+        return False
+    try:
+        return bool(shlex.split(value))
+    except ValueError:
+        return False

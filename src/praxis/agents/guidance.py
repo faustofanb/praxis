@@ -49,6 +49,8 @@ class AgentGuidanceService:
             "  `origin/<template_branch>`，再从更新后的本地模板创建需求分支。",
             "- 仓库声明 `local_files` 时，只从配置的主仓库复制这些 ignored 本地运行文件；",
             "  缺失、越界或符号链接目标异常时必须阻断创建，不得扫描或复制其他 `.env*`。",
+            "- 仓库声明 `worktree_setup_commands` 时，在本地文件之后、CodeGraph 之前只执行",
+            "  显式 argv 命令；失败必须阻断，离线失败不得回退联网，也不得审计命令输出或环境。",
             "- 需求工作空间命名为 `.worktrees/<需求ID>__<简称>`；关联仓库作为其子目录，",
             "  同一需求的开发阶段共用 `praxis/<需求ID>` 分支。",
             "- 禁止在工作空间根目录或未绑定目录修改业务代码。",

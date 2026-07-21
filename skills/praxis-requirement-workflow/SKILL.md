@@ -41,6 +41,10 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 仓库配置了 `local_files` 时，在 CodeGraph 初始化前只从 `project.path` 指向的主仓库复制这些
   ignored 本地运行文件到相同相对路径；不得扫描或批量复制 `.env*`。源缺失、越界、目录或
   不安全符号链接必须阻断并保留 blocked 工作树，禁止静默创建不可运行的环境。
+- 仓库配置了 `worktree_setup_commands` 时，在本地文件准备完成后、CodeGraph 初始化前，
+  仅按参数向量执行这些显式命令；不得通过 shell 扩展，不得自动识别包管理器，也不得在离线
+  命令失败后回退联网安装。可执行文件缺失或非零退出必须将 binding 标记为 `blocked`，且审计
+  不得记录命令输出或环境变量。相同配置已成功准备的 active binding 不重复执行。
 - `--stage` 可省略，缺省只记录内部 `development` 元数据；阶段变化不得创建新的开发分支。
 - 创建服务必须以仓库工作树路径初始化或同步 CodeGraph；只有图谱就绪后 binding 才能标记为 `active`。失败时保留工作树现场并标记 `blocked`，不得掩盖或回退。
 - 查询 CodeGraph 状态时优先使用 binding ID 或仓库工作树路径，不得拿根仓库状态代替需求工作树状态。

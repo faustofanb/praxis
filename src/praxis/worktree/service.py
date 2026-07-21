@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -192,6 +193,76 @@ class WorktreeService:
                 local_files.code,
                 binding,
             )
+        setup_fingerprint = hashlib.sha256(
+            json.dumps(
+                project.worktree_setup_commands,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        setup_already_prepared = (
+            bool(project.worktree_setup_commands)
+            and binding.get("status") == "active"
+            and binding.get("worktree_setup_status") == "WORKTREE_SETUP_COMPLETED"
+            and binding.get("worktree_setup_fingerprint") == setup_fingerprint
+        )
+        if not project.worktree_setup_commands:
+            binding["worktree_setup_status"] = "WORKTREE_SETUP_NOT_CONFIGURED"
+            binding["worktree_setup_commands_configured"] = 0
+            for key in (
+                "worktree_setup_commands_completed",
+                "worktree_setup_fingerprint",
+                "worktree_setup_started_at",
+                "worktree_setup_completed_at",
+                "worktree_setup_last_action",
+            ):
+                binding.pop(key, None)
+        elif setup_already_prepared:
+            binding["worktree_setup_last_action"] = "WORKTREE_SETUP_ALREADY_PREPARED"
+        else:
+            binding.pop("worktree_setup_last_action", None)
+            binding.update(
+                status="initializing",
+                worktree_setup_status="WORKTREE_SETUP_RUNNING",
+                worktree_setup_commands_configured=len(
+                    project.worktree_setup_commands
+                ),
+                worktree_setup_commands_completed=0,
+                worktree_setup_fingerprint=setup_fingerprint,
+                worktree_setup_started_at=datetime.now(UTC).isoformat(),
+            )
+            binding.pop("worktree_setup_completed_at", None)
+            store.set("worktree", binding_key, binding)
+            store.audit("worktree.setup_started", "OK", binding)
+            setup = self._run_worktree_setup_commands(
+                project,
+                Path(str(binding["repository_path"])),
+            )
+            binding["worktree_setup_status"] = setup.code
+            binding["worktree_setup_commands_completed"] = setup.data.get(
+                "completed", 0
+            )
+            if not setup.ok:
+                binding["status"] = "blocked"
+                store.set("worktree", binding_key, binding)
+                audit_id = store.audit(
+                    "worktree.setup_failed",
+                    setup.code,
+                    {**binding, "worktree_setup_result": setup.data},
+                )
+                return Result(
+                    False,
+                    "WORKTREE_SETUP_FAILED",
+                    data={
+                        **binding,
+                        "cause": setup.code,
+                        "worktree_setup_result": setup.data,
+                        "audit_id": audit_id,
+                    },
+                )
+            binding["worktree_setup_completed_at"] = datetime.now(UTC).isoformat()
+            store.set("worktree", binding_key, binding)
+            store.audit("worktree.setup_completed", setup.code, binding)
         started_at = datetime.now(UTC).isoformat()
         binding.update(
             status="initializing",
@@ -248,6 +319,45 @@ class WorktreeService:
             {**binding, "codegraph": graph.data},
         )
         return Result(True, success_code, data=binding, diagnostics=graph.diagnostics)
+
+    def _run_worktree_setup_commands(
+        self, project: Project, repository_path: Path
+    ) -> Result:
+        if not project.worktree_setup_commands:
+            return Result(True, "WORKTREE_SETUP_NOT_CONFIGURED", data={"completed": 0})
+        completed = 0
+        for index, configured in enumerate(project.worktree_setup_commands, start=1):
+            command = shlex.split(configured)
+            executable = command[0]
+            try:
+                process = self.run(command, repository_path, None)
+            except FileNotFoundError:
+                return Result(
+                    False,
+                    "WORKTREE_SETUP_COMMAND_NOT_FOUND",
+                    data={
+                        "command_index": index,
+                        "executable": executable,
+                        "completed": completed,
+                    },
+                )
+            if process.returncode:
+                return Result(
+                    False,
+                    "WORKTREE_SETUP_COMMAND_FAILED",
+                    data={
+                        "command_index": index,
+                        "executable": executable,
+                        "exit_code": process.returncode,
+                        "completed": completed,
+                    },
+                )
+            completed += 1
+        return Result(
+            True,
+            "WORKTREE_SETUP_COMPLETED",
+            data={"completed": completed},
+        )
 
     @staticmethod
     def _run(
@@ -412,7 +522,7 @@ class WorktreeService:
         requirement = StateStore(self.root).requirement(requirement_id)
         if not requirement:
             raise KeyError(requirement_id)
-        if requirement["status"] not in {"ready", "in_progress"}:
+        if requirement["status"] not in {"ready", "in_progress", "verifying"}:
             return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
         if project.system_id not in requirement["systems"]:
             return Result(False, "WORKTREE_SYSTEM_MISMATCH")
@@ -441,6 +551,8 @@ class WorktreeService:
                 binding,
                 success_code="WORKTREE_ALREADY_ACTIVE",
             )
+        if requirement["status"] not in {"ready", "in_progress"}:
+            return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
         synchronized = self._sync_default_branch(project, repository_id, repo)
         if not synchronized.ok:
             store.audit(

@@ -37,6 +37,8 @@ praxis workspace add \
   --path services/backend \
   --default-branch local \
   --template-branch develop \
+  --local-file "apps/web-antd/.env.development" \
+  --worktree-setup-command "pnpm install --offline --frozen-lockfile" \
   --test-command "pytest -q" \
   --json
 
@@ -91,7 +93,15 @@ repository-relative files and cannot resolve outside either repository:
 
 ```toml
 local_files = ["apps/web-antd/.env.development"]
+worktree_setup_commands = ["pnpm install --offline --frozen-lockfile"]
 ```
+
+After local files are prepared and before CodeGraph starts, Praxis runs only the configured setup
+commands as parsed argument vectors in the repository worktree. It does not invoke a shell, infer a
+package manager, or retry a failed offline command with network access. A missing executable or
+non-zero exit blocks the binding and records only the command index, executable, and exit code; command
+output and environment values are not written to the binding or audit log. A successfully completed
+setup is not rerun when an already-active binding is resolved with the same command configuration.
 
 Installed hooks enforce worktree binding, changed-path and secret gates plus the CodeGraph lifecycle
 at post-start, pre-commit, pre-merge, post-merge, and post-remove. They never start lint, format, typecheck,
