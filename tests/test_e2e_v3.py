@@ -82,7 +82,7 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
         requirement_id, "backend", "backend"
     )
     assert created.ok, created.to_dict()
-    worktree = Path(created.data["path"])
+    worktree = Path(created.data["repository_path"])
     assert worktree.is_dir()
     hook_context = {
         "branch": created.data["branch"],

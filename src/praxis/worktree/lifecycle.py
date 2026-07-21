@@ -56,7 +56,23 @@ class WorktreeLifecycle:
             worktree=worktree,
             initialize=False,
         )
-        if result.ok and event in {"pre-commit", "pre-merge"}:
+        graph_fallback = not result.ok and result.data.get("fallback") == "rg"
+        if graph_fallback and event in {"pre-commit", "pre-merge"}:
+            fallback = self._change_gates(binding, Path(str(worktree)))
+            if fallback.ok:
+                result = Result(
+                    True,
+                    "CODEGRAPH_FALLBACK_RG",
+                    data={**result.data, "codegraph_code": result.code},
+                    diagnostics=result.diagnostics,
+                )
+            else:
+                result = fallback
+        if (
+            result.ok
+            and event in {"pre-commit", "pre-merge"}
+            and not graph_fallback
+        ):
             result = self._change_gates(binding, Path(str(worktree)))
         if result.ok and event in {"pre-commit", "pre-merge"}:
             check_kind = "quality" if event == "pre-commit" else "test"

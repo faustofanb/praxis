@@ -13,8 +13,8 @@ from praxis.documents.atomic_writer import atomic_write_text
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService, _array, _quote
+from praxis.worktree.service import resolve_worktree_binding
 
 _AGENT_TYPES = {"codex", "claude-code", "oh-my-pi"}
 _AGENT_COMMANDS = {"codex": "codex", "claude-code": "claude", "oh-my-pi": "pi"}

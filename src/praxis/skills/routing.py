@@ -12,7 +12,6 @@ from uuid import uuid4
 from praxis.result import Result
 from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
-from praxis.workspace.service import WorkspaceService
 
 _MODES = {"required", "conditional", "approval_required"}
 
@@ -136,7 +135,8 @@ class NodeSkillRouter:
             cached = self.store.get("skill_route", key)
             if cached and cached.get("route_fingerprint") == fingerprint:
                 data = {**cached, "cached": True}
-                blocked = list(data.get("blocked_required_skills", []))
+                blocked_value = data.get("blocked_required_skills", [])
+                blocked = blocked_value if isinstance(blocked_value, list) else []
                 data["audit_id"] = self.store.audit(
                     "skill.route_reused",
                     "SKILL_REQUIRED_UNAVAILABLE" if blocked else "OK",
@@ -172,7 +172,7 @@ class NodeSkillRouter:
             decisions.append(
                 {
                     **asdict(policy),
-                    "content_hash": registered.get(policy.id).content_hash
+                    "content_hash": registered[policy.id].content_hash
                     if policy.id in registered
                     else installed.get(policy.id, {}).get("content_hash", ""),
                     "installed_path": str(registered[policy.id].path)

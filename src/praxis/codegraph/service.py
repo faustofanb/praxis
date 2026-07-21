@@ -196,7 +196,7 @@ class CodeGraphService:
             / f"codegraph-background-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8]}.log"
         )
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        job = {
+        job: dict[str, Any] = {
             "job_id": f"CGJ-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}",
             "project_id": self.project_id,
             "worktree": str(self.repo),
@@ -247,7 +247,9 @@ class CodeGraphService:
                 "codegraph.background_start_failed", job["code"], job
             )
             return Result(False, job["code"], data={**job, "audit_id": audit_id})
-        current = self.store.get("codegraph_background", self.key) or job
+        current: dict[str, Any] = (
+            self.store.get("codegraph_background", self.key) or job
+        )
         if current.get("job_id") == job["job_id"] and current.get("status") == "queued":
             current.update(
                 status="running",
@@ -533,13 +535,16 @@ class CodeGraphService:
                         or (operation and operation.get("status") in {"running", "interrupted"})
                     )
                 )
-                if operation and operation.get("status") == "running":
-                    if self._operation_is_recent(operation):
-                        return Result(
-                            False,
-                            "CODEGRAPH_SYNC_BUSY",
-                            data={"operation": operation, "worktree": str(self.repo)},
-                        )
+                if (
+                    operation
+                    and operation.get("status") == "running"
+                    and self._operation_is_recent(operation)
+                ):
+                    return Result(
+                        False,
+                        "CODEGRAPH_SYNC_BUSY",
+                        data={"operation": operation, "worktree": str(self.repo)},
+                    )
                 if recovering and (self.repo / ".codegraph" / "lock").exists():
                     return Result(
                         False,

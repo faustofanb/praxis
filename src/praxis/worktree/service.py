@@ -7,8 +7,8 @@ import re
 import shlex
 import shutil
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
@@ -208,11 +208,17 @@ class WorktreeService:
         )
 
     def _initialize_graph(self, project_id: str, repository_path: Path) -> Result:
+        resolved = resolve_worktree_binding(
+            StateStore(self.root),
+            "",
+            repository_id=project_id,
+            worktree_path=repository_path,
+        )
         return CodeGraphService(
             self.root,
             project_id,
             repo=repository_path,
-        ).ensure_fresh(initialize=True)
+        ).enqueue(binding_id=resolved[0] if resolved else "")
 
     @staticmethod
     def _prepare_local_files(
@@ -388,15 +394,13 @@ class WorktreeService:
                 diagnostics=(
                     {
                         "code": "WORKTREE_SETUP_PREFLIGHT_FAILED",
-                        "message": "Worktree is active; fix setup preflight before prepare or CodeGraph.",
+                        "message": (
+                            "Worktree is active; fix setup preflight before prepare or CodeGraph."
+                        ),
                     },
                 ),
             )
-        graph = CodeGraphService(
-            self.root,
-            str(binding["repository_id"]),
-            repo=repository_path,
-        ).enqueue(binding_id=binding_key)
+        graph = self.initialize_graph(str(binding["repository_id"]), repository_path)
         binding = store.get("worktree", binding_key) or binding
         if not binding.get("codegraph_completed_at"):
             binding["codegraph_status"] = graph.code
@@ -1482,7 +1486,7 @@ class WorktreeService:
                 False,
                 "WORKTREE_NAME_MIGRATION_FAILED",
                 data={**details, "audit_id": audit_id},
-                diagnostics=failure.diagnostics if failure else [],
+                diagnostics=failure.diagnostics if failure else (),
             )
 
     def _recover_interrupted_name_migration(
@@ -1726,7 +1730,11 @@ class WorktreeService:
             errors.append("WORKTREE_MIGRATION_PATH_NOT_RESTORED")
         return Result(
             not errors,
-            "WORKTREE_NAME_MIGRATION_ROLLED_BACK" if not errors else "WORKTREE_NAME_MIGRATION_ROLLBACK_INCOMPLETE",
+            (
+                "WORKTREE_NAME_MIGRATION_ROLLED_BACK"
+                if not errors
+                else "WORKTREE_NAME_MIGRATION_ROLLBACK_INCOMPLETE"
+            ),
             data={"errors": errors},
         )
 
@@ -1742,7 +1750,8 @@ class WorktreeService:
             ["remove", str(binding.get("branch", branch)) if binding else branch],
             cwd=cwd,
         )
-        if result.ok and binding:
+        if result.ok and resolved is not None:
+            binding = resolved[1]
             store.delete("worktree", resolved[0])
             workspace_path = Path(str(binding["path"]))
             with suppress(OSError):
@@ -1785,13 +1794,47 @@ class WorktreeService:
         resolved = resolve_worktree_binding(store, branch) if branch else None
         binding = resolved[1] if resolved else None
         cwd = Path(binding.get("repository_path", binding["path"])) if binding else self.root
-        result = self._execute(["merge", target], cwd=cwd)
-        if result.ok and binding:
+        arguments = ["merge", target]
+        if binding:
+            # Worktrunk 0.68.0 can panic while its merge command backgrounds cleanup
+            # for a Unicode worktree name. Its explicit remove command is Unicode-safe.
+            arguments.append("--no-remove")
+        result = self._execute(arguments, cwd=cwd)
+        if result.ok and resolved is not None:
+            binding = resolved[1]
+            project = WorkspaceService(self.root).project(binding["repository_id"])
+            cleanup = self._execute(
+                ["remove", str(binding["branch"])],
+                cwd=(self.root / project.path).resolve(),
+            )
+            if not cleanup.ok:
+                binding.update(
+                    status="merged_cleanup_failed",
+                    merge_target=target,
+                    cleanup_result=cleanup.data,
+                )
+                store.set("worktree", resolved[0], binding)
+                audit_id = store.audit(
+                    "worktree.merge_cleanup_failed",
+                    "WORKTREE_MERGED_CLEANUP_FAILED",
+                    binding,
+                )
+                return Result(
+                    False,
+                    "WORKTREE_MERGED_CLEANUP_FAILED",
+                    data={**binding, "audit_id": audit_id},
+                    diagnostics=cleanup.diagnostics,
+                )
             current = store.get("worktree", resolved[0])
             if current:
                 current["status"] = "merged"
+                current["merge_target"] = target
+                current["cleanup_result"] = cleanup.data
                 store.set("worktree", resolved[0], current)
             store.audit("worktree.merged", "OK", {**binding, "target": target})
+            workspace_path = Path(str(binding["path"]))
+            with suppress(OSError):
+                workspace_path.rmdir()
         return result
 
     def install_hooks(self, project_id: str) -> Result:

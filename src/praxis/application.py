@@ -64,6 +64,18 @@ class PraxisApplication:
         except (KeyError, OSError, TypeError, ValueError) as error:
             result = Result(False, "INVALID_REQUEST", data={"message": str(error)})
         duration_ms = round((monotonic_ns() - started) / 1_000_000, 3)
+        timed_operations = {
+            "requirement.reopen",
+            "artifact.add",
+            "skill.complete-node",
+            "agent.start",
+            "agent.receipt",
+        }
+        is_timed_operation = operation in timed_operations or operation.startswith(
+            ("worktree.", "codegraph.", "approval.", "budget.")
+        )
+        if not is_timed_operation:
+            return result
         identifiers = {
             key: str(values[key])
             for key in (
@@ -82,20 +94,9 @@ class PraxisApplication:
             "duration_ms": duration_ms,
             **identifiers,
         }
-        timing_audit_id = ""
-        timed_operations = {
-            "requirement.reopen",
-            "artifact.add",
-            "skill.complete-node",
-            "agent.start",
-            "agent.receipt",
-        }
-        if operation in timed_operations or operation.startswith(
-            ("worktree.", "codegraph.", "approval.", "budget.")
-        ):
-            timing_audit_id = StateStore(self.root).audit(
-                "operation.timed", result.code, timing
-            )
+        timing_audit_id = StateStore(self.root).audit(
+            "operation.timed", result.code, timing
+        )
         return Result(
             result.ok,
             result.code,

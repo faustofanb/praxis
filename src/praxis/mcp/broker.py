@@ -12,8 +12,8 @@ from praxis.gates.policies import allowed_paths_gate
 from praxis.gates.sql import inspect_sql
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.worktree.service import resolve_worktree_binding
 from praxis.workspace.service import WorkspaceService
+from praxis.worktree.service import resolve_worktree_binding
 
 _SERVER_ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
 

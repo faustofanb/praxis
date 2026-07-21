@@ -82,7 +82,8 @@ class AgentGuidanceService:
             "### Skill 调用协议",
             "",
             "1. 进入节点先运行 `praxis skill route-node --node <节点> --requirement <需求ID>`。",
-            "2. 对决定使用的 Skill 运行 `praxis skill invoke <Skill ID> --requirement <需求ID> --node <节点>`。",
+            "2. 对决定使用的 Skill 运行 `praxis skill invoke <Skill ID> "
+            "--requirement <需求ID> --node <节点>`。",
             "3. Skill 工作完成后，用返回的 invocation ID 运行 `praxis skill complete <调用ID>`。",
             "4. 离开节点前运行 `praxis skill gate --requirement <需求ID> --node <节点>`。",
             "5. `approval_required` Skill 只有获得本次用户明确批准后才能加 `--approved` 调用。",

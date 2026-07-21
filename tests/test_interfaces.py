@@ -155,11 +155,106 @@ def test_workspace_add_cli_maps_repository_facts() -> None:
             "deployment_commands": [],
             "release_branches": [],
             "template_branches": [],
+            "local_files": [],
+            "worktree_setup_commands": [],
             "lint_commands": [],
             "typecheck_commands": [],
             "test_commands": ["pytest -q"],
         },
     )
+
+
+def test_fast_path_cli_commands_map_to_application_operations() -> None:
+    commands = [
+        ["requirement", "reopen", "REQ-1", "--reason", "继续开发"],
+        [
+            "skill",
+            "complete-node",
+            "--requirement",
+            "REQ-1",
+            "--node",
+            "in_progress",
+            "--used-skill",
+            "ponytail=完成最小实现",
+        ],
+        ["codegraph", "wait", "--binding", "WT-1", "--timeout", "5"],
+        ["worktree", "preview", "REQ-1", "--repository", "backend"],
+        [
+            "worktree",
+            "ensure",
+            "REQ-1",
+            "--repository",
+            "backend",
+            "--confirm",
+            "WTP-1",
+        ],
+        ["worktree", "prepare", "REQ-1", "--repository", "backend"],
+        ["worktree", "migrate-name", "REQ-1", "--repository", "backend"],
+        [
+            "agent",
+            "receipt",
+            "SES-1",
+            "--changed-path",
+            "src/app.py",
+            "--decision",
+            "复用现有服务",
+        ],
+        [
+            "approval",
+            "grant",
+            "--requirement",
+            "REQ-1",
+            "--scope",
+            "verification",
+            "--entry",
+            "pytest",
+            "--user-evidence",
+            "用户批准",
+            "--authorized-by-user",
+        ],
+        [
+            "approval",
+            "check",
+            "--requirement",
+            "REQ-1",
+            "--scope",
+            "verification",
+            "--entry",
+            "pytest",
+        ],
+        ["approval", "list", "--requirement", "REQ-1"],
+        [
+            "budget",
+            "consume",
+            "--requirement",
+            "REQ-1",
+            "--node",
+            "in_progress",
+            "--kind",
+            "retry",
+            "--operation-key",
+            "setup:backend",
+        ],
+        ["budget", "status", "--requirement", "REQ-1"],
+    ]
+
+    operations = [_operation(_parser().parse_args(command))[0] for command in commands]
+
+    assert operations == [
+        "requirement.reopen",
+        "skill.complete-node",
+        "codegraph.wait",
+        "worktree.preview",
+        "worktree.ensure",
+        "worktree.prepare",
+        "worktree.migrate-name",
+        "agent.receipt",
+        "approval.grant",
+        "approval.check",
+        "approval.list",
+        "budget.consume",
+        "budget.status",
+    ]
 
 
 def test_agent_install_and_launch_cli_preserve_explicit_execution() -> None:

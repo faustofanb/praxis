@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from praxis.codegraph.lifecycle import CodeGraphLifecycle
+from praxis.codegraph.service import CodeGraphService
 from praxis.domain.requirement import RequirementStatus
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
@@ -161,13 +162,14 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
                 tmp_path
                 / ".worktrees"
                 / f"{requirement['requirement_id']}__演示需求实现"
-                / "app"
+                / f"{requirement['requirement_id']}__演示需求实现__app"
             ).resolve()
             return subprocess.CompletedProcess(
                 command,
                 0,
                 '{"worktrees": [{"branch": "praxis/'
                 + requirement["requirement_id"]
+                + "__演示需求实现"
                 + '", "path": "'
                 + str(repository_path)
                 + '", "worktree": {"state": "branch_worktree_mismatch"}, '
@@ -188,7 +190,9 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     )
 
     assert result.ok
-    assert result.data["branch"] == f"praxis/{requirement['requirement_id']}"
+    assert result.data["branch"] == (
+        f"praxis/{requirement['requirement_id']}__演示需求实现"
+    )
     assert result.data["binding_id"] == f"WT-{requirement['requirement_id']}--app"
     assert result.data["base_branch"] == "local"
     assert result.data["upstream_branch"] == "origin/develop"
@@ -196,7 +200,14 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     assert result.data["status"] == "active"
     assert result.data["codegraph_status"] == "CODEGRAPH_INITED"
     assert graph_calls == [("app", Path(result.data["repository_path"]))]
-    assert [call[0] for call in calls[:5]] == [
+    commands = [call[0] for call in calls]
+    assert commands[:6] == [
+        [
+            "git",
+            "check-ref-format",
+            "--branch",
+            result.data["branch"],
+        ],
         ["git", "fetch", "origin", "develop"],
         [
             "wt",
@@ -211,7 +222,9 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
         ["git", "merge", "--no-edit", "origin/develop"],
         ["git", "rev-parse", "HEAD"],
     ]
-    command, cwd, environment = calls[5]
+    command, cwd, environment = next(
+        call for call in calls if call[0][1:3] == ["switch", "--create"]
+    )
     assert cwd == repo
     assert command[:5] == [
         "wt",
@@ -221,13 +234,15 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
         "--base",
     ]
     assert environment and environment["WORKTRUNK_WORKTREE_PATH"].endswith(
-        f"{requirement['requirement_id']}__演示需求实现/app"
+        f"{requirement['requirement_id']}__演示需求实现/"
+        f"{requirement['requirement_id']}__演示需求实现__app"
     )
     assert result.data["path"].endswith(
         f"{requirement['requirement_id']}__演示需求实现"
     )
     assert result.data["repository_path"].endswith(
-        f"{requirement['requirement_id']}__演示需求实现/app"
+        f"{requirement['requirement_id']}__演示需求实现/"
+        f"{requirement['requirement_id']}__演示需求实现__app"
     )
     context = {
         "branch": result.data["branch"],
@@ -296,7 +311,453 @@ def test_worktree_creation_binds_requirement_repository_and_stage(
     assert "⚑" not in listed["statusline"]
 
 
-def test_worktree_creation_keeps_binding_blocked_when_codegraph_initialization_fails(
+def test_worktree_preview_then_ensure_uses_confirmed_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("批量准备", "一次确认后准备仓库", ["demo"], [])
+    service = WorktreeService(tmp_path)
+    created: list[tuple[str, str, str | None]] = []
+
+    def create(requirement_id: str, repository_id: str, stage: str | None) -> Result:
+        created.append((requirement_id, repository_id, stage))
+        return Result(True, data={"repository_id": repository_id, "status": "active"})
+
+    monkeypatch.setattr(service, "create_for_requirement", create)
+    preview = service.preview_for_requirement(requirement["requirement_id"], ["app", "app"])
+    ensured = service.ensure_for_requirement(
+        requirement["requirement_id"],
+        ["app", "app"],
+        preview_id=preview.data["preview_id"],
+    )
+
+    assert preview.ok
+    assert preview.data["items"][0]["worktree_display_name"].endswith("__app")
+    assert ensured.ok and ensured.code == "WORKTREE_ENSURED"
+    assert created == [(requirement["requirement_id"], "app", "development")]
+
+
+def test_worktree_preview_and_ensure_fail_closed_for_invalid_confirmation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("确认门禁", "必须确认最终名称", ["demo"], [])
+    requirement_id = requirement["requirement_id"]
+    service = WorktreeService(tmp_path)
+
+    assert service.preview_for_requirement("REQ-MISSING", ["app"]).code == (
+        "REQUIREMENT_NOT_FOUND"
+    )
+    assert service.preview_for_requirement(requirement_id, []).code == (
+        "WORKTREE_REPOSITORY_REQUIRED"
+    )
+    preview = service.preview_for_requirement(requirement_id, ["app"])
+    assert service.ensure_for_requirement(
+        requirement_id, ["other"], preview_id=preview.data["preview_id"]
+    ).code == "WORKTREE_PREVIEW_MISMATCH"
+
+    expired = store.get("worktree_preview", preview.data["preview_id"])
+    assert expired is not None
+    expired["expires_at"] = "invalid"
+    store.set("worktree_preview", preview.data["preview_id"], expired)
+    assert service.ensure_for_requirement(
+        requirement_id, ["app"], preview_id=preview.data["preview_id"]
+    ).code == "WORKTREE_PREVIEW_EXPIRED"
+
+    fresh = service.preview_for_requirement(requirement_id, ["app"])
+    group_id = f"WTG-{requirement_id}"
+    group = store.get("worktree_group", group_id)
+    assert group is not None
+    group["branch_name"] = f"praxis/{requirement_id}__changed"
+    store.set("worktree_group", group_id, group)
+    assert service.ensure_for_requirement(
+        requirement_id, ["app"], preview_id=fresh.data["preview_id"]
+    ).code == "WORKTREE_PREVIEW_STALE"
+
+    current = service.preview_for_requirement(requirement_id, ["app"])
+    store.set(
+        "worktree_ensure_attempt",
+        f"{requirement_id}:app",
+        {"attempts": 2, "limit": 2},
+    )
+    monkeypatch.setattr(
+        service,
+        "create_for_requirement",
+        lambda *args: pytest.fail("retry budget should stop creation"),
+    )
+    exhausted = service.ensure_for_requirement(
+        requirement_id, ["app"], preview_id=current.data["preview_id"]
+    )
+    assert exhausted.code == "WORKTREE_ENSURE_PARTIAL"
+    assert exhausted.data["items"][0]["code"] == "WORKTREE_RETRY_BUDGET_EXHAUSTED"
+
+
+def test_worktree_prepare_runs_deferred_setup_once(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    worktree = tmp_path / "worktree"
+    repo.mkdir()
+    worktree.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[
+            Project(
+                "app",
+                "python",
+                "repo",
+                "local",
+                worktree_setup_commands=("python --version",),
+            )
+        ],
+    )
+    requirement = StateStore(tmp_path).create_requirement(
+        "延迟依赖", "首次构建时准备", ["demo"], []
+    )
+    binding_id = f"WT-{requirement['requirement_id']}--app"
+    StateStore(tmp_path).set(
+        "worktree",
+        binding_id,
+        {
+            "binding_id": binding_id,
+            "requirement_id": requirement["requirement_id"],
+            "repository_id": "app",
+            "repository_path": str(worktree),
+            "status": "active",
+            "worktree_setup_status": "WORKTREE_SETUP_DEFERRED",
+            "codegraph_status": "CODEGRAPH_QUEUED",
+        },
+    )
+    calls: list[list[str]] = []
+
+    def run(command, cwd, environment):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "Python 3", "")
+
+    service = WorktreeService(tmp_path, run=run)
+    prepared = service.prepare_for_requirement(requirement["requirement_id"], "app")
+    repeated = service.prepare_for_requirement(requirement["requirement_id"], "app")
+
+    assert prepared.ok and prepared.code == "WORKTREE_SETUP_COMPLETED"
+    assert repeated.code == "WORKTREE_SETUP_ALREADY_PREPARED"
+    assert calls == [["python", "--version"]]
+
+
+def test_worktree_setup_reports_missing_and_failed_commands(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    empty = Project("app", "python", "repo", "local")
+    missing = Project(
+        "app",
+        "python",
+        "repo",
+        "local",
+        worktree_setup_commands=("missing-tool setup",),
+    )
+    failed = Project(
+        "app",
+        "python",
+        "repo",
+        "local",
+        worktree_setup_commands=("python setup.py",),
+    )
+
+    def missing_run(command, cwd, environment):
+        raise FileNotFoundError(command[0])
+
+    def failed_run(command, cwd, environment):
+        return subprocess.CompletedProcess(command, 2, "", "failed")
+
+    assert WorktreeService(tmp_path)._run_worktree_setup_commands(
+        empty, repository
+    ).code == "WORKTREE_SETUP_NOT_CONFIGURED"
+    assert WorktreeService(
+        tmp_path, run=missing_run
+    )._run_worktree_setup_commands(missing, repository).code == (
+        "WORKTREE_SETUP_COMMAND_NOT_FOUND"
+    )
+    assert WorktreeService(
+        tmp_path, run=failed_run
+    )._run_worktree_setup_commands(failed, repository).code == (
+        "WORKTREE_SETUP_COMMAND_FAILED"
+    )
+
+
+def test_local_runtime_files_copy_only_declared_paths_and_preserve_existing(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "destination"
+    source.mkdir()
+    destination.mkdir()
+    (source / "config").mkdir()
+    (source / "config" / ".env.development").write_text("PORT=3000\n")
+    project = Project(
+        "web",
+        "node",
+        "source",
+        "local",
+        local_files=("config/.env.development",),
+    )
+
+    copied = WorktreeService._prepare_local_files(project, source, destination)
+    existing = WorktreeService._prepare_local_files(project, source, destination)
+
+    assert copied.ok and copied.data["copied"] == ["config/.env.development"]
+    assert existing.ok and existing.data["existing"] == ["config/.env.development"]
+    assert (destination / "config" / ".env.development").read_text() == "PORT=3000\n"
+
+
+def test_local_runtime_files_reject_missing_or_unsafe_paths(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "destination"
+    source.mkdir()
+    destination.mkdir()
+    missing = Project("web", "node", "source", "local", local_files=(".env",))
+    assert WorktreeService._prepare_local_files(missing, source, destination).code == (
+        "WORKTREE_LOCAL_FILE_SOURCE_MISSING"
+    )
+
+    outside = tmp_path / "secret.env"
+    outside.write_text("TOKEN=secret")
+    (source / "linked.env").symlink_to(outside)
+    unsafe = Project(
+        "web", "node", "source", "local", local_files=("linked.env",)
+    )
+    assert WorktreeService._prepare_local_files(unsafe, source, destination).code == (
+        "WORKTREE_LOCAL_FILE_SOURCE_UNSAFE"
+    )
+
+
+def test_pnpm_setup_uses_exact_project_version_and_valid_lockfile(tmp_path: Path) -> None:
+    repository = tmp_path / "web"
+    repository.mkdir()
+    (repository / "package.json").write_text('{"packageManager":"pnpm@9.15.0"}')
+    (repository / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+    calls: list[list[str]] = []
+
+    def run(command, cwd, environment):
+        calls.append(command)
+        stdout = "9.15.0\n" if command[-1] == "--version" else ""
+        return subprocess.CompletedProcess(command, 0, stdout, "")
+
+    project = Project(
+        "web",
+        "node",
+        "web",
+        "local",
+        worktree_setup_commands=("pnpm install --offline",),
+    )
+    service = WorktreeService(tmp_path, run=run)
+
+    preflight = service._preflight_worktree_setup(project, repository)
+    setup = service._run_worktree_setup_commands(project, repository)
+
+    assert preflight.ok and preflight.data["package_managers"][0]["version"] == "9.15.0"
+    assert setup.ok and setup.data["completed"] == 1
+    assert calls == [
+        ["pnpm", "--version"],
+        ["pnpm", "--version"],
+        ["pnpm", "install", "--offline"],
+    ]
+
+
+@pytest.mark.parametrize(
+    ("manifest", "expected_code"),
+    [
+        (None, "WORKTREE_PACKAGE_MANAGER_MANIFEST_MISSING"),
+        ("not-json", "WORKTREE_PACKAGE_MANAGER_MANIFEST_INVALID"),
+        ("{}", "WORKTREE_PACKAGE_MANAGER_VERSION_REQUIRED"),
+        ('{"packageManager":"npm@11.0.0"}', "WORKTREE_PACKAGE_MANAGER_MISMATCH"),
+        ('{"packageManager":"pnpm@latest"}', "WORKTREE_PACKAGE_MANAGER_VERSION_INVALID"),
+    ],
+)
+def test_pnpm_setup_rejects_missing_or_unpinned_project_version(
+    tmp_path: Path, manifest: str | None, expected_code: str
+) -> None:
+    repository = tmp_path / "web"
+    repository.mkdir()
+    if manifest is not None:
+        (repository / "package.json").write_text(manifest)
+
+    result = WorktreeService(tmp_path)._resolve_pnpm(repository)
+
+    assert result.code == expected_code
+
+
+@pytest.mark.parametrize(
+    ("lockfile", "expected_code"),
+    [
+        (None, "WORKTREE_SETUP_LOCKFILE_MISSING"),
+        ("packages: {}\n", "WORKTREE_SETUP_LOCKFILE_INVALID"),
+        ("lockfileVersion: '9.0'\n<<<<<<< ours\n", "WORKTREE_SETUP_LOCKFILE_INVALID"),
+    ],
+)
+def test_pnpm_preflight_rejects_missing_or_invalid_lockfile(
+    tmp_path: Path, lockfile: str | None, expected_code: str
+) -> None:
+    repository = tmp_path / "web"
+    repository.mkdir()
+    (repository / "package.json").write_text('{"packageManager":"pnpm@9.15.0"}')
+    if lockfile is not None:
+        (repository / "pnpm-lock.yaml").write_text(lockfile)
+
+    def run(command, cwd, environment):
+        return subprocess.CompletedProcess(command, 0, "9.15.0\n", "")
+
+    project = Project(
+        "web",
+        "node",
+        "web",
+        "local",
+        worktree_setup_commands=("pnpm install",),
+    )
+    result = WorktreeService(tmp_path, run=run)._preflight_worktree_setup(
+        project, repository
+    )
+
+    assert result.code == expected_code
+
+
+def test_worktree_name_migration_moves_path_branch_and_reactivates_binding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    old_workspace = tmp_path / ".worktrees" / "legacy"
+    old_repository = old_workspace / "app"
+    repo.mkdir()
+    old_repository.mkdir(parents=True)
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("可读名称", "迁移旧工作树名称", ["demo"], [])
+    binding_id = f"WT-{requirement['requirement_id']}--app"
+    old_branch = f"praxis/{requirement['requirement_id']}"
+    store.set(
+        "worktree",
+        binding_id,
+        {
+            "binding_id": binding_id,
+            "requirement_id": requirement["requirement_id"],
+            "repository_id": "app",
+            "branch": old_branch,
+            "path": str(old_workspace),
+            "repository_path": str(old_repository),
+            "status": "blocked",
+        },
+    )
+
+    def run(command, cwd, environment):
+        if command[:3] == ["git", "branch", "--show-current"]:
+            return subprocess.CompletedProcess(command, 0, old_branch + "\n", "")
+        if command[:3] == ["git", "branch", "--list"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:3] == ["git", "worktree", "move"]:
+            Path(command[3]).rename(Path(command[4]))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(CodeGraphService, "_detect_version", staticmethod(lambda: "test"))
+    monkeypatch.setattr(
+        CodeGraphService,
+        "enqueue",
+        lambda self, *, binding_id="": Result(
+            True, "CODEGRAPH_QUEUED", data={"job_id": "CGJ-TEST"}
+        ),
+    )
+    migrated = WorktreeService(tmp_path, run=run).migrate_name(
+        requirement["requirement_id"], "app"
+    )
+
+    assert migrated.ok and migrated.code == "WORKTREE_NAME_MIGRATED"
+    assert migrated.data["status"] == "active"
+    assert migrated.data["migration_previous_status"] == "blocked"
+    assert Path(migrated.data["repository_path"]).name.endswith("__app")
+    assert Path(migrated.data["repository_path"]).is_dir()
+    assert migrated.data["branch"].endswith("__可读名称")
+
+
+def test_interrupted_worktree_name_migration_rolls_back_once_and_reactivates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("中断恢复", "恢复迁移中的工作树", ["demo"], [])
+    requirement_id = requirement["requirement_id"]
+    workspace_name = f"{requirement_id}__中断恢复"
+    expected_workspace = tmp_path / ".worktrees" / workspace_name
+    expected_repository = expected_workspace / f"{workspace_name}__app"
+    expected_repository.mkdir(parents=True)
+    old_workspace = tmp_path / ".worktrees" / "legacy"
+    old_workspace.mkdir()
+    old_repository = old_workspace / "app"
+    old_branch = f"praxis/{requirement_id}"
+    expected_branch = f"praxis/{workspace_name}"
+    binding_id = f"WT-{requirement_id}--app"
+    store.set(
+        "worktree",
+        binding_id,
+        {
+            "binding_id": binding_id,
+            "requirement_id": requirement_id,
+            "repository_id": "app",
+            "branch": expected_branch,
+            "path": str(expected_workspace),
+            "repository_path": str(expected_repository),
+            "status": "migrating",
+            "migration_old_workspace_path": str(old_workspace),
+            "migration_old_repository_path": str(old_repository),
+            "migration_old_branch": old_branch,
+            "migration_previous_status": "blocked",
+        },
+    )
+
+    def run(command, cwd, environment):
+        if command[:3] == ["git", "branch", "--show-current"]:
+            return subprocess.CompletedProcess(command, 0, expected_branch + "\n", "")
+        if command[:3] == ["git", "worktree", "move"]:
+            Path(command[3]).rename(Path(command[4]))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(CodeGraphService, "_detect_version", staticmethod(lambda: "test"))
+    monkeypatch.setattr(
+        CodeGraphService,
+        "enqueue",
+        lambda self, *, binding_id="": Result(
+            True, "CODEGRAPH_QUEUED", data={"job_id": "CGJ-RECOVERED"}
+        ),
+    )
+    recovered = WorktreeService(tmp_path, run=run).migrate_name(requirement_id, "app")
+
+    assert recovered.ok and recovered.code == "WORKTREE_NAME_MIGRATION_RECOVERED"
+    assert recovered.data["status"] == "active"
+    assert recovered.data["repository_path"] == str(old_repository)
+    assert recovered.data["branch"] == old_branch
+    assert old_repository.is_dir() and not expected_repository.exists()
+
+
+def test_worktree_creation_stays_active_when_codegraph_queueing_fails(
     tmp_path: Path,
 ) -> None:
     repo = tmp_path / "repo"
@@ -335,20 +796,31 @@ def test_worktree_creation_keeps_binding_blocked_when_codegraph_initialization_f
         ),
     ).create_for_requirement(requirement["requirement_id"], "app", None)
 
-    assert result.code == "WORKTREE_CODEGRAPH_INIT_FAILED"
+    assert result.ok
+    assert result.code == "OK"
     binding = store.get("worktree", f"WT-{requirement['requirement_id']}--app")
     assert binding is not None
-    assert binding["status"] == "blocked"
+    assert binding["status"] == "active"
     assert binding["codegraph_status"] == "CODEGRAPH_NOT_AVAILABLE"
 
 
-def test_worktree_codegraph_busy_keeps_binding_initializing(tmp_path: Path) -> None:
+def test_worktree_codegraph_busy_keeps_binding_active(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    worktree = tmp_path / "worktree"
+    repo.mkdir()
+    worktree.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "local")],
+    )
     store = StateStore(tmp_path)
     binding = {
         "binding_id": "WT-REQ-TEST--app",
         "requirement_id": "REQ-TEST",
         "repository_id": "app",
-        "repository_path": str(tmp_path / "worktree"),
+        "repository_path": str(worktree),
     }
     service = WorktreeService(
         tmp_path,
@@ -361,13 +833,12 @@ def test_worktree_codegraph_busy_keeps_binding_initializing(tmp_path: Path) -> N
 
     result = service._activate_binding(store, binding["binding_id"], binding)
 
-    assert not result.ok
-    assert result.code == "WORKTREE_CODEGRAPH_INITIALIZING"
+    assert result.ok
+    assert result.code == "OK"
     persisted = store.get("worktree", binding["binding_id"])
     assert persisted is not None
-    assert persisted["status"] == "initializing"
-    assert persisted["codegraph_attempt"] == 1
-    assert "codegraph_started_at" in persisted
+    assert persisted["status"] == "active"
+    assert persisted["codegraph_status"] == "CODEGRAPH_SYNC_BUSY"
     assert "codegraph_completed_at" not in persisted
 
 

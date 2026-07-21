@@ -166,6 +166,16 @@ def test_agent_configs_are_thin_and_share_session_grant(tmp_path: Path) -> None:
         assert "SQL_WHERE_REQUIRED" not in content
         assert "GATE_PATH_OUT_OF_SCOPE" not in content
 
+        receipt = sessions.receipt(
+            started.data["session_id"],
+            changed_paths=["src/app.py", "src/app.py"],
+            decisions=["复用现有服务"],
+            blockers=[],
+            follow_up="父会话继续门禁",
+        )
+        assert receipt.ok
+        assert receipt.data["changed_paths"] == ["src/app.py"]
+
 
 def test_agent_install_and_safe_launch_create_workspace_owned_descriptors(
     tmp_path: Path,
@@ -268,6 +278,10 @@ def test_artifact_registration_indexes_and_verifies_content(tmp_path: Path) -> N
     added = artifacts.add(requirement_id, "test-report", report, stage="verify")
 
     assert added.ok
+    report.write_text("109 tests passed")
+    refreshed = artifacts.add(requirement_id, "test-report", report, stage="verify")
+    assert refreshed.code == "ARTIFACT_REFRESHED"
+    assert refreshed.data["artifact_id"] == added.data["artifact_id"]
     assert artifacts.list(requirement_id).data["artifacts"][0]["artifact_id"] == added.data[
         "artifact_id"
     ]

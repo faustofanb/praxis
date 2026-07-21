@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from praxis.result import Result
@@ -19,7 +19,7 @@ class ApprovalService:
         self,
         requirement_id: str,
         scope: str,
-        entries: list[str],
+        entries: Sequence[str],
         *,
         user_evidence: str,
         authorized_by_user: bool,
@@ -111,8 +111,16 @@ class ExecutionBudgetService:
             "limit": _BUDGET_LIMITS[kind],
         }
         if int(record["used"]) >= int(record["limit"]):
-            audit_id = self.store.audit("execution.budget_exhausted", "EXECUTION_BUDGET_EXHAUSTED", record)
-            return Result(False, "EXECUTION_BUDGET_EXHAUSTED", data={**record, "audit_id": audit_id})
+            audit_id = self.store.audit(
+                "execution.budget_exhausted",
+                "EXECUTION_BUDGET_EXHAUSTED",
+                record,
+            )
+            return Result(
+                False,
+                "EXECUTION_BUDGET_EXHAUSTED",
+                data={**record, "audit_id": audit_id},
+            )
         record.update(
             used=int(record["used"]) + 1,
             updated_at=datetime.now(UTC).isoformat(),

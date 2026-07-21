@@ -58,7 +58,11 @@ def test_context_build_keeps_required_facts_and_persists_manifest(tmp_path: Path
     routed = next(
         event for event in StateStore(tmp_path).audit_events() if event["event"] == "skill.routed"
     )
-    assert routed["details"]["skills"] == ["dbx-database-investigation"]
+    assert routed["details"]["skills"] == [
+        "dbx-database-investigation",
+        "ponytail",
+        "praxis-requirement-workflow",
+    ]
 
 
 def test_context_build_fails_instead_of_dropping_required_fragments(tmp_path: Path) -> None:
