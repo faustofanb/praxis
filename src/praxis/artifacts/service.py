@@ -106,6 +106,13 @@ class ArtifactService:
             },
         )
 
+    def refresh_index(self, requirement_id: str) -> Result:
+        requirement = self.store.requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        self._write_index(requirement)
+        return Result(True, data={"requirement_id": requirement_id})
+
     def _write_index(self, requirement: dict[str, Any]) -> None:
         workspace = WorkspaceService(self.root).load()
         requirement_root = RequirementPathPolicy(

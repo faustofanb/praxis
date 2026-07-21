@@ -563,6 +563,13 @@ class PraxisApplication:
             return worktree.create_for_requirement(
                 values["requirement_id"], values["repository_id"], values.get("stage")
             )
+        if action == "migrate-name":
+            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            if not skill_gate.ok:
+                return skill_gate
+            return worktree.migrate_name(
+                values["requirement_id"], values["repository_id"]
+            )
         if action == "list":
             return worktree.list()
         if action == "remove":

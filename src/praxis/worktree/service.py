@@ -9,11 +9,14 @@ import shutil
 import subprocess
 from collections.abc import Callable, Sequence
 from contextlib import suppress
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from praxis.artifacts.service import ArtifactService
 from praxis.codegraph.service import CodeGraphService
+from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
@@ -31,6 +34,17 @@ _STAGES = {
     "review": (6, "代码审查"),
     "release": (7, "发布验证"),
 }
+_GIT_REF_UNSAFE = re.compile(r"[\x00-\x20\x7f~^:?*\[\]\\]+")
+
+
+@dataclass(frozen=True, slots=True)
+class WorktreeNames:
+    requirement_id: str
+    short_name_snapshot: str
+    display_slug: str
+    workspace_name: str
+    worktree_display_name: str
+    branch_name: str
 
 
 def worktree_binding_id(requirement_id: str, repository_id: str) -> str:
@@ -77,6 +91,119 @@ class WorktreeService:
         self.root = Path(root)
         self.run = run or self._run
         self.initialize_graph = initialize_graph or self._initialize_graph
+
+    @staticmethod
+    def _build_names(
+        requirement_id: str,
+        short_name: str,
+        repository_id: str,
+    ) -> WorktreeNames:
+        policy = RequirementPathPolicy(Path("."))
+        policy.validate_requirement_id(requirement_id)
+        normalized = policy.validate_short_name(short_name)
+        slug = _GIT_REF_UNSAFE.sub("-", normalized)
+        while ".." in slug:
+            slug = slug.replace("..", "-")
+        slug = slug.replace("@{", "-")
+        slug = re.sub(r"-+", "-", slug).strip(".-")
+        if slug.casefold().endswith(".lock"):
+            slug = f"{slug[:-5]}-lock"
+        if not slug:
+            raise ValueError("需求简称清理后不能为空")
+        workspace_name = f"{requirement_id}__{slug}"
+        return WorktreeNames(
+            requirement_id=requirement_id,
+            short_name_snapshot=normalized,
+            display_slug=slug,
+            workspace_name=workspace_name,
+            worktree_display_name=f"{workspace_name}__{repository_id}",
+            branch_name=f"praxis/{workspace_name}",
+        )
+
+    def _names_for_requirement(
+        self,
+        store: StateStore,
+        requirement: dict[str, Any],
+        repository_id: str,
+    ) -> WorktreeNames:
+        requirement_id = str(requirement["requirement_id"])
+        group_id = f"WTG-{requirement_id}"
+        group = store.get("worktree_group", group_id)
+        if group:
+            workspace_name = str(group["workspace_name"])
+            return WorktreeNames(
+                requirement_id=requirement_id,
+                short_name_snapshot=str(group["short_name_snapshot"]),
+                display_slug=str(group["display_slug"]),
+                workspace_name=workspace_name,
+                worktree_display_name=f"{workspace_name}__{repository_id}",
+                branch_name=str(group["branch_name"]),
+            )
+        legacy_slug = ""
+        prefix = f"{requirement_id}__"
+        for binding in store.list_scope("worktree"):
+            if binding.get("requirement_id") != requirement_id:
+                continue
+            legacy_workspace = Path(str(binding.get("path", ""))).name
+            if legacy_workspace.startswith(prefix):
+                legacy_slug = legacy_workspace.removeprefix(prefix)
+                break
+        names = self._build_names(
+            requirement_id,
+            legacy_slug or str(requirement["short_name"]),
+            repository_id,
+        )
+        group = {
+            "group_id": group_id,
+            "requirement_id": requirement_id,
+            "short_name_snapshot": names.short_name_snapshot,
+            "display_slug": names.display_slug,
+            "workspace_name": names.workspace_name,
+            "branch_name": names.branch_name,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        store.set("worktree_group", group_id, group)
+        store.audit("worktree.group_named", "OK", group)
+        return names
+
+    def _validate_display_names(
+        self,
+        names: WorktreeNames,
+        repository_id: str,
+        repo: Path,
+    ) -> Result:
+        if names.requirement_id not in names.worktree_display_name or (
+            names.display_slug not in names.worktree_display_name
+        ):
+            return Result(False, "WORKTREE_DISPLAY_NAME_INVALID", data=asdict(names))
+        if names.requirement_id not in names.branch_name or (
+            names.display_slug not in names.branch_name
+        ):
+            return Result(False, "WORKTREE_BRANCH_NAME_INVALID", data=asdict(names))
+        if not names.worktree_display_name.endswith(f"__{repository_id}"):
+            return Result(False, "WORKTREE_DISPLAY_NAME_INVALID", data=asdict(names))
+        reference = self._git(
+            ["check-ref-format", "--branch", names.branch_name],
+            cwd=repo,
+            failure_code="WORKTREE_BRANCH_NAME_INVALID",
+        )
+        if not reference.ok:
+            return reference
+        return Result(True, data=asdict(names))
+
+    @staticmethod
+    def _binding_matches_names(
+        binding: dict[str, Any], names: WorktreeNames
+    ) -> bool:
+        return (
+            str(binding.get("workspace_name", "")) == names.workspace_name
+            and str(binding.get("worktree_display_name", ""))
+            == names.worktree_display_name
+            and str(binding.get("branch", "")) == names.branch_name
+            and Path(str(binding.get("path", ""))).name == names.workspace_name
+            and Path(str(binding.get("repository_path", ""))).name
+            == names.worktree_display_name
+        )
 
     def _initialize_graph(self, project_id: str, repository_path: Path) -> Result:
         return CodeGraphService(
@@ -526,23 +653,52 @@ class WorktreeService:
             return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
         if project.system_id not in requirement["systems"]:
             return Result(False, "WORKTREE_SYSTEM_MISMATCH")
-        branch = f"praxis/{requirement_id}"
+        store = StateStore(self.root)
+        names = self._names_for_requirement(store, requirement, repository_id)
+        repo = (self.root / project.path).resolve()
+        display_names = self._validate_display_names(names, repository_id, repo)
+        if not display_names.ok:
+            return display_names
+        branch = names.branch_name
         workspace_path = (
             self.root
             / ".worktrees"
-            / f"{requirement_id}__{requirement['short_name']}"
+            / names.workspace_name
         ).resolve()
-        repository_path = (workspace_path / repository_id).resolve()
-        repo = (self.root / project.path).resolve()
-        store = StateStore(self.root)
+        repository_path = (workspace_path / names.worktree_display_name).resolve()
         binding_id = worktree_binding_id(requirement_id, repository_id)
         existing = resolve_worktree_binding(store, binding_id)
         if existing and existing[1].get("status") in {
             "active",
             "blocked",
             "initializing",
+            "migrating",
         }:
             binding = existing[1]
+            if binding.get("status") == "migrating":
+                return Result(
+                    False,
+                    "WORKTREE_NAME_MIGRATION_IN_PROGRESS",
+                    data={"binding_id": existing[0]},
+                )
+            if not self._binding_matches_names(binding, names):
+                return Result(
+                    False,
+                    "WORKTREE_NAME_MIGRATION_REQUIRED",
+                    data={
+                        "binding_id": existing[0],
+                        "current": {
+                            "workspace_path": binding.get("path"),
+                            "repository_path": binding.get("repository_path"),
+                            "branch": binding.get("branch"),
+                        },
+                        "expected": {
+                            "workspace_path": str(workspace_path),
+                            "repository_path": str(repository_path),
+                            "branch": branch,
+                        },
+                    },
+                )
             stages = list(dict.fromkeys([*binding.get("stages", []), stage]))
             binding.update(stage=stage, stages=stages)
             return self._activate_binding(
@@ -577,6 +733,10 @@ class WorktreeService:
         binding = {
             "binding_id": binding_id,
             "group_id": f"WTG-{requirement_id}",
+            "workspace_name": names.workspace_name,
+            "worktree_display_name": names.worktree_display_name,
+            "display_slug": names.display_slug,
+            "short_name_snapshot": names.short_name_snapshot,
             "requirement_id": requirement_id,
             "repository_id": repository_id,
             "stage": stage,
@@ -645,6 +805,361 @@ class WorktreeService:
                         )
                 items.append(enriched)
         return Result(True, data={"items": items})
+
+    def migrate_name(self, requirement_id: str, repository_id: str) -> Result:
+        store = StateStore(self.root)
+        requirement = store.requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        project = WorkspaceService(self.root).project(repository_id)
+        if project.system_id not in requirement["systems"]:
+            return Result(False, "WORKTREE_SYSTEM_MISMATCH")
+        binding_id = worktree_binding_id(requirement_id, repository_id)
+        resolved = resolve_worktree_binding(store, binding_id)
+        if not resolved:
+            return Result(False, "WORKTREE_BINDING_NOT_FOUND", data={"binding_id": binding_id})
+        binding_key, binding = resolved
+        if binding.get("status") not in {"active", "blocked", "initializing"}:
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_STATUS_INVALID",
+                data={"status": binding.get("status")},
+            )
+        names = self._names_for_requirement(store, requirement, repository_id)
+        repo = (self.root / project.path).resolve()
+        display_names = self._validate_display_names(names, repository_id, repo)
+        if not display_names.ok:
+            return display_names
+        expected_workspace = (self.root / ".worktrees" / names.workspace_name).resolve()
+        expected_repository = (
+            expected_workspace / names.worktree_display_name
+        ).resolve()
+        if self._binding_matches_names(binding, names):
+            return Result(
+                True,
+                "WORKTREE_NAME_ALREADY_CURRENT",
+                data={**binding, **asdict(names)},
+            )
+        old_workspace = Path(str(binding["path"])).resolve()
+        old_repository = Path(str(binding["repository_path"])).resolve()
+        old_branch = str(binding["branch"])
+        if not old_repository.is_dir():
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_SOURCE_MISSING",
+                data={"path": str(old_repository)},
+            )
+        if expected_repository.exists():
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_TARGET_EXISTS",
+                data={"path": str(expected_repository)},
+            )
+        current_branch = self._git(
+            ["branch", "--show-current"],
+            cwd=old_repository,
+            failure_code="WORKTREE_MIGRATION_BRANCH_READ_FAILED",
+        )
+        if not current_branch.ok:
+            return current_branch
+        if current_branch.data["stdout"] != old_branch:
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_BRANCH_MISMATCH",
+                data={
+                    "binding_branch": old_branch,
+                    "actual_branch": current_branch.data["stdout"],
+                },
+            )
+        collision = self._git(
+            ["branch", "--list", names.branch_name],
+            cwd=repo,
+            failure_code="WORKTREE_MIGRATION_BRANCH_CHECK_FAILED",
+        )
+        if not collision.ok:
+            return collision
+        if collision.data["stdout"] and names.branch_name != old_branch:
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_BRANCH_EXISTS",
+                data={"branch": names.branch_name},
+            )
+
+        old_binding = dict(binding)
+        old_status = str(binding.get("status", "blocked"))
+        old_graph = CodeGraphService(
+            self.root,
+            repository_id,
+            repo=old_repository,
+            codegraph_version="unknown",
+        )
+        old_graph_metadata = store.get("codegraph", old_graph.key)
+        old_graph_operation = store.get("codegraph_operation", old_graph.key)
+        if old_graph_operation and old_graph_operation.get("status") == "running":
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_CODEGRAPH_BUSY",
+                data={"operation": old_graph_operation},
+            )
+        if (old_repository / ".codegraph" / "lock").exists():
+            return Result(
+                False,
+                "WORKTREE_MIGRATION_CODEGRAPH_BUSY",
+                data={"path": str(old_repository / ".codegraph" / "lock")},
+            )
+        artifact_snapshots = self._artifact_snapshots(requirement_id, old_repository)
+        expected_workspace.mkdir(parents=True, exist_ok=True)
+        backup_graph = expected_repository / ".codegraph.praxis-name-migration"
+        moved = False
+        branch_renamed = False
+        binding.update(status="migrating", migration_started_at=datetime.now(UTC).isoformat())
+        store.set("worktree", binding_key, binding)
+        store.audit(
+            "worktree.name_migration_started",
+            "OK",
+            {
+                "binding_id": binding_key,
+                "old_repository_path": str(old_repository),
+                "new_repository_path": str(expected_repository),
+                "old_branch": old_branch,
+                "new_branch": names.branch_name,
+            },
+        )
+        failure: Result | None = None
+        try:
+            moved_result = self._git(
+                ["worktree", "move", str(old_repository), str(expected_repository)],
+                cwd=repo,
+                failure_code="WORKTREE_MIGRATION_MOVE_FAILED",
+            )
+            if not moved_result.ok:
+                failure = moved_result
+                raise RuntimeError(moved_result.code)
+            moved = True
+            if names.branch_name != old_branch:
+                renamed = self._git(
+                    ["branch", "-m", names.branch_name],
+                    cwd=expected_repository,
+                    failure_code="WORKTREE_MIGRATION_BRANCH_RENAME_FAILED",
+                )
+                if not renamed.ok:
+                    failure = renamed
+                    raise RuntimeError(renamed.code)
+                branch_renamed = True
+            graph_path = expected_repository / ".codegraph"
+            if backup_graph.exists():
+                failure = Result(
+                    False,
+                    "WORKTREE_MIGRATION_GRAPH_BACKUP_EXISTS",
+                    data={"path": str(backup_graph)},
+                )
+                raise RuntimeError(failure.code)
+            if graph_path.exists():
+                graph_path.rename(backup_graph)
+            store.delete("codegraph", old_graph.key)
+            store.delete("codegraph_operation", old_graph.key)
+            binding.update(
+                **asdict(names),
+                branch=names.branch_name,
+                path=str(expected_workspace),
+                repository_path=str(expected_repository),
+                status="initializing",
+            )
+            store.set("worktree", binding_key, binding)
+            self._relocate_artifacts(artifact_snapshots, old_repository, expected_repository)
+            refreshed = ArtifactService(self.root).refresh_index(requirement_id)
+            if not refreshed.ok:
+                failure = refreshed
+                raise RuntimeError(refreshed.code)
+            graph = self.initialize_graph(repository_id, expected_repository)
+            if not graph.ok:
+                failure = Result(
+                    False,
+                    "WORKTREE_MIGRATION_CODEGRAPH_FAILED",
+                    data={"cause": graph.code, "codegraph": graph.data},
+                    diagnostics=graph.diagnostics,
+                )
+                raise RuntimeError(failure.code)
+            cleanup_pending = False
+            if backup_graph.exists():
+                try:
+                    shutil.rmtree(backup_graph)
+                except OSError:
+                    cleanup_pending = True
+            binding.update(
+                status=old_status,
+                migration_completed_at=datetime.now(UTC).isoformat(),
+                codegraph_status=graph.code,
+                codegraph_backup_cleanup_pending=cleanup_pending,
+            )
+            store.set("worktree", binding_key, binding)
+            with suppress(OSError):
+                old_workspace.rmdir()
+            audit_id = store.audit("worktree.name_migrated", "OK", binding)
+            return Result(
+                True,
+                "WORKTREE_NAME_MIGRATED",
+                data={**binding, "audit_id": audit_id},
+                diagnostics=graph.diagnostics,
+            )
+        except (OSError, RuntimeError) as error:
+            rollback = self._rollback_name_migration(
+                store=store,
+                binding_key=binding_key,
+                old_binding=old_binding,
+                old_repository=old_repository,
+                expected_repository=expected_repository,
+                old_branch=old_branch,
+                moved=moved,
+                branch_renamed=branch_renamed,
+                backup_graph=backup_graph,
+                old_graph_key=old_graph.key,
+                old_graph_metadata=old_graph_metadata,
+                old_graph_operation=old_graph_operation,
+                artifact_snapshots=artifact_snapshots,
+            )
+            details = {
+                "binding_id": binding_key,
+                "cause": failure.code if failure else type(error).__name__,
+                "rollback": rollback.data,
+            }
+            audit_id = store.audit(
+                "worktree.name_migration_failed",
+                "WORKTREE_NAME_MIGRATION_FAILED",
+                details,
+            )
+            return Result(
+                False,
+                "WORKTREE_NAME_MIGRATION_FAILED",
+                data={**details, "audit_id": audit_id},
+                diagnostics=failure.diagnostics if failure else [],
+            )
+
+    def _artifact_snapshots(
+        self, requirement_id: str, old_repository: Path
+    ) -> dict[str, dict[str, Any]]:
+        snapshots = {}
+        for artifact in StateStore(self.root).list_scope("artifact"):
+            source = Path(str(artifact.get("source_path", ""))).resolve()
+            if artifact.get("requirement_id") == requirement_id and source.is_relative_to(
+                old_repository
+            ):
+                snapshots[str(artifact["artifact_id"])] = dict(artifact)
+        return snapshots
+
+    def _relocate_artifacts(
+        self,
+        snapshots: dict[str, dict[str, Any]],
+        source_root: Path,
+        destination_root: Path,
+    ) -> None:
+        store = StateStore(self.root)
+        for artifact_id, artifact in snapshots.items():
+            relative = Path(str(artifact["source_path"])).resolve().relative_to(source_root)
+            relocated = dict(artifact)
+            relocated["source_path"] = str(destination_root / relative)
+            store.set("artifact", artifact_id, relocated)
+
+    def _rollback_name_migration(
+        self,
+        *,
+        store: StateStore,
+        binding_key: str,
+        old_binding: dict[str, Any],
+        old_repository: Path,
+        expected_repository: Path,
+        old_branch: str,
+        moved: bool,
+        branch_renamed: bool,
+        backup_graph: Path,
+        old_graph_key: str,
+        old_graph_metadata: dict[str, Any] | None,
+        old_graph_operation: dict[str, Any] | None,
+        artifact_snapshots: dict[str, dict[str, Any]],
+    ) -> Result:
+        errors: list[str] = []
+        if moved:
+            graph_path = expected_repository / ".codegraph"
+            if graph_path.exists():
+                try:
+                    shutil.rmtree(graph_path)
+                except OSError as error:
+                    errors.append(f"codegraph-new:{error}")
+            if backup_graph.exists():
+                try:
+                    backup_graph.rename(graph_path)
+                except OSError as error:
+                    errors.append(f"codegraph-backup:{error}")
+            if branch_renamed:
+                restored_branch = self._git(
+                    ["branch", "-m", old_branch],
+                    cwd=expected_repository,
+                    failure_code="WORKTREE_MIGRATION_BRANCH_ROLLBACK_FAILED",
+                )
+                if not restored_branch.ok:
+                    errors.append(restored_branch.code)
+            restored_path = self._git(
+                ["worktree", "move", str(expected_repository), str(old_repository)],
+                cwd=(self.root / WorkspaceService(self.root).project(
+                    str(old_binding["repository_id"])
+                ).path).resolve(),
+                failure_code="WORKTREE_MIGRATION_PATH_ROLLBACK_FAILED",
+            )
+            if not restored_path.ok:
+                errors.append(restored_path.code)
+        restored_to_old_path = old_repository.is_dir() and not expected_repository.exists()
+        new_graph = CodeGraphService(
+            self.root,
+            str(old_binding["repository_id"]),
+            repo=expected_repository,
+            codegraph_version="unknown",
+        )
+        store.delete("codegraph", new_graph.key)
+        store.delete("codegraph_operation", new_graph.key)
+        if restored_to_old_path:
+            if old_graph_metadata is not None:
+                store.set("codegraph", old_graph_key, old_graph_metadata)
+            if old_graph_operation is not None:
+                store.set("codegraph_operation", old_graph_key, old_graph_operation)
+            for artifact_id, artifact in artifact_snapshots.items():
+                store.set("artifact", artifact_id, artifact)
+            refreshed = ArtifactService(self.root).refresh_index(
+                str(old_binding["requirement_id"])
+            )
+            if not refreshed.ok:
+                errors.append(refreshed.code)
+            restored_binding = dict(old_binding)
+            if errors:
+                restored_binding.update(
+                    status="blocked",
+                    migration_rollback_incomplete=True,
+                )
+            store.set("worktree", binding_key, restored_binding)
+        else:
+            incomplete = dict(old_binding)
+            actual_branch = old_branch
+            if expected_repository.is_dir():
+                branch = self._git(
+                    ["branch", "--show-current"],
+                    cwd=expected_repository,
+                    failure_code="WORKTREE_MIGRATION_BRANCH_READ_FAILED",
+                )
+                if branch.ok:
+                    actual_branch = str(branch.data["stdout"])
+            incomplete.update(
+                status="blocked",
+                migration_rollback_incomplete=True,
+                repository_path=str(expected_repository),
+                path=str(expected_repository.parent),
+                branch=actual_branch,
+            )
+            store.set("worktree", binding_key, incomplete)
+            errors.append("WORKTREE_MIGRATION_PATH_NOT_RESTORED")
+        return Result(
+            not errors,
+            "WORKTREE_NAME_MIGRATION_ROLLED_BACK" if not errors else "WORKTREE_NAME_MIGRATION_ROLLBACK_INCOMPLETE",
+            data={"errors": errors},
+        )
 
     def remove(self, branch: str) -> Result:
         store = StateStore(self.root)

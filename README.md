@@ -71,6 +71,7 @@ Worktrunk is the only worktree implementation:
 
 ```bash
 praxis worktree create REQ-20260720-001 --repository backend --stage backend --json
+praxis worktree migrate-name REQ-20260720-001 --repository backend --json
 praxis worktree list --json
 praxis worktree install-hooks --project backend --json
 praxis worktree merge main --json       # run inside the source worktree
@@ -85,6 +86,23 @@ the updated local default. If the local branch is not checked out, Worktrunk cre
 worktree for it; Praxis never switches the user's current branch for synchronization. Fetch failures,
 merge conflicts, dirty template worktrees, and ambiguous template configuration block creation
 instead of falling back to another base.
+
+Requirement workspaces keep the aggregate directory and make both Fork-visible names readable:
+
+```text
+.worktrees/REQ-20260721-003__汽车件简单时效MES_PDA/
+└── REQ-20260721-003__汽车件简单时效MES_PDA__web
+
+praxis/REQ-20260721-003__汽车件简单时效MES_PDA
+```
+
+The first generated display slug is persisted in `worktree_group`, so a later requirement-title
+rename does not silently move paths or branches. Internal identity remains
+`WT-<requirement-id>--<repository-id>`. Existing bindings with legacy names must use
+`worktree migrate-name`; create fails closed with `WORKTREE_NAME_MIGRATION_REQUIRED`. Migration
+moves the Git worktree, renames the branch, rewrites affected artifact source paths, rebuilds
+CodeGraph for the new path, updates the binding only after the move, and compensates back to the old
+name when any required step fails.
 
 Repositories may declare ignored local runtime files explicitly. Praxis copies only these paths
 from the configured main repository into a newly created requirement worktree before CodeGraph

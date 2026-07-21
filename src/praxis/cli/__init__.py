@@ -216,6 +216,10 @@ def _parser() -> argparse.ArgumentParser:
     create_worktree.add_argument("--repository", required=True)
     create_worktree.add_argument("--stage")
     _json_flag(create_worktree)
+    migrate_worktree = worktree.add_parser("migrate-name")
+    migrate_worktree.add_argument("requirement_id")
+    migrate_worktree.add_argument("--repository", required=True)
+    _json_flag(migrate_worktree)
     remove_worktree = worktree.add_parser("remove")
     remove_worktree.add_argument("branch")
     _json_flag(remove_worktree)
@@ -598,6 +602,11 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "requirement_id": args.requirement_id,
                 "repository_id": args.repository,
                 "stage": args.stage,
+            }
+        if args.action == "migrate-name":
+            return "worktree.migrate-name", {
+                "requirement_id": args.requirement_id,
+                "repository_id": args.repository,
             }
         if args.action == "status":
             return "worktree.list", {}

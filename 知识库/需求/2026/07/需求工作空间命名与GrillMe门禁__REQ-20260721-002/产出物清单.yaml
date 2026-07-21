@@ -27,3 +27,6 @@
   - 类型: guidance
     路径: skills/praxis-requirement-workflow/SKILL.md
     说明: 工作树环境准备与离线失败阻断规则
+  - 类型: source
+    路径: src/praxis/worktree/service.py
+    说明: Fork 可见命名、稳定 group 与事务迁移
