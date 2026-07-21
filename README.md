@@ -50,6 +50,15 @@ praxis requirement new \
 
 `praxis.toml` stores workspace and system facts. Chinese Markdown/YAML under `知识库/` stores authoritative human knowledge. SQLite at `.praxis/workspace.db` stores requirement state, Outbox projection work, runtime state, and the audit hash chain.
 
+`praxis workspace bootstrap` generates or refreshes the Praxis-managed blocks in root-level
+`AGENTS.md` for Codex and `CLAUDE.md` for Claude Code. Text outside
+`<!-- praxis:managed:start/end -->` is preserved. Existing workspaces can refresh only these files,
+without CodeGraph, database discovery, or Skill promotion side effects:
+
+```bash
+praxis workspace guidance --json
+```
+
 Creating a requirement writes its knowledge documents immediately but does not create a worktree.
 Investigation and planning stay in the knowledge vault. Create an isolated worktree only after the
 plan confirms that code must change, and always before the first code edit.
@@ -127,6 +136,31 @@ praxis skill approve business.ifc_mom.backend.development \
   --catalog-root ./skills --yes --json
 ```
 
+Node routing combines workflow node, intent, system, business domain, repository kind, Agent role,
+risk, artifact type, installed providers, current approvals, and context budget. It distinguishes
+required, conditional, approval-required, unavailable, and budget-omitted providers:
+
+```bash
+praxis skill route-node \
+  --node investigating \
+  --requirement REQ-20260721-001 \
+  --project backend \
+  --agent-role investigator \
+  --intent "调查 SQL 缺陷并定位影响范围" \
+  --json
+praxis skill invoke brainstorming \
+  --requirement REQ-20260721-001 --node investigating --json
+praxis skill complete SKI-20260721T120000-1234ABCD --json
+praxis skill gate --requirement REQ-20260721-001 --node investigating --json
+```
+
+`skill.route_planned`, `skill.invoked`, and `skill.completed` are distinct audit events. A command
+history or a routed context fragment is not invocation evidence. Tests, quality review, reviewer or
+tester Agents, subagents, verification, and branch-finishing Skills remain pending until the user
+explicitly approves the current scope. Bootstrap reports missing external providers and never
+installs them automatically. The router discovers installed providers in the standard Codex,
+shared Agent, and Claude Skill directories and records the selected `SKILL.md` path and content hash.
+
 The `dbx-database-investigation` Skill supplies the investigation workflow; the database service owns
 connection registration, authorization, SQL safety, execution, and audit.
 
@@ -142,6 +176,7 @@ praxis context build \
   --project backend \
   --stage backend \
   --agent-role coder \
+  --workflow-node in_progress \
   --allow-path 'src/**' \
   --allow-path 'tests/**' \
   --json

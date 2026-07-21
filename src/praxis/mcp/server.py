@@ -169,6 +169,52 @@ def create_server(root: Path | str) -> FastMCP:
         return invoke(session_id, "skill.route", {"intent": intent, "budget": budget})
 
     @server.tool()
+    def praxis_skill_route_node(
+        session_id: str, arguments: dict[str, Any]
+    ) -> dict[str, Any]:
+        return invoke(session_id, "skill.plan", arguments)
+
+    @server.tool()
+    def praxis_skill_invoke(
+        session_id: str,
+        requirement_id: str,
+        node: str,
+        skill_id: str,
+        approved: bool = False,
+    ) -> dict[str, Any]:
+        return invoke(
+            session_id,
+            "skill.invoke",
+            {
+                "requirement_id": requirement_id,
+                "node": node,
+                "skill_id": skill_id,
+                "session_id": session_id,
+                "approved": approved,
+            },
+        )
+
+    @server.tool()
+    def praxis_skill_complete(
+        session_id: str, invocation_id: str, outcome: str = "completed"
+    ) -> dict[str, Any]:
+        return invoke(
+            session_id,
+            "skill.complete",
+            {"invocation_id": invocation_id, "outcome": outcome},
+        )
+
+    @server.tool()
+    def praxis_skill_gate(
+        session_id: str, requirement_id: str, node: str
+    ) -> dict[str, Any]:
+        return invoke(
+            session_id,
+            "skill.gate",
+            {"requirement_id": requirement_id, "node": node},
+        )
+
+    @server.tool()
     def praxis_gate_run(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return invoke(session_id, "gate.run", arguments)
 

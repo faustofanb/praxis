@@ -121,7 +121,12 @@ def test_workspace_requirement_and_skill_dispatch(application: PraxisApplication
         "system.add",
         {"system_id": "demo-system", "name": "演示系统", "domains": ["demo"]},
     ).ok
-    assert application.execute("workspace.bootstrap").ok
+    bootstrap = application.execute("workspace.bootstrap")
+    assert bootstrap.ok
+    assert {Path(path).name for path in bootstrap.data["agent_guidance"]["files"]} == {
+        "AGENTS.md",
+        "CLAUDE.md",
+    }
     assert application.execute(
         "requirement.new",
         {
@@ -135,6 +140,29 @@ def test_workspace_requirement_and_skill_dispatch(application: PraxisApplication
     assert application.execute("skill.inspect", {"id": "dbx-database-investigation"}).ok
     uri = "praxis://skills/system/dbx-database-investigation"
     assert application.execute("skill.resource", {"uri": uri}).ok
+
+
+def test_requirement_analyze_does_not_skip_investigating_node(
+    application: PraxisApplication,
+) -> None:
+    assert application.execute(
+        "workspace.init", {"workspace_id": "demo", "name": "演示开发工作空间"}
+    ).ok
+    created = application.execute(
+        "requirement.new",
+        {
+            "short_name": "调查节点保留",
+            "request": "调查后再分析",
+            "systems": [],
+            "domains": [],
+        },
+    )
+    requirement_id = created.data["requirement_id"]
+
+    result = application.execute("requirement.analyze", {"requirement_id": requirement_id})
+
+    assert result.ok
+    assert result.data["status"] == "investigating"
 
 
 @pytest.mark.parametrize(

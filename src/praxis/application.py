@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from praxis import __version__
+from praxis.agents.guidance import AgentGuidanceService
 from praxis.agents.lifecycle import AgentLifecycle
 from praxis.agents.service import AgentSessionService
 from praxis.artifacts.service import ArtifactService
@@ -25,6 +26,11 @@ from praxis.result import Result
 from praxis.skills.candidates import SkillCandidateService
 from praxis.skills.importer import SkillImportService
 from praxis.skills.registry import Skill, SkillRegistry
+from praxis.skills.routing import (
+    NodeSkillRouter,
+    NodeSkillRoutingRequest,
+    SkillInvocationService,
+)
 from praxis.storage.sqlite import StateStore
 from praxis.tasks.service import TaskService
 from praxis.workspace.service import Project, WorkspaceService
@@ -77,6 +83,8 @@ class PraxisApplication:
         if operation == "workspace.validate":
             workspace = WorkspaceService(self.root).load()
             return Result(True, data={"schema_version": workspace["schema_version"]})
+        if operation == "workspace.guidance":
+            return AgentGuidanceService(self.root).render()
         if operation == "workspace.add":
             return WorkspaceService(self.root).add_project(
                 values["system_id"],
@@ -112,6 +120,9 @@ class PraxisApplication:
             return DomainService(self.root).merge(values["source"], values["target"])
         if operation == "workspace.bootstrap":
             workspace = WorkspaceService(self.root).load()
+            guidance = AgentGuidanceService(self.root).render()
+            if not guidance.ok:
+                return guidance
             initialized = []
             candidates = []
             promoted = []
@@ -140,6 +151,7 @@ class PraxisApplication:
                     "skill_candidates": candidates,
                     "business_skills": promoted,
                     "database_discovery": database.to_dict(),
+                    "agent_guidance": guidance.data,
                 },
             )
         if operation in {"requirement.create", "requirement.new"}:
@@ -160,8 +172,13 @@ class PraxisApplication:
                 values["requirement_id"], values["short_name"]
             )
         if operation == "requirement.transition":
+            target = RequirementStatus(values["status"])
+            if target not in {RequirementStatus.BLOCKED, RequirementStatus.CANCELLED}:
+                skill_gate = self._gate_current_skill_route(values["requirement_id"])
+                if not skill_gate.ok:
+                    return skill_gate
             return RequirementService(self.root).transition(
-                values["requirement_id"], RequirementStatus(values["status"])
+                values["requirement_id"], target
             )
         if operation == "requirement.analyze":
             requirements = RequirementService(self.root)
@@ -169,7 +186,15 @@ class PraxisApplication:
             if not current.ok:
                 return current
             if current.data["status"] == RequirementStatus.CAPTURED:
-                requirements.transition(values["requirement_id"], RequirementStatus.INVESTIGATING)
+                skill_gate = self._gate_current_skill_route(values["requirement_id"])
+                if not skill_gate.ok:
+                    return skill_gate
+                return requirements.transition(
+                    values["requirement_id"], RequirementStatus.INVESTIGATING
+                )
+            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            if not skill_gate.ok:
+                return skill_gate
             return requirements.transition(values["requirement_id"], RequirementStatus.ANALYZED)
         requirement_targets = {
             "requirement.plan": RequirementStatus.PLANNED,
@@ -181,8 +206,13 @@ class PraxisApplication:
             "requirement.cancel": RequirementStatus.CANCELLED,
         }
         if operation in requirement_targets:
+            requirement_id = values["requirement_id"]
+            if operation != "requirement.cancel":
+                skill_gate = self._gate_current_skill_route(requirement_id)
+                if not skill_gate.ok:
+                    return skill_gate
             return RequirementService(self.root).transition(
-                values["requirement_id"], requirement_targets[operation]
+                requirement_id, requirement_targets[operation]
             )
         if operation == "repair.projections":
             return RequirementService(self.root).repair_projections()
@@ -221,6 +251,46 @@ class PraxisApplication:
                     "skills": [_skill_data(skill) for skill in skills],
                     "context_budget": sum(skill.context_budget for skill in skills),
                 },
+            )
+        if operation == "skill.route-node":
+            project_id = values.get("project_id", "")
+            project = WorkspaceService(self.root).project(project_id) if project_id else None
+            return NodeSkillRouter(self.root).route(
+                NodeSkillRoutingRequest(
+                    node=values["node"],
+                    intent=values.get("intent", ""),
+                    requirement_id=values.get("requirement_id", ""),
+                    project_id=project_id,
+                    system_id=values.get(
+                        "system_id", project.system_id if project else ""
+                    ),
+                    business_domains=tuple(values.get("business_domains", [])),
+                    repository_kind=values.get(
+                        "repository_kind", project.kind if project else ""
+                    ),
+                    agent_role=values.get("agent_role", ""),
+                    artifact_types=tuple(values.get("artifact_types", [])),
+                    risks=tuple(values.get("risks", [])),
+                    available_skills=tuple(values.get("available_skills", [])),
+                    approved_skills=tuple(values.get("approved_skills", [])),
+                    token_budget=values.get("budget", 2_000),
+                )
+            )
+        if operation == "skill.invoke":
+            return SkillInvocationService(self.root).start(
+                values["requirement_id"],
+                values["node"],
+                values["skill_id"],
+                session_id=values.get("session_id", ""),
+                approved=values.get("approved", False),
+            )
+        if operation == "skill.complete":
+            return SkillInvocationService(self.root).complete(
+                values["invocation_id"], outcome=values.get("outcome", "completed")
+            )
+        if operation == "skill.gate":
+            return SkillInvocationService(self.root).gate(
+                values["requirement_id"], values["node"]
             )
         if operation == "skill.resource":
             content = self._skills().resource(values["uri"])
@@ -292,6 +362,11 @@ class PraxisApplication:
                     token_budget=values.get("token_budget", 24_000),
                     allowed_paths=tuple(values.get("allowed_paths", [])),
                     forbidden_paths=tuple(values.get("forbidden_paths", [])),
+                    workflow_node=values.get("workflow_node", "in_progress"),
+                    artifact_types=tuple(values.get("artifact_types", [])),
+                    risks=tuple(values.get("risks", [])),
+                    available_skills=tuple(values.get("available_skills", [])),
+                    approved_skills=tuple(values.get("approved_skills", [])),
                 )
             )
         if operation == "context.show":
@@ -410,6 +485,16 @@ class PraxisApplication:
         if operation == "runtime.diagnose":
             return WitrService(self.root).diagnose(values.get("arguments", []), explicit=True)
         return Result(False, "OPERATION_NOT_FOUND", data={"operation": operation})
+
+    def _gate_current_skill_route(self, requirement_id: str) -> Result:
+        store = StateStore(self.root)
+        requirement = store.requirement(requirement_id)
+        if not requirement:
+            return Result(True)
+        node = requirement["status"]
+        if not store.get("skill_route", f"{requirement_id}:{node}"):
+            return Result(True)
+        return SkillInvocationService(self.root).gate(requirement_id, node)
 
     def _codegraph(self, action: str, values: dict[str, Any]) -> Result:
         graph = CodeGraphService(self.root, values["project_id"])

@@ -10,14 +10,20 @@ required_tools = []
 triggers = ["brainstorm", "review", "context", "search", "prompt", "subagent", "debug", "test", "设计", "评审", "上下文", "搜索", "调试", "测试"]
 delegates = [
   "brainstorming",
+  "writing-plans",
   "code-quality-review",
   "context-degradation",
   "context-optimization",
   "file-search",
   "find-skills",
+  "java-coding-standards",
   "karpathy-guidelines",
   "prompt-engineering",
+  "receiving-code-review",
+  "requesting-code-review",
   "subagent-driven-development",
   "systematic-debugging",
   "testing-writing-guidelines",
+  "verification-before-completion",
+  "finishing-a-development-branch",
 ]

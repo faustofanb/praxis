@@ -84,6 +84,26 @@ def test_mcp_broker_blocks_ungranted_invocation_before_dispatch(tmp_path: Path) 
     assert calls == [("requirement.show", {"requirement_id": requirement_id})]
 
 
+def test_skill_capabilities_cannot_cross_requirement_scope(tmp_path: Path) -> None:
+    requirement_id = _workspace(tmp_path)
+    other = StateStore(tmp_path).create_requirement("另一个需求", "隔离范围", [], [])
+    broker = McpBrokerService(tmp_path)
+    broker.grant(
+        "SES-SKILL",
+        "investigator",
+        ["skill.plan", "skill.invoke", "skill.complete", "skill.gate"],
+        requirement_id=requirement_id,
+    )
+
+    result = broker.authorize(
+        "SES-SKILL",
+        "skill.plan",
+        {"requirement_id": other["requirement_id"], "node": "investigating"},
+    )
+
+    assert result.code == "MCP_REQUIREMENT_SCOPE_MISMATCH"
+
+
 def test_database_write_grant_still_cannot_bypass_sql_gate(tmp_path: Path) -> None:
     requirement_id = _workspace(tmp_path)
     store = StateStore(tmp_path)

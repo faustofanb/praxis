@@ -110,6 +110,11 @@ def test_context_cli_build_maps_traceability_inputs() -> None:
             "token_budget": 24_000,
             "allowed_paths": ["src/**"],
             "forbidden_paths": [],
+            "workflow_node": "in_progress",
+            "artifact_types": [],
+            "risks": [],
+            "available_skills": [],
+            "approved_skills": [],
         },
     )
 

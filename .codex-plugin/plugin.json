@@ -1,6 +1,6 @@
 {
   "name": "praxis-next",
-  "version": "3.0.0+codex.20260721030551",
+  "version": "3.0.0+codex.20260721034338",
   "description": "Praxis V3 workflow governance and business knowledge platform",
   "author": {
     "name": "Fausto"
@@ -26,6 +26,7 @@
     ],
     "defaultPrompt": [
       "\u7528 Praxis \u767b\u8bb0\u65b0\u9700\u6c42\u5e76\u751f\u6210\u77e5\u8bc6\u6587\u6863\u3002",
+      "\u8fdb\u5165\u5de5\u4f5c\u6d41\u8282\u70b9\u65f6\u5148\u751f\u6210 Skill \u8def\u7531\u8ba1\u5212\uff0c\u5e76\u8bb0\u5f55\u771f\u5b9e\u8c03\u7528\u51ed\u8bc1\u3002",
       "\u5728\u7b2c\u4e00\u6b21\u4ee3\u7801\u4fee\u6539\u524d\u521b\u5efa\u9694\u79bb\u5de5\u4f5c\u6811\u3002",
       "\u672a\u7ecf\u660e\u786e\u540c\u610f\u4e0d\u8981\u53d1\u8d77\u8d28\u91cf\u590d\u6838\u6216\u6d4b\u8bd5\u3002"
     ],

@@ -15,6 +15,7 @@ def test_codex_manifest_exposes_single_skill_source_and_mcp() -> None:
     assert set(skills) == {
         "dbx-database-investigation",
         "ponytail",
+        "praxis-requirement-workflow",
         "praxis-system-development",
     }
     assert all(path.is_dir() and not path.is_symlink() for path in skills.values())

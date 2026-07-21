@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from praxis.agents.guidance import AgentGuidanceService
+from praxis.workspace.service import Project, WorkspaceService
+
+
+def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "backend"
+    (repository / ".cursor" / "rules").mkdir(parents=True)
+    (repository / "skills").mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[
+            Project(
+                "backend",
+                "java-maven",
+                "backend",
+                "local",
+                template_branches=("develop",),
+            )
+        ],
+    )
+    (tmp_path / "AGENTS.md").write_text("# 团队自定义规则\n\n保留此内容。\n")
+
+    first = AgentGuidanceService(tmp_path).render()
+    second = AgentGuidanceService(tmp_path).render()
+
+    assert first.ok and second.ok
+    agents = (tmp_path / "AGENTS.md").read_text()
+    claude = (tmp_path / "CLAUDE.md").read_text()
+    assert "保留此内容。" in agents
+    assert agents.count("<!-- praxis:managed:start -->") == 1
+    assert agents.count("<!-- praxis:managed:end -->") == 1
+    assert "`local` | `develop`" in agents
+    assert "`backend/.cursor/rules`" in agents
+    assert "`backend/skills`" in agents
+    assert "`brainstorming`（必需）" in agents
+    assert "praxis skill route-node" in agents
+    assert "praxis skill invoke" in agents
+    assert "praxis skill complete" in agents
+    assert "praxis skill gate" in agents
+    assert claude.startswith("# Claude Code 项目规则")
+
+
+def test_agent_guidance_stops_on_broken_managed_markers(tmp_path: Path) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    (tmp_path / "AGENTS.md").write_text("<!-- praxis:managed:start -->\n")
+
+    result = AgentGuidanceService(tmp_path).render()
+
+    assert result.code == "AGENT_GUIDANCE_MARKERS_INVALID"
+    assert not (tmp_path / "CLAUDE.md").exists()

@@ -53,6 +53,10 @@ _CAPABILITIES: dict[str, tuple[str, CapabilityRisk]] = {
     "context.diff": ("context.diff", CapabilityRisk.READ),
     "skill.search": ("skill.search", CapabilityRisk.READ),
     "skill.route": ("skill.route", CapabilityRisk.READ),
+    "skill.plan": ("skill.route-node", CapabilityRisk.WORKSPACE_WRITE),
+    "skill.invoke": ("skill.invoke", CapabilityRisk.WORKSPACE_WRITE),
+    "skill.complete": ("skill.complete", CapabilityRisk.WORKSPACE_WRITE),
+    "skill.gate": ("skill.gate", CapabilityRisk.READ),
     "deployment.execute": ("deployment.execute", CapabilityRisk.DESTRUCTIVE),
 }
 
@@ -68,6 +72,10 @@ _ROLE_CAPABILITIES = {
         "context.diff",
         "skill.search",
         "skill.route",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
         "code.search",
         "code.explore",
         "code.impact",
@@ -83,6 +91,10 @@ _ROLE_CAPABILITIES = {
         "context.diff",
         "skill.search",
         "skill.route",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
         "code.search",
         "code.explore",
         "code.impact",
@@ -109,6 +121,10 @@ _ROLE_CAPABILITIES = {
         "context.read",
         "skill.search",
         "skill.route",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
     },
     "reviewer": {
         "workspace.read",
@@ -121,6 +137,10 @@ _ROLE_CAPABILITIES = {
         "worktree.status",
         "artifact.read",
         "context.read",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
     },
     "tester": {
         "workspace.read",
@@ -130,6 +150,10 @@ _ROLE_CAPABILITIES = {
         "artifact.register",
         "artifact.read",
         "context.read",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
     },
     "database": {
         "workspace.read",
@@ -141,6 +165,10 @@ _ROLE_CAPABILITIES = {
         "artifact.register",
         "artifact.read",
         "context.read",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
     },
     "release": {
         "workspace.read",
@@ -150,6 +178,10 @@ _ROLE_CAPABILITIES = {
         "artifact.register",
         "artifact.read",
         "context.read",
+        "skill.plan",
+        "skill.invoke",
+        "skill.complete",
+        "skill.gate",
         "deployment.execute",
     },
 }
@@ -184,9 +216,12 @@ class McpBrokerService:
             if permitted:
                 risk = definition[1]
                 if risk == CapabilityRisk.WORKSPACE_WRITE:
-                    permitted = capability == "requirement.create" or bool(
-                        requirement_id and worktree
-                    )
+                    if capability == "requirement.create":
+                        permitted = True
+                    elif capability in {"skill.plan", "skill.invoke", "skill.complete"}:
+                        permitted = bool(requirement_id)
+                    else:
+                        permitted = bool(requirement_id and worktree)
                 elif risk == CapabilityRisk.EXTERNAL_WRITE:
                     permitted = approved_external
                 elif risk == CapabilityRisk.DESTRUCTIVE:
@@ -243,6 +278,25 @@ class McpBrokerService:
         if capability not in grant["allowed_capabilities"]:
             return Result(False, "MCP_CAPABILITY_DENIED", data={"capability": capability})
         values = arguments or {}
+        scoped_capabilities = {
+            "requirement.read",
+            "requirement.transition",
+            "skill.plan",
+            "skill.invoke",
+            "skill.gate",
+        }
+        if capability in scoped_capabilities and values.get("requirement_id") != grant.get(
+            "requirement_id"
+        ):
+            return Result(False, "MCP_REQUIREMENT_SCOPE_MISMATCH")
+        if capability == "skill.complete":
+            invocation = self.store.get(
+                "skill_invocation", str(values.get("invocation_id", ""))
+            )
+            if not invocation or invocation.get("requirement_id") != grant.get(
+                "requirement_id"
+            ):
+                return Result(False, "MCP_REQUIREMENT_SCOPE_MISMATCH")
         if capability == "database.write":
             sql = inspect_sql(str(values.get("sql", "")))
             if not sql.ok or sql.data.get("kind") != "write":

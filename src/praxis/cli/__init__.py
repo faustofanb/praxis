@@ -32,7 +32,7 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(version)
 
     workspace = commands.add_parser("workspace").add_subparsers(dest="action", required=True)
-    for action in ("inspect", "show", "validate"):
+    for action in ("inspect", "show", "validate", "guidance"):
         _json_flag(workspace.add_parser(action))
     bootstrap = workspace.add_parser("bootstrap")
     bootstrap.add_argument("--approve-skills", action="store_true")
@@ -137,6 +137,36 @@ def _parser() -> argparse.ArgumentParser:
     route.add_argument("intent")
     route.add_argument("--budget", type=int, default=2000)
     _json_flag(route)
+    route_node = skill.add_parser("route-node")
+    route_node.add_argument("--node", required=True)
+    route_node.add_argument("--intent", default="")
+    route_node.add_argument("--requirement")
+    route_node.add_argument("--project")
+    route_node.add_argument("--system")
+    route_node.add_argument("--repository-kind")
+    route_node.add_argument("--agent-role")
+    route_node.add_argument("--domain", action="append", default=[])
+    route_node.add_argument("--artifact", action="append", default=[])
+    route_node.add_argument("--risk", action="append", default=[])
+    route_node.add_argument("--available-skill", action="append", default=[])
+    route_node.add_argument("--approved-skill", action="append", default=[])
+    route_node.add_argument("--budget", type=int, default=2000)
+    _json_flag(route_node)
+    invoke_skill = skill.add_parser("invoke")
+    invoke_skill.add_argument("id")
+    invoke_skill.add_argument("--requirement", required=True)
+    invoke_skill.add_argument("--node", required=True)
+    invoke_skill.add_argument("--session")
+    invoke_skill.add_argument("--approved", action="store_true")
+    _json_flag(invoke_skill)
+    complete_skill = skill.add_parser("complete")
+    complete_skill.add_argument("invocation_id")
+    complete_skill.add_argument("--outcome", default="completed")
+    _json_flag(complete_skill)
+    skill_gate = skill.add_parser("gate")
+    skill_gate.add_argument("--requirement", required=True)
+    skill_gate.add_argument("--node", required=True)
+    _json_flag(skill_gate)
     search = skill.add_parser("search")
     search.add_argument("query")
     _json_flag(search)
@@ -265,9 +295,14 @@ def _parser() -> argparse.ArgumentParser:
     build_context.add_argument("--project", required=True)
     build_context.add_argument("--stage", required=True)
     build_context.add_argument("--agent-role", required=True)
+    build_context.add_argument("--workflow-node", default="in_progress")
     build_context.add_argument("--token-budget", type=int, default=24_000)
     build_context.add_argument("--allow-path", action="append", default=[])
     build_context.add_argument("--forbid-path", action="append", default=[])
+    build_context.add_argument("--artifact", action="append", default=[])
+    build_context.add_argument("--risk", action="append", default=[])
+    build_context.add_argument("--available-skill", action="append", default=[])
+    build_context.add_argument("--approved-skill", action="append", default=[])
     _json_flag(build_context)
     show_context = context.add_parser("show")
     show_context.add_argument("id")
@@ -494,6 +529,40 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "catalog_root": args.catalog_root,
                 "approved": args.yes,
             }
+        if args.action == "route-node":
+            return "skill.route-node", {
+                "node": args.node,
+                "intent": args.intent,
+                "requirement_id": args.requirement or "",
+                "project_id": args.project or "",
+                "system_id": args.system or "",
+                "repository_kind": args.repository_kind or "",
+                "agent_role": args.agent_role or "",
+                "business_domains": args.domain,
+                "artifact_types": args.artifact,
+                "risks": args.risk,
+                "available_skills": args.available_skill,
+                "approved_skills": args.approved_skill,
+                "budget": args.budget,
+            }
+        if args.action == "invoke":
+            return "skill.invoke", {
+                "skill_id": args.id,
+                "requirement_id": args.requirement,
+                "node": args.node,
+                "session_id": args.session or "",
+                "approved": args.approved,
+            }
+        if args.action == "complete":
+            return "skill.complete", {
+                "invocation_id": args.invocation_id,
+                "outcome": args.outcome,
+            }
+        if args.action == "gate":
+            return "skill.gate", {
+                "requirement_id": args.requirement,
+                "node": args.node,
+            }
         key = "id" if args.action == "inspect" else "intent"
         payload = {key: getattr(args, key)}
         if args.action == "route":
@@ -579,6 +648,11 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "token_budget": args.token_budget,
                 "allowed_paths": args.allow_path,
                 "forbidden_paths": args.forbid_path,
+                "workflow_node": args.workflow_node,
+                "artifact_types": args.artifact,
+                "risks": args.risk,
+                "available_skills": args.available_skill,
+                "approved_skills": args.approved_skill,
             }
         if args.action == "show":
             return "context.show", {"context_id": args.id}

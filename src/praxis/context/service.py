@@ -12,6 +12,7 @@ from praxis.naming.requirement import RequirementPathPolicy
 from praxis.portraits.service import PortraitService
 from praxis.result import Result
 from praxis.skills.registry import SkillRegistry
+from praxis.skills.routing import NodeSkillRouter, NodeSkillRoutingRequest
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
 
@@ -67,6 +68,11 @@ class ContextBuildRequest:
     token_budget: int = 24_000
     allowed_paths: tuple[str, ...] = ()
     forbidden_paths: tuple[str, ...] = ()
+    workflow_node: str = "in_progress"
+    artifact_types: tuple[str, ...] = ()
+    risks: tuple[str, ...] = ()
+    available_skills: tuple[str, ...] = ()
+    approved_skills: tuple[str, ...] = ()
 
 
 class ContextCompiler:
@@ -167,7 +173,8 @@ class ContextCompiler:
                 + (", ".join(request.allowed_paths) or "未指定")
                 + "\n禁止路径："
                 + (", ".join(request.forbidden_paths) or ".git, .praxis, .env")
-                + "\n必须通过：修改范围、秘密、质量、类型和测试门禁",
+                + "\n自动安全门禁：修改范围、秘密和工作树绑定"
+                + "\n需用户明确批准：质量复核、类型检查和测试",
                 0,
             ),
         ]
@@ -193,11 +200,61 @@ class ContextCompiler:
                     1,
                 )
             )
+        project = WorkspaceService(self.root).project(request.project_id)
         intent = f"{requirement['original_request']} {request.stage} {request.agent_role}"
-        routed_skills = SkillRegistry.workspace(self.root).route(
-            intent, budget=max(0, request.token_budget // 4)
+        route = NodeSkillRouter(self.root).route(
+            NodeSkillRoutingRequest(
+                node=request.workflow_node,
+                intent=intent,
+                requirement_id=request.requirement_id,
+                project_id=request.project_id,
+                system_id=project.system_id,
+                business_domains=tuple(requirement["domains"]),
+                repository_kind=project.kind,
+                agent_role=request.agent_role,
+                artifact_types=request.artifact_types,
+                risks=request.risks,
+                available_skills=request.available_skills,
+                approved_skills=request.approved_skills,
+                token_budget=max(0, request.token_budget // 4),
+            )
         )
-        for skill in routed_skills:
+        route_summary = "\n".join(
+            f"- {item['id']}: {item['status']} ({item['mode']}; "
+            f"{', '.join(item['reasons'])})"
+            for item in route.data["decisions"]
+        )
+        fragments.append(
+            ContextFragment.create(
+                "skill-route-plan",
+                "skill_route",
+                "节点 Skill 路由计划",
+                route_summary or "当前节点没有匹配的 Skill。",
+                1,
+                evidence_level="Praxis节点策略",
+            )
+        )
+        registry = SkillRegistry.workspace(self.root)
+        for decision in route.data["decisions"]:
+            if decision["status"] != "available":
+                continue
+            try:
+                skill = registry.inspect(decision["id"])
+            except KeyError:
+                installed_path = Path(decision.get("installed_path", ""))
+                if not installed_path.is_file():
+                    continue
+                fragments.append(
+                    self._file_fragment(
+                        f"skill-{decision['id']}",
+                        "skill",
+                        f"技能：{decision['id']}",
+                        installed_path,
+                        3,
+                        evidence_level="已安装且哈希已记录",
+                    )
+                )
+                continue
             fragments.append(
                 self._file_fragment(
                     f"skill-{skill.id}",

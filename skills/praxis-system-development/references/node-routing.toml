@@ -1,0 +1,237 @@
+schema_version = 1
+
+[[providers]]
+id = "praxis-requirement-workflow"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
+nodes = ["captured", "investigating", "analyzed", "planned", "ready", "in_progress", "verifying", "completed"]
+mode = "required"
+availability = "bundled"
+priority = 100
+context_budget = 700
+
+[[providers]]
+id = "brainstorming"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["investigating"]
+mode = "required"
+availability = "external"
+priority = 95
+context_budget = 900
+
+[[providers]]
+id = "ponytail"
+source = "praxis"
+source_version = "4.8.4-praxis.1"
+license = "MIT"
+nodes = ["investigating", "analyzed", "planned", "in_progress"]
+mode = "required"
+availability = "bundled"
+priority = 90
+context_budget = 300
+
+[[providers]]
+id = "file-search"
+source = "https://github.com/massgen/MassGen"
+source_version = "installed"
+license = "MIT"
+nodes = ["investigating", "in_progress"]
+mode = "conditional"
+availability = "external"
+agent_roles = ["architect", "investigator", "coder"]
+intent_triggers = ["代码", "仓库", "定位", "搜索", "影响", "实现", "修改", "bug", "feature"]
+priority = 80
+context_budget = 500
+
+[[providers]]
+id = "writing-plans"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["analyzed", "planned"]
+mode = "required"
+availability = "external"
+priority = 90
+context_budget = 900
+
+[[providers]]
+id = "systematic-debugging"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["investigating", "in_progress", "verifying"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["bug", "缺陷", "错误", "失败", "异常", "故障", "不工作", "回归"]
+priority = 90
+context_budget = 900
+
+[[providers]]
+id = "dbx-database-investigation"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
+nodes = ["investigating", "analyzed", "in_progress"]
+mode = "conditional"
+availability = "bundled"
+intent_triggers = ["数据库", "表结构", "sql", "schema", "迁移", "报表口径", "dto", "执行计划"]
+priority = 85
+context_budget = 700
+
+[[providers]]
+id = "java-coding-standards"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["planned", "in_progress"]
+mode = "conditional"
+availability = "external"
+repository_kinds = ["java", "java-maven", "spring-boot"]
+priority = 70
+context_budget = 700
+
+[[providers]]
+id = "karpathy-guidelines"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["planned", "in_progress"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["实现", "修改", "修复", "重构", "开发"]
+priority = 65
+context_budget = 500
+
+[[providers]]
+id = "context-degradation"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["investigating", "analyzed", "planned", "in_progress"]
+mode = "conditional"
+availability = "external"
+risks = ["context-loss", "context-conflict", "context-poisoning"]
+priority = 80
+context_budget = 700
+
+[[providers]]
+id = "context-optimization"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["investigating", "analyzed", "planned", "in_progress"]
+mode = "conditional"
+availability = "external"
+risks = ["context-budget", "token-pressure"]
+priority = 75
+context_budget = 700
+
+[[providers]]
+id = "prompt-engineering"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["investigating", "planned", "in_progress"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["prompt", "提示词", "agent 指令", "模型指令"]
+priority = 70
+context_budget = 600
+
+[[providers]]
+id = "find-skills"
+source = "https://skills.sh"
+source_version = "installed"
+license = "unknown"
+nodes = ["investigating", "analyzed", "planned"]
+mode = "conditional"
+availability = "external"
+risks = ["capability-missing"]
+priority = 60
+context_budget = 500
+
+[[providers]]
+id = "subagent-driven-development"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["in_progress"]
+mode = "approval_required"
+availability = "external"
+intent_triggers = ["subagent", "子代理", "并行代理", "多代理"]
+priority = 60
+context_budget = 900
+
+[[providers]]
+id = "Testing Writing Guidelines"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["in_progress", "verifying"]
+mode = "approval_required"
+availability = "external"
+intent_triggers = ["测试", "test", "用例", "覆盖率", "spec"]
+priority = 75
+context_budget = 700
+
+[[providers]]
+id = "verification-before-completion"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["verifying", "completed"]
+mode = "approval_required"
+availability = "external"
+priority = 85
+context_budget = 700
+
+[[providers]]
+id = "code-quality-review"
+source = "installed-method-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["verifying"]
+mode = "approval_required"
+availability = "external"
+agent_roles = ["reviewer"]
+priority = 80
+context_budget = 900
+
+[[providers]]
+id = "requesting-code-review"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["verifying"]
+mode = "approval_required"
+availability = "external"
+intent_triggers = ["评审", "review", "代码审查"]
+priority = 75
+context_budget = 700
+
+[[providers]]
+id = "receiving-code-review"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["in_progress", "verifying"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["评审意见", "review feedback", "审查反馈", "修改意见"]
+priority = 70
+context_budget = 700
+
+[[providers]]
+id = "finishing-a-development-branch"
+source = "https://github.com/obra/superpowers"
+source_version = "6.1.1"
+license = "MIT"
+nodes = ["completed"]
+mode = "approval_required"
+availability = "external"
+intent_triggers = ["提交", "推送", "合并", "pull request", "pr", "交付"]
+priority = 70
+context_budget = 700
