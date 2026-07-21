@@ -6,7 +6,14 @@ import pytest
 
 import praxis.application as application_module
 from praxis.application import PraxisApplication
+from praxis.domain.requirement import RequirementStatus
 from praxis.result import Result
+from praxis.skills.routing import (
+    NodeSkillRouter,
+    NodeSkillRoutingRequest,
+    SkillInvocationService,
+)
+from praxis.storage.sqlite import StateStore
 
 
 class FakeGraph:
@@ -161,10 +168,86 @@ def test_requirement_analyze_does_not_skip_investigating_node(
     )
     requirement_id = created.data["requirement_id"]
 
+    blocked = application.execute("requirement.analyze", {"requirement_id": requirement_id})
+
+    assert not blocked.ok
+    assert blocked.code == "SKILL_ROUTE_NOT_FOUND"
+    assert application.execute("requirement.show", {"requirement_id": requirement_id}).data[
+        "status"
+    ] == RequirementStatus.CAPTURED
+
+    assert NodeSkillRouter(application.root).route(
+        NodeSkillRoutingRequest(
+            node="captured",
+            requirement_id=requirement_id,
+            token_budget=5_000,
+        )
+    ).ok
+    invocations = SkillInvocationService(application.root)
+    started = invocations.start(
+        requirement_id, "captured", "praxis-requirement-workflow"
+    )
+    assert started.ok
+    assert invocations.complete(started.data["invocation_id"]).ok
+
     result = application.execute("requirement.analyze", {"requirement_id": requirement_id})
 
     assert result.ok
     assert result.data["status"] == "investigating"
+
+
+def test_worktree_create_requires_current_ready_skill_gate(
+    application: PraxisApplication,
+) -> None:
+    assert application.execute(
+        "workspace.init", {"workspace_id": "demo", "name": "演示开发工作空间"}
+    ).ok
+    created = application.execute(
+        "requirement.new",
+        {
+            "short_name": "工作树门禁",
+            "request": "完成 ready 门禁后创建工作树",
+            "systems": [],
+            "domains": [],
+        },
+    )
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(application.root)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    blocked = application.execute(
+        "worktree.create",
+        {"requirement_id": requirement_id, "repository_id": "app"},
+    )
+
+    assert not blocked.ok
+    assert blocked.code == "SKILL_ROUTE_NOT_FOUND"
+
+    assert NodeSkillRouter(application.root).route(
+        NodeSkillRoutingRequest(
+            node="ready",
+            requirement_id=requirement_id,
+            token_budget=5_000,
+        )
+    ).ok
+    invocations = SkillInvocationService(application.root)
+    started = invocations.start(
+        requirement_id, "ready", "praxis-requirement-workflow"
+    )
+    assert started.ok
+    assert invocations.complete(started.data["invocation_id"]).ok
+
+    created_worktree = application.execute(
+        "worktree.create",
+        {"requirement_id": requirement_id, "repository_id": "app"},
+    )
+    assert created_worktree.ok
 
 
 @pytest.mark.parametrize(
@@ -222,10 +305,6 @@ def test_codegraph_status_resolves_bound_repository_worktree(
 @pytest.mark.parametrize(
     ("operation", "arguments"),
     [
-        (
-            "worktree.create",
-            {"requirement_id": "REQ-20260720-001", "repository_id": "app", "stage": "backend"},
-        ),
         ("worktree.list", {}),
         ("worktree.remove", {"branch": "feature"}),
         ("worktree.merge", {"target": "main"}),

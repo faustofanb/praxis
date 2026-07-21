@@ -54,6 +54,8 @@ class AgentGuidanceService:
             "  typecheck、测试、覆盖率或质量复核。提交、推送、完成、继续不等于批准。",
             "- 使用 Skill 前先执行节点路由；`routed` 仅代表候选，必须记录 `invoked` 和",
             "  `completed`，节点门禁才视为真实使用。",
+            "- 状态流转和 `worktree create` 都是 fail-closed；当前节点缺少 route、完成凭证或",
+            "  gate 时必须停止，不得自动补路由或绕过。",
             "- 第三方 Skill 缺失时报告来源和缺失项，不得在 bootstrap 中自动安装。",
             "",
             "### Skill 调用协议",

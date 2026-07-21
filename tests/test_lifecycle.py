@@ -57,6 +57,61 @@ def test_worktree_service_uses_only_worktrunk_json_commands(tmp_path: Path) -> N
     assert all(command[0] == "wt" and "--format=json" in command for command in calls)
 
 
+def test_worktree_remove_reports_branch_delete_mismatch_and_cleans_binding(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "local")],
+    )
+    branch = "praxis/REQ-TEST"
+    workspace_path = tmp_path / ".worktrees" / "REQ-TEST__清理验证"
+    repository_path = workspace_path / "app"
+    repository_path.mkdir(parents=True)
+    store = StateStore(tmp_path)
+    store.set(
+        "worktree",
+        "WT-REQ-TEST--app",
+        {
+            "binding_id": "WT-REQ-TEST--app",
+            "requirement_id": "REQ-TEST",
+            "repository_id": "app",
+            "branch": branch,
+            "path": str(workspace_path),
+            "repository_path": str(repository_path),
+            "status": "active",
+        },
+    )
+
+    def run(command, cwd, environment):
+        if command[0] == "wt":
+            repository_path.rmdir()
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                '{"items": [{"branch": "praxis/REQ-TEST", "branch_deleted": true}]}',
+                "",
+            )
+        if command[:3] == ["git", "branch", "--list"]:
+            return subprocess.CompletedProcess(command, 0, f"  {branch}\n", "")
+        raise AssertionError(command)
+
+    result = WorktreeService(tmp_path, run=run).remove(branch)
+
+    assert not result.ok
+    assert result.code == "WORKTREE_BRANCH_DELETE_MISMATCH"
+    assert result.data["branch"] == branch
+    assert result.data["branch_deleted"] is False
+    assert store.get("worktree", "WT-REQ-TEST--app") is None
+    assert not workspace_path.exists()
+    event = store.audit_events()[-1]
+    assert event["event"] == "worktree.remove_incomplete"
+
+
 def test_worktree_creation_binds_requirement_repository_and_stage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

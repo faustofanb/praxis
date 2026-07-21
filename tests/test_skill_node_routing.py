@@ -7,6 +7,7 @@ from praxis.skills.routing import (
     NodeSkillRoutingRequest,
     SkillInvocationService,
 )
+from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
 
 
@@ -140,6 +141,20 @@ def test_skill_invocation_gate_requires_completed_evidence(tmp_path: Path) -> No
     legacy["status"] = legacy.pop("outcome")
     invocations.store.set("skill_invocation", invocation_ids[0], legacy)
     assert invocations.gate("REQ-TEST", "investigating").ok
+
+
+def test_skill_gate_missing_route_is_audited(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = SkillInvocationService(tmp_path).gate("REQ-MISSING", "ready")
+
+    assert not result.ok
+    assert result.code == "SKILL_ROUTE_NOT_FOUND"
+    assert result.data["audit_id"]
+    event = StateStore(tmp_path).audit_events()[-1]
+    assert event["event"] == "skill.gate"
+    assert event["code"] == "SKILL_ROUTE_NOT_FOUND"
+    assert event["details"]["requirement_id"] == "REQ-MISSING"
 
 
 def test_java_standards_require_java_repository_and_code_change_intent(tmp_path: Path) -> None:

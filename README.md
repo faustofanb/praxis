@@ -155,7 +155,9 @@ praxis skill gate --requirement REQ-20260721-001 --node investigating --json
 ```
 
 `skill.route_planned`, `skill.invoked`, and `skill.completed` are distinct audit events. A command
-history or a routed context fragment is not invocation evidence. Tests, quality review, reviewer or
+history or a routed context fragment is not invocation evidence. Requirement transitions and
+`worktree create` fail closed when the current node has no route or completed gate evidence, and
+every gate outcome is audited. Tests, quality review, reviewer or
 tester Agents, subagents, verification, and branch-finishing Skills remain pending until the user
 explicitly approves the current scope. Bootstrap reports missing external providers and never
 installs them automatically. The router discovers installed providers in the standard Codex,

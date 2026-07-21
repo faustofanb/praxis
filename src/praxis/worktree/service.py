@@ -6,6 +6,7 @@ import re
 import shlex
 import subprocess
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -446,6 +447,39 @@ class WorktreeService:
         )
         if result.ok and binding:
             store.delete("worktree", resolved[0])
+            workspace_path = Path(str(binding["path"]))
+            with suppress(OSError):
+                workspace_path.rmdir()
+            branch_name = str(binding.get("branch", branch))
+            remaining = self._git(
+                ["branch", "--list", branch_name],
+                cwd=cwd,
+                failure_code="WORKTREE_BRANCH_VERIFY_FAILED",
+            )
+            if not remaining.ok:
+                audit_id = store.audit(
+                    "worktree.remove_incomplete",
+                    remaining.code,
+                    {**binding, "worktrunk": result.data, "git": remaining.data},
+                )
+                return Result(
+                    False,
+                    remaining.code,
+                    data={**remaining.data, "audit_id": audit_id},
+                )
+            if remaining.data["stdout"]:
+                details = {
+                    **binding,
+                    "branch": branch_name,
+                    "branch_deleted": False,
+                    "worktrunk": result.data,
+                }
+                details["audit_id"] = store.audit(
+                    "worktree.remove_incomplete",
+                    "WORKTREE_BRANCH_DELETE_MISMATCH",
+                    details,
+                )
+                return Result(False, "WORKTREE_BRANCH_DELETE_MISMATCH", data=details)
             store.audit("worktree.removed", "OK", binding)
         return result
 

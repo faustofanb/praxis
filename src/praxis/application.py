@@ -490,10 +490,8 @@ class PraxisApplication:
         store = StateStore(self.root)
         requirement = store.requirement(requirement_id)
         if not requirement:
-            return Result(True)
+            return Result(False, "REQUIREMENT_NOT_FOUND")
         node = requirement["status"]
-        if not store.get("skill_route", f"{requirement_id}:{node}"):
-            return Result(True)
         return SkillInvocationService(self.root).gate(requirement_id, node)
 
     def _codegraph(self, action: str, values: dict[str, Any]) -> Result:
@@ -555,6 +553,9 @@ class PraxisApplication:
     def _worktree(self, action: str, values: dict[str, Any]) -> Result:
         worktree = WorktreeService(self.root)
         if action == "create":
+            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            if not skill_gate.ok:
+                return skill_gate
             return worktree.create_for_requirement(
                 values["requirement_id"], values["repository_id"], values.get("stage")
             )

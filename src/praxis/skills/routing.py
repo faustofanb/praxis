@@ -353,7 +353,18 @@ class SkillInvocationService:
     def gate(self, requirement_id: str, node: str) -> Result:
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
         if not route:
-            return Result(False, "SKILL_ROUTE_NOT_FOUND")
+            data = {
+                "required": [],
+                "completed": [],
+                "missing": [],
+                "reason": "route_not_found",
+            }
+            data["audit_id"] = self.store.audit(
+                "skill.gate",
+                "SKILL_ROUTE_NOT_FOUND",
+                {"requirement_id": requirement_id, "node": node, **data},
+            )
+            return Result(False, "SKILL_ROUTE_NOT_FOUND", data=data)
         required = {
             item["id"]
             for item in route["decisions"]

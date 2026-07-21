@@ -7,6 +7,11 @@ from typing import Any, cast
 from praxis.knowledge.requirements import RequirementService
 from praxis.mcp.broker import McpBrokerService
 from praxis.mcp.server import create_server
+from praxis.skills.routing import (
+    NodeSkillRouter,
+    NodeSkillRoutingRequest,
+    SkillInvocationService,
+)
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
 
@@ -23,6 +28,19 @@ def test_canonical_mcp_tools_delegate_to_application_and_broker(tmp_path: Path) 
     requirement_id = RequirementService(tmp_path).create(
         "报表查询优化", "核对报表查询", ["demo"], []
     ).data["requirement_id"]
+    assert NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="captured",
+            requirement_id=requirement_id,
+            token_budget=5_000,
+        )
+    ).ok
+    invocations = SkillInvocationService(tmp_path)
+    started = invocations.start(
+        requirement_id, "captured", "praxis-requirement-workflow"
+    )
+    assert started.ok
+    assert invocations.complete(started.data["invocation_id"]).ok
     store = StateStore(tmp_path)
     context_path = tmp_path / "context.md"
     context_path.write_text("# 上下文\n")
