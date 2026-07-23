@@ -7,6 +7,9 @@ from typing import Any
 from praxis.documents.atomic_writer import atomic_write_text
 from praxis.naming.requirement import RequirementPathPolicy
 
+_MANAGED_STATE_START = "<!-- PRAXIS:MANAGED:STATE:START -->"
+_MANAGED_STATE_END = "<!-- PRAXIS:MANAGED:STATE:END -->"
+
 _STATUS_ZH = {
     "captured": "已捕获",
     "investigating": "调查中",
@@ -14,6 +17,7 @@ _STATUS_ZH = {
     "planned": "已规划",
     "ready": "可执行",
     "in_progress": "进行中",
+    "implemented": "已实施",
     "verifying": "验证中",
     "blocked": "已阻塞",
     "completed": "已完成",
@@ -74,7 +78,7 @@ class RequirementProjector:
     def _overview(record: dict[str, Any], existing: str = "") -> str:
         systems = "\n".join(f"  - {value}" for value in record["systems"]) or "  []"
         domains = "\n".join(f"  - {value}" for value in record["domains"]) or "  []"
-        conclusion = _section(existing, "当前结论") or "待调查。"
+        conclusion = _section(_without_managed_state(existing), "当前结论") or "待调查。"
         active_constraints = record.get("constraints", {}).get("active", [])
         constraints = (
             "\n".join(
@@ -103,7 +107,7 @@ class RequirementProjector:
 
 {conclusion}
 
-<!-- PRAXIS:MANAGED:STATE:START -->
+{_MANAGED_STATE_START}
 
 ## 当前阶段
 
@@ -123,7 +127,7 @@ class RequirementProjector:
 - 验证状态：{delivery.get("verification_status", "not_recorded")}
 - 人工验收：{delivery.get("manual_acceptance_status", "awaiting_manual_acceptance")}
 
-<!-- PRAXIS:MANAGED:STATE:END -->
+{_MANAGED_STATE_END}
 
 ## 文档导航
 
@@ -289,3 +293,15 @@ def _section(content: str, heading: str) -> str:
     tail = content.split(marker, 1)[1]
     body = tail.split("\n## ", 1)[0]
     return body.strip()
+
+
+def _without_managed_state(content: str) -> str:
+    if _MANAGED_STATE_START in content:
+        prefix = content.split(_MANAGED_STATE_START, 1)[0]
+        suffix = (
+            content.rsplit(_MANAGED_STATE_END, 1)[1]
+            if _MANAGED_STATE_END in content
+            else ""
+        )
+        content = prefix + suffix
+    return content.replace(_MANAGED_STATE_START, "").replace(_MANAGED_STATE_END, "")

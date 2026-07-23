@@ -902,7 +902,12 @@ class WorktreeService:
         requirement = StateStore(self.root).requirement(requirement_id)
         if not requirement:
             raise KeyError(requirement_id)
-        if requirement["status"] not in {"ready", "in_progress", "verifying"}:
+        if requirement["status"] not in {
+            "ready",
+            "in_progress",
+            "implemented",
+            "verifying",
+        }:
             return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
         if project.system_id not in requirement["systems"]:
             return Result(False, "WORKTREE_SYSTEM_MISMATCH")

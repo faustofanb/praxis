@@ -11,6 +11,7 @@ class RequirementStatus(StrEnum):
     PLANNED = "planned"
     READY = "ready"
     IN_PROGRESS = "in_progress"
+    IMPLEMENTED = "implemented"
     VERIFYING = "verifying"
     BLOCKED = "blocked"
     COMPLETED = "completed"
@@ -25,6 +26,9 @@ _NEXT_STATUS: dict[RequirementStatus, frozenset[RequirementStatus]] = {
     RequirementStatus.PLANNED: frozenset({RequirementStatus.READY}),
     RequirementStatus.READY: frozenset({RequirementStatus.IN_PROGRESS}),
     RequirementStatus.IN_PROGRESS: frozenset(
+        {RequirementStatus.IMPLEMENTED, RequirementStatus.BLOCKED}
+    ),
+    RequirementStatus.IMPLEMENTED: frozenset(
         {RequirementStatus.VERIFYING, RequirementStatus.BLOCKED}
     ),
     RequirementStatus.VERIFYING: frozenset(
@@ -35,6 +39,22 @@ _NEXT_STATUS: dict[RequirementStatus, frozenset[RequirementStatus]] = {
     RequirementStatus.CANCELLED: frozenset(),
     RequirementStatus.ARCHIVED: frozenset(),
 }
+
+_ADVANCE_STATUS = {
+    RequirementStatus.CAPTURED: RequirementStatus.INVESTIGATING,
+    RequirementStatus.INVESTIGATING: RequirementStatus.ANALYZED,
+    RequirementStatus.ANALYZED: RequirementStatus.PLANNED,
+    RequirementStatus.PLANNED: RequirementStatus.READY,
+    RequirementStatus.READY: RequirementStatus.IN_PROGRESS,
+    RequirementStatus.IN_PROGRESS: RequirementStatus.IMPLEMENTED,
+    RequirementStatus.IMPLEMENTED: RequirementStatus.VERIFYING,
+    RequirementStatus.VERIFYING: RequirementStatus.COMPLETED,
+    RequirementStatus.COMPLETED: RequirementStatus.ARCHIVED,
+}
+
+
+def next_requirement_status(status: RequirementStatus) -> RequirementStatus | None:
+    return _ADVANCE_STATUS.get(status)
 
 
 @dataclass(slots=True, frozen=True)

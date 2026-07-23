@@ -101,6 +101,74 @@ def test_requirement_state_machine_rejects_skipped_transition() -> None:
         requirement.transition(RequirementStatus.READY)
 
 
+def test_implemented_is_required_before_verifying() -> None:
+    requirement = Requirement(
+        "REQ-20260720-001",
+        "金属平衡块复制",
+        RequirementStatus.IN_PROGRESS,
+    )
+
+    with pytest.raises(ValueError, match="非法需求状态转换"):
+        requirement.transition(RequirementStatus.VERIFYING)
+
+    implemented = requirement.transition(RequirementStatus.IMPLEMENTED)
+
+    assert implemented.status == "implemented"
+    assert implemented.transition(RequirementStatus.VERIFYING).status == "verifying"
+
+
+def test_requirement_projection_managed_state_is_idempotent(tmp_path: Path) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("投影幂等", "重复刷新受管状态", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    for _ in range(5):
+        requirements.project_current(requirement_id)
+
+    overview = (Path(created.data["path"]) / "需求总览.md").read_text()
+    assert overview.count("<!-- PRAXIS:MANAGED:STATE:START -->") == 1
+    assert overview.count("<!-- PRAXIS:MANAGED:STATE:END -->") == 1
+
+
+def test_requirement_advance_moves_one_legal_state_and_reports_gate(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("单步推进", "一次只推进一个状态", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    first = requirements.advance(requirement_id)
+
+    assert first.ok
+    assert first.data["source_status"] == "captured"
+    assert first.data["target_status"] == "investigating"
+    assert first.data["missing_gates"] == []
+
+    store = StateStore(tmp_path)
+    for status in (
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    blocked = requirements.advance(requirement_id)
+
+    assert not blocked.ok
+    assert blocked.code == "REQUIREMENT_ADVANCE_BLOCKED"
+    assert blocked.data["source_status"] == "in_progress"
+    assert blocked.data["target_status"] == "implemented"
+    assert blocked.data["missing_gates"] == ["implementation"]
+
+    requirements.record_implementation(requirement_id, "backend")
+    implemented = requirements.advance(requirement_id)
+    assert implemented.ok
+    assert implemented.data["target_status"] == "implemented"
+
+
 def test_requirement_transition_preserves_existing_progress_content(tmp_path: Path) -> None:
     WorkspaceService(tmp_path).init("demo", "演示工作空间")
     requirements = RequirementService(tmp_path)
@@ -129,6 +197,7 @@ def test_requirement_reopen_returns_verification_to_development_with_reason(
         RequirementStatus.PLANNED,
         RequirementStatus.READY,
         RequirementStatus.IN_PROGRESS,
+        RequirementStatus.IMPLEMENTED,
         RequirementStatus.VERIFYING,
     ):
         store.transition_requirement(requirement_id, status)
@@ -213,6 +282,41 @@ def test_record_implementation_is_independent_from_lifecycle_and_projects_delive
     overview = Path(created.data["path"]) / "需求总览.md"
     assert "实施状态：implemented" in overview.read_text()
     assert "验证状态：not_recorded" in overview.read_text()
+
+
+def test_record_implementation_merges_multiple_projects_atomically(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("多项目实施", "原子登记后端与 PDA", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    recorded = requirements.record_implementation(
+        requirement_id,
+        projects={
+            "backend": ["ART-BACKEND"],
+            "mes-pda": ["ART-PDA"],
+        },
+    )
+    rerecorded = requirements.record_implementation(
+        requirement_id,
+        projects={"backend": ["ART-BACKEND-2"]},
+    )
+
+    assert recorded.ok and rerecorded.ok
+    implementation = requirements.delivery(requirement_id).data["implementation"]
+    assert implementation["backend"]["artifact_ids"] == ["ART-BACKEND-2"]
+    assert implementation["mes-pda"]["artifact_ids"] == ["ART-PDA"]
+    events = [
+        item
+        for item in StateStore(tmp_path).audit_events()
+        if item["event"] == "requirement.implementation_recorded"
+    ]
+    assert any(
+        event["details"]["projects"] == ["backend", "mes-pda"]
+        for event in events
+    )
 
 
 def test_requirement_path_and_commit_message_apply_shared_naming_rules(tmp_path: Path) -> None:

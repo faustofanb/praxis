@@ -262,6 +262,80 @@ def test_requirement_constraint_delivery_and_verification_decline_cli_mapping() 
     )
 
 
+def test_requirement_advance_cli_mapping() -> None:
+    args = _parser().parse_args(
+        ["requirement", "advance", "REQ-20260723-001"]
+    )
+
+    assert _operation(args) == (
+        "requirement.advance",
+        {"requirement_id": "REQ-20260723-001"},
+    )
+
+
+def test_record_implementation_multi_project_cli_mapping() -> None:
+    args = _parser().parse_args(
+        [
+            "requirement",
+            "record-implementation",
+            "--requirement",
+            "REQ-1",
+            "--project",
+            "backend=ART-BACKEND",
+            "--project",
+            "mes-pda=ART-PDA-1,ART-PDA-2",
+        ]
+    )
+
+    assert _operation(args) == (
+        "requirement.record-implementation",
+        {
+            "requirement_id": "REQ-1",
+            "projects": {
+                "backend": ["ART-BACKEND"],
+                "mes-pda": ["ART-PDA-1", "ART-PDA-2"],
+            },
+        },
+    )
+
+
+def test_lifecycle_complete_node_cli_mapping() -> None:
+    args = _parser().parse_args(
+        [
+            "lifecycle",
+            "complete-node",
+            "--requirement",
+            "REQ-1",
+            "--node",
+            "in_progress",
+            "--used-skill",
+            "test-driven-development=passed:RED and GREEN observed",
+            "--used-skill",
+            "minimum-module-compile=approval_missing:awaiting command approval",
+        ]
+    )
+
+    assert _operation(args) == (
+        "lifecycle.complete-node",
+        {
+            "requirement_id": "REQ-1",
+            "node": "in_progress",
+            "results": {
+                "test-driven-development": {
+                    "result": "passed",
+                    "details": "RED and GREEN observed",
+                },
+                "minimum-module-compile": {
+                    "result": "approval_missing",
+                    "details": "awaiting command approval",
+                },
+            },
+            "session_id": "",
+            "approved_skills": [],
+        },
+    )
+
+
 def test_workspace_add_cli_maps_repository_facts() -> None:
     args = _parser().parse_args(
         [

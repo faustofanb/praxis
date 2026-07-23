@@ -1,0 +1,4 @@
+interface:
+  display_name: "UniApp API Generation"
+  short_description: "Route UniApp APIs to generated or typed manual clients"
+  default_prompt: "Use $uniapp-api-generation to choose and implement the safe typed UniApp client path."

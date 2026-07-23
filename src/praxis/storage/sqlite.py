@@ -87,6 +87,169 @@ class StateStore:
                 ],
             )
 
+    def record_requirement_implementations(
+        self,
+        requirement_id: str,
+        projects: dict[str, list[str]],
+        *,
+        recorded_at: str,
+    ) -> tuple[dict[str, Any], str]:
+        with self._connect() as database:
+            database.execute("begin immediate")
+            row = database.execute(
+                "select value from runtime_state where scope=? and key=?",
+                ("requirement_delivery", requirement_id),
+            ).fetchone()
+            delivery = (
+                json.loads(row["value"])
+                if row
+                else {
+                    "requirement_id": requirement_id,
+                    "implementation": {},
+                    "verification": {},
+                    "manual_acceptance_status": "awaiting_manual_acceptance",
+                }
+            )
+            for project_id, artifact_ids in projects.items():
+                delivery["implementation"][project_id] = {
+                    "status": "implemented",
+                    "artifact_ids": artifact_ids,
+                    "recorded_at": recorded_at,
+                }
+            database.execute(
+                """insert into runtime_state(scope, key, value, updated_at)
+                values (?, ?, ?, ?)
+                on conflict(scope, key) do update set
+                value=excluded.value, updated_at=excluded.updated_at""",
+                (
+                    "requirement_delivery",
+                    requirement_id,
+                    json.dumps(delivery, sort_keys=True),
+                    recorded_at,
+                ),
+            )
+            details = {
+                "requirement_id": requirement_id,
+                "projects": sorted(projects),
+            }
+            audit_id = self._audit(
+                database,
+                "requirement.implementation_recorded",
+                "OK",
+                details,
+                created_at=recorded_at,
+            )
+        return delivery, audit_id
+
+    def complete_skill_node(
+        self,
+        requirement_id: str,
+        node: str,
+        invocations: Sequence[dict[str, Any]],
+        gate: dict[str, Any],
+        *,
+        target: RequirementStatus | None,
+        recorded_at: str,
+    ) -> dict[str, Any]:
+        with self._connect() as database:
+            database.execute("begin immediate")
+            record = None
+            if target is not None:
+                row = database.execute(
+                    "select * from requirements where requirement_id=?",
+                    (requirement_id,),
+                ).fetchone()
+                if not row:
+                    raise KeyError(requirement_id)
+                current = Requirement(
+                    row["requirement_id"],
+                    row["short_name"],
+                    RequirementStatus(row["status"]),
+                )
+                if current.status.value != node:
+                    raise ValueError(
+                        f"节点与需求状态不一致：{node} != {current.status.value}"
+                    )
+                changed = current.transition(target)
+                database.execute(
+                    "update requirements set status=?, updated_at=? where requirement_id=?",
+                    (changed.status.value, recorded_at, requirement_id),
+                )
+                record = self._requirement_record(row)
+                record.update(status=changed.status.value, updated_at=recorded_at)
+                self._enqueue(database, "requirement.project", record, recorded_at)
+
+            audit_ids = []
+            for invocation in invocations:
+                database.execute(
+                    """insert into runtime_state(scope, key, value, updated_at)
+                    values (?, ?, ?, ?)
+                    on conflict(scope, key) do update set
+                    value=excluded.value, updated_at=excluded.updated_at""",
+                    (
+                        "skill_invocation",
+                        invocation["invocation_id"],
+                        json.dumps(invocation, sort_keys=True),
+                        recorded_at,
+                    ),
+                )
+                audit_ids.append(
+                    self._audit(
+                        database,
+                        "skill.invoked",
+                        "OK",
+                        {
+                            **invocation,
+                            "status": "invoked",
+                        },
+                        created_at=recorded_at,
+                    )
+                )
+                event = (
+                    "skill.completed"
+                    if invocation["result"] in {"passed", "not_applicable"}
+                    else "skill.result_recorded"
+                )
+                audit_ids.append(
+                    self._audit(
+                        database,
+                        event,
+                        invocation["result"].upper(),
+                        invocation,
+                        created_at=recorded_at,
+                    )
+                )
+            gate_audit_id = self._audit(
+                database,
+                "skill.gate",
+                gate["code"],
+                {
+                    "requirement_id": requirement_id,
+                    "node": node,
+                    **gate,
+                },
+                created_at=recorded_at,
+            )
+            transition_audit_id = ""
+            if record is not None:
+                transition_audit_id = self._audit(
+                    database,
+                    "requirement.transitioned",
+                    "OK",
+                    {
+                        "requirement_id": requirement_id,
+                        "from": node,
+                        "status": record["status"],
+                    },
+                    created_at=recorded_at,
+                )
+        return {
+            "record": record,
+            "audit_ids": audit_ids,
+            "gate_audit_id": gate_audit_id,
+            "transition_audit_id": transition_audit_id,
+        }
+
     def get(self, scope: str, key: str) -> dict[str, Any] | None:
         with self._connect() as database:
             row = database.execute(

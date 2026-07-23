@@ -35,6 +35,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 节点路由只产生计划。Skill 开始和结束必须分别记录 `skill.invoked` 与 `skill.completed`；
   `skill.routed`、上下文注入或命令历史都不能作为真实调用凭证。
 - 只有文档具有有效内容后，才推进需求到 `ready`。
+- 使用 `requirement advance` 一次只推进一个合法状态，并先查看来源状态、目标状态和缺失门禁；
+  不再通过重复执行某个阶段命令猜测状态迁移。
 - 纯调查、纯文档或无需代码变更的需求不得创建工作树。
 - 规划模式的临时数据库调查只允许已登记连接、非生产环境和只读 SQL，并自动执行
   `select current_database()`；写入、连接变更、生产查询和默认库猜测仍必须阻断。
@@ -113,11 +115,18 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 持续更新 `执行进度.md` 和产出物清单，不以聊天记录代替知识库。
 - 代码稳定后再登记产出物；`artifact add` 按“需求+路径” upsert 并刷新哈希。
 - 代码改动使用 `code-change` 类型登记，保留仓库、分支、diff 统计和变更文件哈希。
-- 实施完成后用 `requirement record-implementation` 记录实施维度；验证维度和人工验收维度独立。
+- 实施完成后用 `requirement record-implementation` 记录实施维度；多个项目使用重复
+  `--project <project>=<artifact-id,...>` 一次原子合并，避免并行登记互相覆盖。验证维度和人工
+  验收维度独立。
   用户明确选择不运行某个精确验证项时用 `verification decline` 记录收据，状态只能是 declined，
   不得标为 verified 或 passed。
 - 从 verifying 回开发使用带原因的 `requirement reopen`；同一问题默认最多一次恢复、一次重试。
-- 完成多个 Skill 后可用 `skill complete-node --used-skill <id>=<outcome>` 批量写入调用、完成和 gate 凭证。
+- 完成多个 Skill 后使用 `lifecycle complete-node --used-skill
+  <id>=<passed|not_applicable|approval_missing|failed>:<outcome>` 原子写入真实结果、检查门禁并按需
+  推进一个状态。未列出的 Skill 不得自动补写为已使用；`approval_missing` 必须显示“实施完成、
+  验证待批准”，不得伪装为普通 completed。
+- 生命周期为 `in_progress → implemented → verifying → completed`。`implemented` 表示代码实施
+  已登记，不代表测试通过或人工验收完成。
 - 节点路由统一保存为需求状态名；`investigation`、`analysis`、`planning`、`development`、
   `verification` 会规范化为对应状态，其他未知节点必须失败，不得静默退化为仅业务 Skill。
 - 查询单个工作树使用 `worktree status --binding <binding_id>`，避免扫描所有仓库；active binding

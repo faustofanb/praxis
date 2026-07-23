@@ -5,7 +5,7 @@ id = "praxis-requirement-workflow"
 source = "praxis"
 source_version = "3.0.0"
 license = "MIT"
-nodes = ["captured", "investigating", "analyzed", "planned", "ready", "in_progress", "verifying", "completed"]
+nodes = ["captured", "investigating", "analyzed", "planned", "ready", "in_progress", "implemented", "verifying", "completed"]
 mode = "required"
 availability = "bundled"
 priority = 100
@@ -218,7 +218,7 @@ id = "Testing Writing Guidelines"
 source = "installed-method-skill"
 source_version = "installed"
 license = "unknown"
-nodes = ["in_progress", "verifying"]
+nodes = ["in_progress", "implemented", "verifying"]
 mode = "approval_required"
 availability = "external"
 intent_triggers = ["测试", "test", "用例", "覆盖率", "spec"]
@@ -230,7 +230,7 @@ id = "verification-before-completion"
 source = "https://github.com/obra/superpowers"
 source_version = "6.1.1"
 license = "MIT"
-nodes = ["verifying", "completed"]
+nodes = ["implemented", "verifying", "completed"]
 mode = "approval_required"
 availability = "external"
 priority = 85
@@ -241,7 +241,7 @@ id = "code-quality-review"
 source = "installed-method-skill"
 source_version = "installed"
 license = "unknown"
-nodes = ["verifying"]
+nodes = ["implemented", "verifying"]
 mode = "approval_required"
 availability = "external"
 agent_roles = ["reviewer"]
@@ -251,26 +251,54 @@ context_budget = 900
 
 [[providers]]
 id = "api-permission-migration"
-source = "installed-business-skill"
-source_version = "installed"
-license = "unknown"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
 nodes = ["planned", "in_progress", "verifying"]
 mode = "conditional"
-availability = "external"
-intent_triggers = ["无此权限", "11051", "权限迁移", "def_resource_api", "API permission", "接口权限"]
+availability = "bundled"
+intent_triggers = ["无此权限", "11051", "权限迁移", "def_resource_api", "API permission", "接口权限", "MagicController"]
 priority = 78
 context_budget = 700
 
 [[providers]]
 id = "uniapp-api-generation"
-source = "installed-business-skill"
-source_version = "installed"
-license = "unknown"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
 nodes = ["planned", "in_progress", "verifying"]
 mode = "conditional"
-availability = "external"
-intent_triggers = ["alova-gen", "alova", "apiDefinitions", "globals.d.ts", "UniApp API", "OpenAPI 生成", "接口生成"]
+availability = "bundled"
+intent_triggers = ["alova-gen", "alova", "apiDefinitions", "globals.d.ts", "UniApp API", "OpenAPI 生成", "接口生成", "Magic-API 客户端"]
 priority = 78
+context_budget = 700
+
+[[providers]]
+id = "add-mom-magic-api"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
+nodes = ["planned", "in_progress", "verifying"]
+mode = "conditional"
+availability = "bundled"
+intent_triggers = ["Magic-API", "magic_api_file", "$magic$", "MOM Magic", "PDA 菜单迁移"]
+repository_kinds = ["java", "java-maven", "spring-boot"]
+condition_match = "all"
+priority = 82
+context_budget = 700
+
+[[providers]]
+id = "build-mes-pda-readonly-overview"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
+nodes = ["planned", "in_progress", "verifying"]
+mode = "conditional"
+availability = "bundled"
+intent_triggers = ["MES PDA", "只读统计", "库存总览", "PDA 报表", "customNav"]
+repository_kinds = ["uniapp", "typescript", "vue"]
+condition_match = "all"
+priority = 82
 context_budget = 700
 
 [[providers]]

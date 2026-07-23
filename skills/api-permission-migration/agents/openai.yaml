@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Permission Migration"
+  short_description: "Create idempotent Java and Magic API permissions"
+  default_prompt: "Use $api-permission-migration to create or review an idempotent endpoint permission migration."

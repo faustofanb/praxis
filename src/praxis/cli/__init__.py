@@ -102,6 +102,7 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(new)
     for action in (
         "show",
+        "advance",
         "analyze",
         "plan",
         "ready",
@@ -140,7 +141,7 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(list_constraints)
     record_implementation = requirement.add_parser("record-implementation")
     record_implementation.add_argument("--requirement", required=True)
-    record_implementation.add_argument("--project", required=True)
+    record_implementation.add_argument("--project", action="append", required=True)
     record_implementation.add_argument("--artifact", action="append", default=[])
     _json_flag(record_implementation)
 
@@ -343,6 +344,13 @@ def _parser() -> argparse.ArgumentParser:
         child = lifecycle.add_parser(action)
         child.add_argument("--stdin-json", action="store_true", required=True)
         child.add_argument("--session")
+    lifecycle_complete = lifecycle.add_parser("complete-node")
+    lifecycle_complete.add_argument("--requirement", required=True)
+    lifecycle_complete.add_argument("--node", required=True)
+    lifecycle_complete.add_argument("--used-skill", action="append", required=True)
+    lifecycle_complete.add_argument("--approved-skill", action="append", default=[])
+    lifecycle_complete.add_argument("--session")
+    _json_flag(lifecycle_complete)
 
     portrait = commands.add_parser("portrait").add_subparsers(dest="action", required=True)
     scan_portrait = portrait.add_parser("scan")
@@ -643,10 +651,29 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 ),
             }
         if args.action == "record-implementation":
+            if len(args.project) == 1 and "=" not in args.project[0]:
+                return "requirement.record-implementation", {
+                    "requirement_id": args.requirement,
+                    "project_id": args.project[0],
+                    "artifact_ids": args.artifact,
+                }
+            if args.artifact:
+                raise ValueError("--artifact 只能与单个不带 '=' 的 --project 一起使用")
+            projects = {}
+            for item in args.project:
+                project_id, separator, artifacts = item.partition("=")
+                if not separator or not project_id.strip():
+                    raise ValueError(
+                        "多项目登记的 --project 必须使用 <project-id>=<artifact-id,...>"
+                    )
+                projects[project_id.strip()] = [
+                    artifact.strip()
+                    for artifact in artifacts.split(",")
+                    if artifact.strip()
+                ]
             return "requirement.record-implementation", {
                 "requirement_id": args.requirement,
-                "project_id": args.project,
-                "artifact_ids": args.artifact,
+                "projects": projects,
             }
         if args.action == "new":
             return "requirement.new", {
@@ -823,6 +850,32 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             "deleted_lines": args.deleted_lines,
         }
     if args.group == "lifecycle":
+        if args.action == "complete-node":
+            results = {}
+            allowed = {"passed", "not_applicable", "approval_missing", "failed"}
+            for item in args.used_skill:
+                skill_id, separator, outcome = item.partition("=")
+                result, detail_separator, details = outcome.partition(":")
+                if (
+                    not separator
+                    or not skill_id.strip()
+                    or result.strip() not in allowed
+                ):
+                    raise ValueError(
+                        "--used-skill 必须使用 <skill-id>=<passed|not_applicable|"
+                        "approval_missing|failed>[:details]"
+                    )
+                results[skill_id.strip()] = {
+                    "result": result.strip(),
+                    "details": details.strip() if detail_separator else "",
+                }
+            return "lifecycle.complete-node", {
+                "requirement_id": args.requirement,
+                "node": args.node,
+                "results": results,
+                "session_id": args.session or "",
+                "approved_skills": args.approved_skill,
+            }
         return f"lifecycle.{args.action}", {"context": args.context}
     if args.group == "portrait":
         payload = {"project_id": args.project}
@@ -1034,7 +1087,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         serve(args.root)
         return 0
-    if args.group == "lifecycle":
+    if args.group == "lifecycle" and args.action != "complete-node":
         try:
             args.context = json.load(sys.stdin)
             if args.session:

@@ -1,0 +1,10 @@
+id = "api-permission-migration"
+type = "system"
+version = "1.1.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "schema-change"
+context_budget = 650
+required_tools = []
+triggers = ["无此权限", "11051", "权限迁移", "def_resource_api", "API permission", "接口权限"]

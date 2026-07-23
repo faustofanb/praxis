@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build MES PDA Read-only Overview"
+  short_description: "Build typed MES PDA read-only overview pages"
+  default_prompt: "Use $build-mes-pda-readonly-overview to implement a MES PDA read-only overview from an approved prototype."

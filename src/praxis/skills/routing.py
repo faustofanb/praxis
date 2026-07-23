@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from praxis.domain.requirement import RequirementStatus
 from praxis.result import Result
 from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
@@ -185,10 +186,16 @@ class NodeSkillRouter:
             for policy in sorted(self.policies(), key=lambda item: (-item.priority, item.id))
             if (reasons := self._matches(policy, request)) is not None
         ]
-        required_budget = sum(
-            policy.context_budget
+        protected_ids = {
+            policy.id
             for policy, _ in matched_policies
             if policy.mode in _GATED_MODES
+            or (policy.mode == "approval_required" and policy.id in approved)
+        }
+        protected_budget = sum(
+            policy.context_budget
+            for policy, _ in matched_policies
+            if policy.id in protected_ids and policy.id in available
         )
         business = registry.route_context(
             SkillRoutingContext(
@@ -201,24 +208,33 @@ class NodeSkillRouter:
                 agent_role=request.agent_role,
                 risks=request.risks,
                 artifact_types=request.artifact_types,
-                token_budget=max(0, request.token_budget - required_budget),
+                token_budget=max(0, request.token_budget - protected_budget),
             )
         )
+        matched_policy_ids = {policy.id for policy, _ in matched_policies}
+        business = tuple(
+            skill for skill in business if skill.id not in matched_policy_ids
+        )
         business_budget = sum(skill.context_budget for skill in business)
-        policy_budget = max(0, request.token_budget - business_budget)
+        optional_budget = max(
+            0,
+            request.token_budget - protected_budget - business_budget,
+        )
         decisions: list[dict[str, Any]] = []
-        used = 0
+        optional_used = 0
         for policy, reasons in matched_policies:
             status = "planned"
             if policy.id not in available:
                 status = "unavailable"
             elif policy.mode == "approval_required" and policy.id not in approved:
                 status = "blocked_pending_approval"
-            elif used + policy.context_budget > policy_budget:
+            elif policy.id in protected_ids:
+                status = "available"
+            elif optional_used + policy.context_budget > optional_budget:
                 status = "omitted_budget"
             else:
                 status = "available"
-                used += policy.context_budget
+                optional_used += policy.context_budget
             decisions.append(
                 {
                     **asdict(policy),
@@ -273,7 +289,8 @@ class NodeSkillRouter:
                     ],
                 }
             )
-            used += skill.context_budget
+        used = protected_budget + business_budget + optional_used
+        budget_shortfall = max(0, protected_budget - request.token_budget)
 
         blocked = [
             item["id"]
@@ -288,6 +305,8 @@ class NodeSkillRouter:
             "decisions": decisions,
             "context_budget": request.token_budget,
             "used_budget": used,
+            "protected_budget": protected_budget,
+            "budget_shortfall": budget_shortfall,
             "blocked_required_skills": blocked,
             "route_fingerprint": fingerprint,
             "cached": False,
@@ -494,13 +513,27 @@ class SkillInvocationService:
         self,
         requirement_id: str,
         node: str,
-        outcomes: dict[str, str],
+        outcomes: dict[str, Any],
         *,
         session_id: str = "",
         approved_skills: tuple[str, ...] = (),
+        structured: bool = False,
+        advance: bool = False,
     ) -> Result:
+        if structured:
+            return self._complete_node_structured(
+                requirement_id,
+                node,
+                outcomes,
+                session_id=session_id,
+                approved_skills=approved_skills,
+                advance=advance,
+            )
         node = NodeSkillRouter.canonical_node(node)
-        if not outcomes or any(not value.strip() for value in outcomes.values()):
+        if not outcomes or any(
+            not isinstance(value, str) or not value.strip()
+            for value in outcomes.values()
+        ):
             return Result(False, "SKILL_NODE_OUTCOME_REQUIRED")
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
         if not route:
@@ -566,6 +599,172 @@ class SkillInvocationService:
             },
         )
 
+    def _complete_node_structured(
+        self,
+        requirement_id: str,
+        node: str,
+        results: dict[str, Any],
+        *,
+        session_id: str,
+        approved_skills: tuple[str, ...],
+        advance: bool,
+    ) -> Result:
+        from praxis.knowledge.requirements import RequirementService
+
+        node = NodeSkillRouter.canonical_node(node)
+        if not results:
+            return Result(False, "SKILL_NODE_OUTCOME_REQUIRED")
+        route = self.store.get("skill_route", f"{requirement_id}:{node}")
+        if not route:
+            return Result(False, "SKILL_ROUTE_NOT_FOUND")
+        decisions = {item["id"]: item for item in route["decisions"]}
+        required = {
+            item["id"]
+            for item in route["decisions"]
+            if item["mode"] in _GATED_MODES
+            or (item["mode"] == "approval_required" and item["status"] == "available")
+        }
+        missing = sorted(required - results.keys())
+        if missing:
+            return Result(False, "SKILL_NODE_OUTCOME_MISSING", data={"missing": missing})
+        unknown = sorted(results.keys() - decisions.keys())
+        if unknown:
+            return Result(False, "SKILL_NOT_ROUTED", data={"skills": unknown})
+
+        normalized = {}
+        allowed_results = {"passed", "not_applicable", "approval_missing", "failed"}
+        approved = set(approved_skills)
+        for skill_id, raw in results.items():
+            if not isinstance(raw, dict):
+                return Result(False, "SKILL_NODE_RESULT_INVALID", data={"skill_id": skill_id})
+            result = str(raw.get("result", "")).strip()
+            details = str(raw.get("details", "")).strip()
+            if result not in allowed_results:
+                return Result(
+                    False,
+                    "SKILL_NODE_RESULT_INVALID",
+                    data={"skill_id": skill_id, "result": result},
+                )
+            decision = decisions[skill_id]
+            if decision["status"] in {"unavailable", "omitted_budget"}:
+                return Result(False, "SKILL_NOT_AVAILABLE", data={"skill_id": skill_id})
+            if (
+                decision["status"] == "blocked_pending_approval"
+                and skill_id not in approved
+                and result != "approval_missing"
+            ):
+                return Result(False, "USER_APPROVAL_REQUIRED", data={"skill_id": skill_id})
+            normalized[skill_id] = {"result": result, "details": details}
+
+        failed = sorted(
+            skill_id
+            for skill_id, item in normalized.items()
+            if item["result"] == "failed"
+        )
+        approval_missing = sorted(
+            skill_id
+            for skill_id, item in normalized.items()
+            if item["result"] == "approval_missing"
+        )
+        completed = sorted(
+            skill_id
+            for skill_id, item in normalized.items()
+            if item["result"] in {"passed", "not_applicable"}
+        )
+        if failed:
+            gate_code = "SKILL_NODE_FAILED"
+        elif approval_missing:
+            gate_code = "SKILL_NODE_APPROVAL_MISSING"
+        else:
+            gate_code = "OK"
+        gate = {
+            "code": gate_code,
+            "required": sorted(required),
+            "completed": completed,
+            "missing": [],
+            "approval_missing": approval_missing,
+            "failed": failed,
+        }
+
+        requirements = RequirementService(self.root)
+        preview = None
+        may_advance = advance and not failed and (
+            not approval_missing or node == "in_progress"
+        )
+        if may_advance:
+            preview = requirements.preview_advance(requirement_id)
+            if not preview.ok:
+                return preview
+
+        timestamp = datetime.now(UTC).isoformat()
+        invocations = []
+        for skill_id, item in normalized.items():
+            invocation_id = (
+                f"SKI-{datetime.now(UTC):%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
+            )
+            status = (
+                "completed"
+                if item["result"] in {"passed", "not_applicable"}
+                else item["result"]
+            )
+            invocation = {
+                "invocation_id": invocation_id,
+                "requirement_id": requirement_id,
+                "node": node,
+                "skill_id": skill_id,
+                "session_id": session_id,
+                "source": decisions[skill_id]["source"],
+                "source_version": decisions[skill_id]["source_version"],
+                "content_hash": decisions[skill_id].get("content_hash", ""),
+                "status": status,
+                "result": item["result"],
+                "details": item["details"],
+                "approved": skill_id in approved,
+                "started_at": timestamp,
+            }
+            if status == "completed":
+                invocation["completed_at"] = timestamp
+            else:
+                invocation["recorded_at"] = timestamp
+            invocations.append(invocation)
+
+        target = RequirementStatus(preview.data["target_status"]) if preview else None
+        stored = self.store.complete_skill_node(
+            requirement_id,
+            node,
+            invocations,
+            gate,
+            target=target,
+            recorded_at=timestamp,
+        )
+        if target is not None:
+            requirements.repair_projections()
+        delivery = requirements.delivery(requirement_id)
+        if delivery.ok:
+            gate["implementation_status"] = delivery.data["implementation_status"]
+            gate["verification_status"] = (
+                "approval_missing" if approval_missing else delivery.data["verification_status"]
+            )
+        code = (
+            "IMPLEMENTATION_COMPLETE_VERIFICATION_PENDING_APPROVAL"
+            if approval_missing and target is not None
+            else gate_code
+        )
+        ok = not failed and (not approval_missing or target is not None)
+        return Result(
+            ok,
+            code,
+            data={
+                "requirement_id": requirement_id,
+                "node": node,
+                "source_status": preview.data["source_status"] if preview else node,
+                "target_status": preview.data["target_status"] if preview else "",
+                "results": invocations,
+                "gate": {**gate, "audit_id": stored["gate_audit_id"]},
+                "transition_audit_id": stored["transition_audit_id"],
+            },
+        )
+
     def gate(self, requirement_id: str, node: str) -> Result:
         node = NodeSkillRouter.canonical_node(node)
         route = self.store.get("skill_route", f"{requirement_id}:{node}")
@@ -588,19 +787,41 @@ class SkillInvocationService:
             if item["mode"] in _GATED_MODES
             or (item["mode"] == "approval_required" and item["status"] == "available")
         }
+        invocations = [
+            item
+            for item in self.store.list_scope("skill_invocation")
+            if item["requirement_id"] == requirement_id and item["node"] == node
+        ]
         completed = {
             item["skill_id"]
-            for item in self.store.list_scope("skill_invocation")
-            if item["requirement_id"] == requirement_id
-            and item["node"] == node
-            and (item.get("status") == "completed" or bool(item.get("completed_at")))
+            for item in invocations
+            if item.get("result") in {"passed", "not_applicable"}
+            or (
+                "result" not in item
+                and (item.get("status") == "completed" or bool(item.get("completed_at")))
+            )
         }
+        approval_missing = sorted(
+            item["skill_id"]
+            for item in invocations
+            if item.get("result") == "approval_missing"
+        )
+        failed = sorted(
+            item["skill_id"] for item in invocations if item.get("result") == "failed"
+        )
         missing = sorted(required - completed)
-        code = "OK" if not missing else "SKILL_NODE_GATE_BLOCKED"
+        if failed:
+            code = "SKILL_NODE_FAILED"
+        elif approval_missing:
+            code = "SKILL_NODE_APPROVAL_MISSING"
+        else:
+            code = "OK" if not missing else "SKILL_NODE_GATE_BLOCKED"
         data = {
             "required": sorted(required),
             "completed": sorted(completed),
             "missing": missing,
+            "approval_missing": approval_missing,
+            "failed": failed,
         }
         data["audit_id"] = self.store.audit(
             "skill.gate",
@@ -608,7 +829,7 @@ class SkillInvocationService:
             {"requirement_id": requirement_id, "node": node, **data},
         )
         return Result(
-            not missing,
+            not missing and not approval_missing and not failed,
             code,
             data=data,
         )

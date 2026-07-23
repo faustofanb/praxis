@@ -1,0 +1,14 @@
+// Place outside generated API directories when the Magic-API is not in Alova config.
+export interface OverviewQuery {
+  readonly optionIds: readonly string[]
+}
+
+export interface OverviewResult {
+  readonly id: string
+  // Add only fields supported by the migration/API contract.
+}
+
+export async function getOverview(query: OverviewQuery): Promise<OverviewResult[]> {
+  // Call the repository's typed HTTP client and preserve Snowflake IDs as strings.
+  throw new Error('replace with repository client')
+}

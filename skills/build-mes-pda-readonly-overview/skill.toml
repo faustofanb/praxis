@@ -1,0 +1,10 @@
+id = "build-mes-pda-readonly-overview"
+type = "system"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "none"
+context_budget = 650
+required_tools = []
+triggers = ["MES PDA", "只读统计", "库存总览", "PDA 报表", "customNav"]

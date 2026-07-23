@@ -66,8 +66,10 @@ class PraxisApplication:
         duration_ms = round((monotonic_ns() - started) / 1_000_000, 3)
         timed_operations = {
             "requirement.reopen",
+            "requirement.advance",
             "artifact.add",
             "skill.complete-node",
+            "lifecycle.complete-node",
             "agent.start",
             "agent.receipt",
         }
@@ -235,8 +237,9 @@ class PraxisApplication:
         if operation == "requirement.record-implementation":
             return RequirementService(self.root).record_implementation(
                 values["requirement_id"],
-                values["project_id"],
+                values.get("project_id", ""),
                 artifact_ids=values.get("artifact_ids", []),
+                projects=values.get("projects", {}),
             )
         if operation == "verification.decline":
             return VerificationService(self.root).decline(
@@ -253,6 +256,12 @@ class PraxisApplication:
             return RequirementService(self.root).reopen(
                 values["requirement_id"], values["reason"]
             )
+        if operation == "requirement.advance":
+            requirement_id = values["requirement_id"]
+            skill_gate = self._gate_current_skill_route(requirement_id)
+            if not skill_gate.ok:
+                return skill_gate
+            return RequirementService(self.root).advance(requirement_id)
         if operation == "requirement.transition":
             target = RequirementStatus(values["status"])
             if target not in {RequirementStatus.BLOCKED, RequirementStatus.CANCELLED}:
@@ -406,6 +415,16 @@ class PraxisApplication:
         if operation == "skill.gate":
             return SkillInvocationService(self.root).gate(
                 values["requirement_id"], values["node"]
+            )
+        if operation == "lifecycle.complete-node":
+            return SkillInvocationService(self.root).complete_node(
+                values["requirement_id"],
+                values["node"],
+                values["results"],
+                session_id=values.get("session_id", ""),
+                approved_skills=tuple(values.get("approved_skills", [])),
+                structured=True,
+                advance=True,
             )
         if operation == "skill.resource":
             content = self._skills().resource(values["uri"])

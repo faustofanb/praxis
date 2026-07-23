@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add MOM Magic API"
+  short_description: "Generate and validate MOM Magic-API migrations"
+  default_prompt: "Use $add-mom-magic-api to create and validate a MOM Magic-API Flyway migration."

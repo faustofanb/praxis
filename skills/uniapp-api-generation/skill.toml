@@ -1,0 +1,10 @@
+id = "uniapp-api-generation"
+type = "system"
+version = "1.1.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "none"
+context_budget = 650
+required_tools = []
+triggers = ["alova-gen", "alova", "apiDefinitions", "globals.d.ts", "UniApp API", "OpenAPI 生成", "Magic-API 客户端"]

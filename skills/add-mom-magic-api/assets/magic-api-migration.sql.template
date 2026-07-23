@@ -1,0 +1,48 @@
+-- Adapt table columns and ID generation from the nearest MOM migration.
+-- Replace every angle-bracket token before use.
+
+-- 1. Resolve or create the narrow PDA resource by stable parent/resource code.
+INSERT INTO def_resource (id, parent_id, code, name, path)
+SELECT <resource_id>, parent.id, '<resource_code>', '<resource_name>', '<pda_route>'
+FROM def_resource parent
+WHERE parent.code = '<parent_code>'
+  AND NOT EXISTS (SELECT 1 FROM def_resource WHERE code = '<resource_code>');
+
+-- 2. Add only the target Magic file; do not delete its group or sibling APIs.
+DELETE FROM magic_api_file WHERE file_path = '<api_file_path>';
+INSERT INTO magic_api_file (id, file_path, file_content)
+VALUES (
+  '<magic_file_id>',
+  '<api_file_path>',
+  '$magic${"groupId":"<group_id>","method":"GET","path":"<api_path>","parameters":[]}
+================================
+var tenantId = ifc.getTenantId();
+return db.select("select cast(t.id as varchar) as id from <table> t where t.tenant_id = #{tenantId}");
+$magic$'
+);
+
+-- 3. Register the effective Magic URI on that resource.
+INSERT INTO def_resource_api (
+  id, resource_id, controller, spring_application_name, request_method, name, uri
+)
+SELECT
+  <api_resource_id>, resource.id, 'MagicController', 'lamp-system-server',
+  'GET', '<resource_name>', '/magic/api/<group_path>/<api_path>'
+FROM def_resource resource
+WHERE resource.code = '<resource_code>'
+  AND NOT EXISTS (
+    SELECT 1 FROM def_resource_api
+    WHERE request_method = 'GET'
+      AND uri = '/magic/api/<group_path>/<api_path>'
+  );
+
+-- 4. Grant the same resource to built-in tenants idempotently.
+INSERT INTO def_tenant_resource_rel (id, tenant_id, resource_id)
+SELECT <tenant_rel_id>, tenant.id, resource.id
+FROM def_tenant tenant
+JOIN def_resource resource ON resource.code = '<resource_code>'
+WHERE tenant.is_builtin = true
+  AND NOT EXISTS (
+    SELECT 1 FROM def_tenant_resource_rel rel
+    WHERE rel.tenant_id = tenant.id AND rel.resource_id = resource.id
+  );

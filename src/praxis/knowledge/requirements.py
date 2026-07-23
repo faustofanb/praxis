@@ -6,7 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from praxis.documents.requirements import RequirementProjector
-from praxis.domain.requirement import RequirementStatus
+from praxis.domain.requirement import RequirementStatus, next_requirement_status
 from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
@@ -80,6 +80,77 @@ class RequirementService:
         record = self.store.transition_requirement(requirement_id, target)
         self.repair_projections()
         return Result(True, data={"requirement_id": requirement_id, "status": record["status"]})
+
+    def advance(self, requirement_id: str) -> Result:
+        preview = self.preview_advance(requirement_id)
+        if not preview.ok:
+            return preview
+        target = RequirementStatus(preview.data["target_status"])
+        transitioned = self.transition(requirement_id, target)
+        if not transitioned.ok:
+            return transitioned
+        return Result(
+            True,
+            data={
+                **transitioned.data,
+                **preview.data,
+            },
+        )
+
+    def preview_advance(self, requirement_id: str) -> Result:
+        current = self.store.requirement(requirement_id)
+        if not current:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        source = RequirementStatus(current["status"])
+        target = next_requirement_status(source)
+        if target is None:
+            return Result(
+                False,
+                "REQUIREMENT_ADVANCE_UNAVAILABLE",
+                data={
+                    "source_status": source.value,
+                    "target_status": "",
+                    "missing_gates": [],
+                },
+            )
+        missing = []
+        if target == RequirementStatus.READY:
+            ready = self._ready_gate(current)
+            if not ready.ok:
+                missing.extend(ready.data.get("unknown_domains", []))
+                missing.extend(ready.data.get("missing_documents", []))
+        if (
+            target == RequirementStatus.IMPLEMENTED
+            and self._delivery_summary(self._delivery(requirement_id))[
+                "implementation_status"
+            ]
+            != "implemented"
+        ):
+            missing.append("implementation")
+        if target == RequirementStatus.COMPLETED:
+            completion = self._completion_gate(current)
+            if not completion.ok:
+                missing.extend(completion.data.get("missing", []))
+        if missing:
+            return Result(
+                False,
+                "REQUIREMENT_ADVANCE_BLOCKED",
+                data={
+                    "requirement_id": requirement_id,
+                    "source_status": source.value,
+                    "target_status": target.value,
+                    "missing_gates": missing,
+                },
+            )
+        return Result(
+            True,
+            data={
+                "requirement_id": requirement_id,
+                "source_status": source.value,
+                "target_status": target.value,
+                "missing_gates": [],
+            },
+        )
 
     def reopen(self, requirement_id: str, reason: str) -> Result:
         if not reason.strip():
@@ -243,31 +314,33 @@ class RequirementService:
     def record_implementation(
         self,
         requirement_id: str,
-        project_id: str,
+        project_id: str = "",
         *,
         artifact_ids: list[str] | None = None,
+        projects: dict[str, list[str]] | None = None,
     ) -> Result:
         if not self.store.requirement(requirement_id):
             return Result(False, "REQUIREMENT_NOT_FOUND")
-        if not project_id.strip():
-            return Result(False, "REQUIREMENT_PROJECT_REQUIRED")
-        delivery = self._delivery(requirement_id)
-        delivery["implementation"][project_id] = {
-            "status": "implemented",
-            "artifact_ids": list(dict.fromkeys(artifact_ids or [])),
-            "recorded_at": datetime.now(UTC).isoformat(),
+        normalized = {
+            key.strip(): list(dict.fromkeys(value))
+            for key, value in (projects or {}).items()
+            if key.strip()
         }
-        self.store.set("requirement_delivery", requirement_id, delivery)
-        self.store.audit(
-            "requirement.implementation_recorded",
-            "OK",
-            {"requirement_id": requirement_id, "project_id": project_id},
+        if project_id.strip():
+            normalized[project_id.strip()] = list(dict.fromkeys(artifact_ids or []))
+        if not normalized:
+            return Result(False, "REQUIREMENT_PROJECT_REQUIRED")
+        recorded_at = datetime.now(UTC).isoformat()
+        delivery, audit_id = self.store.record_requirement_implementations(
+            requirement_id,
+            normalized,
+            recorded_at=recorded_at,
         )
         self.project_current(requirement_id)
         return Result(
             True,
             "REQUIREMENT_IMPLEMENTATION_RECORDED",
-            data=self._delivery_summary(delivery),
+            data={**self._delivery_summary(delivery), "audit_id": audit_id},
         )
 
     def delivery(self, requirement_id: str) -> Result:

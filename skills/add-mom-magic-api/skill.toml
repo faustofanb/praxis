@@ -1,0 +1,10 @@
+id = "add-mom-magic-api"
+type = "system"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "schema-change"
+context_budget = 650
+required_tools = []
+triggers = ["Magic-API", "magic_api_file", "$magic$", "MOM Magic", "PDA 菜单迁移"]

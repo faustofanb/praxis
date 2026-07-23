@@ -1,0 +1,24 @@
+<route lang="json5" type="page">
+{
+  style: {
+    navigationStyle: 'custom',
+    navigationBarTitleText: '<page-title>',
+  },
+}
+</route>
+
+<script setup lang="ts">
+// Keep business fields, colors, and component imports local to the target page.
+// 1. Load options.
+// 2. Select a deterministic first default.
+// 3. Query once.
+// 4. Ignore stale responses.
+</script>
+
+<template>
+  <view class="page">
+    <!-- customNav -->
+    <!-- confirmed filters -->
+    <!-- loading | failure+retry | empty | content -->
+  </view>
+</template>

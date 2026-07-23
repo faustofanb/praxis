@@ -27,7 +27,9 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - TDD GREEN 后：最小受影响模块编译
 - 高风险共享改动：编辑前 CodeGraph 调用链和影响范围分析
 - 新增或修改测试：测试编写规范
+- MOM Magic-API、菜单与租户授权迁移：`add-mom-magic-api`
 - AOTU/MOM 接口权限迁移：`api-permission-migration`
+- MES PDA 只读统计、库存和报表总览页：`build-mes-pda-readonly-overview`
 - AOTU/MOM UniApp OpenAPI/Alova 生成：`uniapp-api-generation`
 - 调查节点：头脑风暴、逐问式需求确认（`grilling`）、最小范围控制和文件检索
 - 计划节点：实施计划编写和复杂度约束
@@ -74,14 +76,18 @@ Markdown 不直接执行行为，权限和门禁仍由 Praxis Python 服务裁�
 1. 使用 `praxis skill route-node` 生成当前节点计划。
 2. 调用 Skill 前使用 `praxis skill invoke` 记录版本、内容哈希、会话和批准状态。
 3. 完成 Skill 流程后使用 `praxis skill complete` 写入完成凭证。
-4. 节点流转前使用 `praxis skill gate`；`skill.routed` 或命令记录不能替代调用凭证。
-5. `blocked_pending_approval`、`unavailable` 和 `omitted_budget` 状态不得伪装为已调用。
-6. 使用 `praxis doctor` 核对 `policy_without_provider`、
+4. 同一节点有多个 Skill 时优先使用 `praxis lifecycle complete-node --used-skill
+   <id>=<passed|not_applicable|approval_missing|failed>:<outcome>` 原子登记结果、检查门禁并只推进
+   一个合法状态；它不会把未列出的 Skill 冒充为已使用。
+5. 单独登记时在节点流转前使用 `praxis skill gate`；`skill.routed` 或命令记录不能替代调用凭证。
+6. `approval_missing` 表示实施可完成但验证仍待批准；`blocked_pending_approval`、`unavailable`、
+   `omitted_budget` 和 `failed` 不得伪装为通过。
+7. 使用 `praxis doctor` 核对 `policy_without_provider`、
    `installed_without_policy` 和 `delegate_without_policy`；未登记的安装项不会自动进入路由。
-7. `orca-cli`、`orca-per-workspace-env` 和 `obsidian-markdown` 明确排除，不参与 Provider 扫描。
-8. 所有外部命令必须先由 RTK 代理：专用适配优先，其余按输出类型使用 `rtk test`、
+8. `orca-cli`、`orca-per-workspace-env` 和 `obsidian-markdown` 明确排除，不参与 Provider 扫描。
+9. 所有外部命令必须先由 RTK 代理：专用适配优先，其余按输出类型使用 `rtk test`、
    `rtk err` 或保留原始输出的 `rtk proxy`；机器 JSON 也走 `rtk proxy`。
-9. 只有 RTK 自身执行失败时才允许直接命令降级，并记录原 RTK 命令、错误和降级命令；
+10. 只有 RTK 自身执行失败时才允许直接命令降级，并记录原 RTK 命令、错误和降级命令；
    被代理命令自身失败不得伪装成 RTK 故障。普通文本搜索使用 `rtk rg`，不使用“rg-grep”。
 
 ## 十一、验证方法

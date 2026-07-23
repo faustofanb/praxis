@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from praxis.domain.requirement import RequirementStatus
+from praxis.knowledge.requirements import RequirementService
 from praxis.skills.routing import (
     NodeSkillRouter,
     NodeSkillRoutingRequest,
@@ -137,6 +139,40 @@ def test_default_budget_reserves_context_for_matching_business_skill(tmp_path: P
     assert decisions["business.demo.backend.development"]["status"] == "available"
     assert decisions["file-search"]["status"] == "omitted_budget"
     assert result.data["used_budget"] == 4_000
+
+
+def test_approved_and_required_skills_are_never_omitted_by_budget(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="编写测试并实现修复",
+            requirement_id="REQ-BUDGET",
+            available_skills=(
+                "test-driven-development",
+                "Testing Writing Guidelines",
+            ),
+            approved_skills=("Testing Writing Guidelines",),
+            token_budget=100,
+        )
+    )
+
+    decisions = {item["id"]: item for item in result.data["decisions"]}
+    protected = {
+        "praxis-requirement-workflow",
+        "ponytail",
+        "test-driven-development",
+        "minimum-module-compile",
+        "Testing Writing Guidelines",
+    }
+    assert {decisions[skill_id]["status"] for skill_id in protected} == {"available"}
+    assert result.data["protected_budget"] > result.data["context_budget"]
+    assert result.data["budget_shortfall"] == (
+        result.data["protected_budget"] - result.data["context_budget"]
+    )
 
 
 def test_business_skill_requires_project_and_intent_but_development_stays_automatic(
@@ -408,6 +444,114 @@ def test_complete_node_records_required_skill_lifecycle_in_one_call(tmp_path: Pa
     assert result.ok
     assert {item["skill_id"] for item in result.data["completed"]} == required
     assert result.data["gate"]["missing"] == []
+
+
+def test_lifecycle_complete_node_rolls_back_partial_skill_records(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    route = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="编写测试",
+            requirement_id="REQ-ATOMIC",
+            available_skills=(
+                "test-driven-development",
+                "Testing Writing Guidelines",
+            ),
+            token_budget=8_000,
+        )
+    )
+    required = sorted(
+        item["id"]
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    )
+    results = {
+        skill_id: {"result": "passed", "details": f"{skill_id} used"}
+        for skill_id in required
+    }
+    results["Testing Writing Guidelines"] = {
+        "result": "passed",
+        "details": "approval was not supplied",
+    }
+
+    completed = SkillInvocationService(tmp_path).complete_node(
+        "REQ-ATOMIC",
+        "in_progress",
+        results,
+        structured=True,
+        advance=True,
+    )
+
+    assert not completed.ok
+    assert completed.code == "USER_APPROVAL_REQUIRED"
+    assert [
+        item
+        for item in StateStore(tmp_path).list_scope("skill_invocation")
+        if item.get("requirement_id") == "REQ-ATOMIC"
+    ] == []
+
+
+def test_approval_missing_keeps_implementation_complete_and_verification_pending(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("验证待批准", "实施完成但编译未获批准", [], [])
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(tmp_path)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+    ):
+        store.transition_requirement(requirement_id, status)
+    requirements.record_implementation(requirement_id, "backend")
+    route = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="实现代码",
+            requirement_id=requirement_id,
+            available_skills=("test-driven-development",),
+            token_budget=8_000,
+        )
+    )
+    required = {
+        item["id"]
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    }
+    results = {
+        skill_id: {"result": "passed", "details": f"{skill_id} used"}
+        for skill_id in required
+    }
+    results["minimum-module-compile"] = {
+        "result": "approval_missing",
+        "details": "compile command is awaiting approval",
+    }
+
+    completed = SkillInvocationService(tmp_path).complete_node(
+        requirement_id,
+        "in_progress",
+        results,
+        structured=True,
+        advance=True,
+    )
+
+    assert completed.ok
+    assert completed.code == "IMPLEMENTATION_COMPLETE_VERIFICATION_PENDING_APPROVAL"
+    assert requirements.show(requirement_id).data["status"] == "implemented"
+    assert completed.data["gate"]["approval_missing"] == ["minimum-module-compile"]
+    invocation = next(
+        item
+        for item in store.list_scope("skill_invocation")
+        if item["skill_id"] == "minimum-module-compile"
+    )
+    assert invocation["status"] == "approval_missing"
+    assert "completed_at" not in invocation
 
 
 def test_skill_gate_missing_route_is_audited(tmp_path: Path) -> None:

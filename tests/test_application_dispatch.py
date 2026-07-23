@@ -254,6 +254,108 @@ def test_requirement_analyze_does_not_skip_investigating_node(
     assert result.data["status"] == "investigating"
 
 
+def test_requirement_advance_dispatches_one_transition(
+    application: PraxisApplication,
+) -> None:
+    assert application.execute(
+        "workspace.init", {"workspace_id": "demo", "name": "演示开发工作空间"}
+    ).ok
+    created = application.execute(
+        "requirement.new",
+        {
+            "short_name": "推进命令",
+            "request": "单步推进",
+            "systems": [],
+            "domains": [],
+        },
+    )
+    requirement_id = created.data["requirement_id"]
+    route = NodeSkillRouter(application.root).route(
+        NodeSkillRoutingRequest(
+            node="captured",
+            requirement_id=requirement_id,
+            token_budget=5_000,
+        )
+    )
+    required = {
+        item["id"] for item in route.data["decisions"] if item["mode"] == "required"
+    }
+    assert SkillInvocationService(application.root).complete_node(
+        requirement_id,
+        "captured",
+        {skill_id: "passed" for skill_id in required},
+    ).ok
+
+    result = application.execute(
+        "requirement.advance", {"requirement_id": requirement_id}
+    )
+
+    assert result.ok
+    assert result.data["source_status"] == "captured"
+    assert result.data["target_status"] == "investigating"
+
+
+def test_lifecycle_complete_node_dispatches_atomically(
+    application: PraxisApplication,
+) -> None:
+    assert application.execute(
+        "workspace.init", {"workspace_id": "demo", "name": "演示开发工作空间"}
+    ).ok
+    created = application.execute(
+        "requirement.new",
+        {
+            "short_name": "生命周期完成",
+            "request": "原子完成节点",
+            "systems": [],
+            "domains": [],
+        },
+    )
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(application.root)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+    ):
+        store.transition_requirement(requirement_id, status)
+    application.execute(
+        "requirement.record-implementation",
+        {
+            "requirement_id": requirement_id,
+            "project_id": "backend",
+            "artifact_ids": [],
+        },
+    )
+    route = NodeSkillRouter(application.root).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            requirement_id=requirement_id,
+            available_skills=("test-driven-development",),
+            token_budget=8_000,
+        )
+    )
+    results = {
+        item["id"]: {"result": "passed", "details": "used"}
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    }
+
+    completed = application.execute(
+        "lifecycle.complete-node",
+        {
+            "requirement_id": requirement_id,
+            "node": "in_progress",
+            "results": results,
+        },
+    )
+
+    assert completed.ok
+    assert completed.data["source_status"] == "in_progress"
+    assert completed.data["target_status"] == "implemented"
+
+
 def test_worktree_create_requires_current_ready_skill_gate(
     application: PraxisApplication,
 ) -> None:
@@ -515,6 +617,7 @@ def test_fast_path_operations_dispatch_through_public_application(
         RequirementStatus.PLANNED,
         RequirementStatus.READY,
         RequirementStatus.IN_PROGRESS,
+        RequirementStatus.IMPLEMENTED,
         RequirementStatus.VERIFYING,
     ):
         store.transition_requirement(requirement_id, status)

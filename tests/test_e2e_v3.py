@@ -145,6 +145,7 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
     assert "value is not None" in (repo / "app.py").read_text()
     for status in (
         RequirementStatus.IN_PROGRESS,
+        RequirementStatus.IMPLEMENTED,
         RequirementStatus.VERIFYING,
         RequirementStatus.COMPLETED,
     ):
