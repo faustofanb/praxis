@@ -49,6 +49,8 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "praxis skill gate" in agents
     assert "自动生成当前项目的 coder context" in agents
     assert "select current_database()" in agents
+    assert "database investigate" in agents
+    assert "规划模式" in agents
     assert "实施完成不等于验证通过" in agents
     assert claude.startswith("# Claude Code 项目规则")
 

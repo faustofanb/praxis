@@ -367,6 +367,12 @@ def _parser() -> argparse.ArgumentParser:
     query.add_argument("--postimpact")
     query.add_argument("--approval")
     _json_flag(query)
+    investigate = database.add_parser("investigate")
+    investigate.add_argument("--project", required=True)
+    investigate.add_argument("--connection", required=True)
+    investigate.add_argument("--purpose", required=True)
+    investigate.add_argument("--sql", required=True)
+    _json_flag(investigate)
     configure = database.add_parser("configure")
     configure.add_argument("--project", required=True)
     configure.add_argument("--connection-ref", action="append", default=[])
@@ -831,6 +837,14 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "production_connection_refs": args.production_connection_ref,
             }
         payload = {"project_id": args.project}
+        if args.action == "investigate":
+            payload.update(
+                {
+                    "connection_ref": args.connection,
+                    "purpose": args.purpose,
+                    "sql": args.sql,
+                }
+            )
         if args.action == "query":
             payload.update(
                 {

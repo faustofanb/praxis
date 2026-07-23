@@ -92,6 +92,20 @@ def test_portrait_and_database_cli_preserve_requested_action() -> None:
             "select 1",
         ]
     )
+    investigation = _parser().parse_args(
+        [
+            "database",
+            "investigate",
+            "--project",
+            "backend",
+            "--connection",
+            "dbx://BL_DMS_DB/app",
+            "--purpose",
+            "追溯一期",
+            "--sql",
+            "select 1",
+        ]
+    )
 
     assert _operation(portrait) == ("portrait.diff", {"project_id": "backend"})
     assert _operation(database) == (
@@ -101,6 +115,15 @@ def test_portrait_and_database_cli_preserve_requested_action() -> None:
             "connection_ref": "dbx://dev",
             "sql": "select 1",
             "approved": False,
+        },
+    )
+    assert _operation(investigation) == (
+        "database.investigate",
+        {
+            "project_id": "backend",
+            "connection_ref": "dbx://BL_DMS_DB/app",
+            "purpose": "追溯一期",
+            "sql": "select 1",
         },
     )
 

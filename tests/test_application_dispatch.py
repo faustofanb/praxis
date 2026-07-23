@@ -145,6 +145,24 @@ class FakeDatabase:
             },
         )
 
+    def investigate(
+        self,
+        project_id: str,
+        connection_ref: str,
+        sql: str,
+        *,
+        purpose: str,
+    ) -> Result:
+        return Result(
+            True,
+            data={
+                "project_id": project_id,
+                "connection_ref": connection_ref,
+                "sql": sql,
+                "purpose": purpose,
+            },
+        )
+
 
 @pytest.fixture
 def application(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PraxisApplication:
@@ -631,6 +649,15 @@ def test_worktree_partial_ensure_keeps_context_for_successful_repository(
                 "project_id": "app",
                 "connection_ref": "dbx://dev",
                 "sql": "select 1",
+            },
+        ),
+        (
+            "database.investigate",
+            {
+                "project_id": "app",
+                "connection_ref": "dbx://dev/app",
+                "sql": "select 1",
+                "purpose": "核对一期表结构",
             },
         ),
     ],

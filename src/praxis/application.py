@@ -467,6 +467,13 @@ class PraxisApplication:
                 read_allowed=values.get("read_allowed", True),
                 write_context=values.get("write_context"),
             )
+        if operation == "database.investigate":
+            return DatabaseService(self.root).investigate(
+                values["project_id"],
+                values["connection_ref"],
+                values["sql"],
+                purpose=values["purpose"],
+            )
         if operation == "context.build":
             return ContextCompiler(self.root).build(
                 ContextBuildRequest(

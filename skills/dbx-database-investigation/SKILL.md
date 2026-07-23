@@ -11,7 +11,8 @@ description: 通过 DBX CLI（必要时回退 MCP）调查数据库结构。适�
 
 ## 二、适用业务域
 
-适用于当前需求已经登记的业务系统和业务域。
+适用于已登记需求的业务系统和业务域；规划模式禁止正式登记需求时，也可在项目画像范围内
+创建不持久化的 `investigation_scope`。
 
 ## 三、适用场景
 
@@ -23,11 +24,18 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 
 ## 五、所需输入
 
-需求编号、目标仓库、已登记的 `dbx://` 连接引用和调查目的。
+已登记需求编号，或规划模式的临时调查范围；以及目标项目、已登记的 `dbx://` 连接引用和
+明确调查目的。
 
 ## 六、提供能力
 
-优先调用 DBX CLI 的 JSON 契约（`connections`、`schema`、`query`、`context`），只读取任务涉及的表；必要时执行一个有界 `SELECT`、`WITH … SELECT` 或 `EXPLAIN`。仅当连接引用显式指定数据库而 CLI 无法选择该数据库，或 CLI 不可用时，回退 DBX MCP。
+规划模式优先调用
+`praxis database investigate --project <项目> --connection <引用> --purpose <目的> --sql <SQL>`；
+它会校验项目登记、阻断生产连接和非只读 SQL、自动执行 `select current_database()`，并返回
+`persisted: false` 的临时收据。正式需求内再使用 DBX CLI 的 JSON 契约（`connections`、
+`schema`、`query`、`context`），只读取任务涉及的表；必要时执行一个有界 `SELECT`、
+`WITH … SELECT` 或 `EXPLAIN`。仅当连接引用显式指定数据库而 CLI 无法选择该数据库，或
+CLI 不可用时，回退 DBX MCP。
 
 ## 七、依赖工具
 
@@ -39,6 +47,8 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 `production` 中的连接必须明确标记为生产环境。禁止依赖 DBX 默认连接或默认 `postgres` 库。
 选定连接后，任何 Schema、表结构或数据判断之前都先执行 `select current_database()`，并核对
 返回库名与任务目标一致。未找到匹配连接时返回：`未找到匹配 connection；请先在 Praxis 项目配置中登记 DBX 连接。`
+规划模式入口禁止生产连接、写 SQL、连接管理和状态持久化；返回的临时结论不能冒充正式需求
+证据，需求登记后必须重新确认有效性并纳入对应需求。
 
 ## 九、数据约束
 
@@ -50,7 +60,8 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 
 ## 十一、验证方法
 
-记录连接引用、Schema 证据、查询边界和调查结论；可复用 SQL 必须登记为需求产出物。
+记录连接引用、Schema 证据、查询边界和调查结论；规划模式结果明确保留
+`persisted: false`，进入实施后再关联正式需求。可复用 SQL 必须登记为需求产出物。
 
 ## 十二、知识来源
 

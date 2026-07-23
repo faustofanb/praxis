@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import blake2b
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import unquote, urlsplit
@@ -144,6 +145,104 @@ class DatabaseService:
             diagnostics=result.diagnostics,
         )
 
+    def investigate(
+        self,
+        project_id: str,
+        connection_ref: str,
+        sql: str,
+        *,
+        purpose: str,
+    ) -> Result:
+        normalized_purpose = purpose.strip()
+        if not normalized_purpose:
+            return Result(False, "DATABASE_INVESTIGATION_PURPOSE_REQUIRED")
+
+        project = WorkspaceService(self.root).project(project_id)
+        if connection_ref not in project.database_connections:
+            return Result(
+                False,
+                "DATABASE_CONNECTION_NOT_REGISTERED",
+                data={"connection_ref": connection_ref},
+            )
+        if connection_ref in project.production_database_connections:
+            return Result(
+                False,
+                "DATABASE_PRODUCTION_INVESTIGATION_BLOCKED",
+                data={"connection_ref": connection_ref},
+            )
+
+        decision = inspect_sql(sql)
+        if not decision.ok or decision.data["kind"] != "read":
+            return Result(
+                False,
+                "DATABASE_INVESTIGATION_READ_ONLY",
+                data={
+                    "connection_ref": connection_ref,
+                    "policy_code": decision.code,
+                },
+            )
+
+        connection, expected_database = parse_dbx_reference(connection_ref)
+        identity = self.dbx.execute(
+            connection,
+            "select current_database()",
+            database=expected_database,
+        )
+        if not identity.ok:
+            return Result(
+                False,
+                "DATABASE_IDENTITY_CHECK_FAILED",
+                data={"connection_ref": connection_ref, **identity.data},
+                diagnostics=identity.diagnostics,
+            )
+        actual_database = _current_database(identity)
+        if not actual_database:
+            return Result(
+                False,
+                "DATABASE_IDENTITY_UNVERIFIED",
+                data={"connection_ref": connection_ref},
+                diagnostics=identity.diagnostics,
+            )
+        if expected_database and actual_database.casefold() != expected_database.casefold():
+            return Result(
+                False,
+                "DATABASE_TARGET_MISMATCH",
+                data={
+                    "connection_ref": connection_ref,
+                    "expected_database": expected_database,
+                    "actual_database": actual_database,
+                },
+            )
+
+        result = self.dbx.execute(connection, sql, database=expected_database)
+        query_hash = blake2b(sql.strip().encode(), digest_size=20).hexdigest()
+        receipt_source = "\0".join(
+            (project_id, connection_ref, normalized_purpose, query_hash, actual_database)
+        )
+        scope = {
+            "investigation_id": (
+                f"INV-{blake2b(receipt_source.encode(), digest_size=8).hexdigest().upper()}"
+            ),
+            "mode": "planning_read_only",
+            "project_id": project_id,
+            "connection_ref": connection_ref,
+            "purpose": normalized_purpose,
+            "verified_database": actual_database,
+            "query_hash": query_hash,
+            "persisted": False,
+        }
+        return Result(
+            result.ok,
+            result.code,
+            data={
+                **result.data,
+                "kind": "read",
+                "connection_ref": connection_ref,
+                "scope": scope,
+            },
+            diagnostics=result.diagnostics,
+        )
+
     def _deny(self, code: str, project_id: str, connection_ref: str) -> Result:
         audit_id = self.store.audit(
             "database.denied",
@@ -191,3 +290,14 @@ def parse_dbx_reference(connection_ref: str) -> tuple[str, str | None]:
     if database and "/" in database:
         raise ValueError("DBX 数据库名不能包含路径分隔符")
     return parsed.netloc, database
+
+
+def _current_database(result: Result) -> str | None:
+    rows = result.data.get("rows")
+    if not isinstance(rows, list) or not rows or not isinstance(rows[0], dict):
+        return None
+    row = rows[0]
+    for key, value in row.items():
+        if str(key).casefold() in {"current_database", "current_database()"}:
+            return str(value) if value is not None else None
+    return None

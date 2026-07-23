@@ -35,8 +35,9 @@ def test_sql_policy_is_conservative(sql: str, ok: bool, kind: str, code: str) ->
 
 
 class FakeDbx:
-    def __init__(self) -> None:
+    def __init__(self, *, current_database: str = "app") -> None:
         self.executed: list[tuple[str, str]] = []
+        self.current_database = current_database
 
     def list_connections(self) -> Result:
         return Result(True, data={"connections": [{"name": "mom-dev"}, {"name": "mom-prod"}]})
@@ -47,6 +48,11 @@ class FakeDbx:
     def execute(self, connection: str, sql: str, *, database: str | None = None) -> Result:
         target = f"{connection}/{database}" if database else connection
         self.executed.append((target, sql))
+        if sql == "select current_database()":
+            return Result(
+                True,
+                data={"rows": [{"current_database": self.current_database}]},
+            )
         return Result(True, data={"rows": [{"value": 1}]})
 
 
@@ -123,6 +129,95 @@ def test_database_read_routes_connection_and_database_from_target_reference(tmp_
 
     assert result.ok
     assert dbx.executed == [("4b03f613-4dfb-4d50-abfa-3a73188f90cd/app", "select 1")]
+
+
+def test_plan_investigation_prechecks_database_and_does_not_persist_audit(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    WorkspaceService(tmp_path).set_database_connections(
+        "backend",
+        ("dbx://mom-dev/app", "dbx://mom-prod"),
+        ("dbx://mom-prod",),
+    )
+    before = len(StateStore(tmp_path).audit_events())
+    dbx = FakeDbx()
+
+    result = DatabaseService(tmp_path, dbx=dbx).investigate(
+        "backend",
+        "dbx://mom-dev/app",
+        "select * from orders limit 5",
+        purpose="追溯一期订单口径",
+    )
+
+    assert result.ok
+    assert result.data["scope"] == {
+        "investigation_id": result.data["scope"]["investigation_id"],
+        "mode": "planning_read_only",
+        "project_id": "backend",
+        "connection_ref": "dbx://mom-dev/app",
+        "purpose": "追溯一期订单口径",
+        "verified_database": "app",
+        "query_hash": result.data["scope"]["query_hash"],
+        "persisted": False,
+    }
+    assert result.data["scope"]["investigation_id"].startswith("INV-")
+    assert dbx.executed == [
+        ("mom-dev/app", "select current_database()"),
+        ("mom-dev/app", "select * from orders limit 5"),
+    ]
+    assert len(StateStore(tmp_path).audit_events()) == before
+
+
+def test_plan_investigation_blocks_production_and_write_sql(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    dbx = FakeDbx()
+    database = DatabaseService(tmp_path, dbx=dbx)
+
+    production = database.investigate(
+        "backend",
+        "dbx://mom-prod",
+        "select 1",
+        purpose="调查生产结构",
+    )
+    write = database.investigate(
+        "backend",
+        "dbx://mom-dev",
+        "update orders set status = 'done' where id = 1",
+        purpose="调查更新逻辑",
+    )
+    missing_purpose = database.investigate(
+        "backend",
+        "dbx://mom-dev",
+        "select 1",
+        purpose="",
+    )
+
+    assert production.code == "DATABASE_PRODUCTION_INVESTIGATION_BLOCKED"
+    assert write.code == "DATABASE_INVESTIGATION_READ_ONLY"
+    assert missing_purpose.code == "DATABASE_INVESTIGATION_PURPOSE_REQUIRED"
+    assert dbx.executed == []
+
+
+def test_plan_investigation_blocks_explicit_database_mismatch(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+    WorkspaceService(tmp_path).set_database_connections(
+        "backend",
+        ("dbx://mom-dev/app",),
+    )
+    dbx = FakeDbx(current_database="postgres")
+
+    result = DatabaseService(tmp_path, dbx=dbx).investigate(
+        "backend",
+        "dbx://mom-dev/app",
+        "select 1",
+        purpose="核对目标库",
+    )
+
+    assert result.code == "DATABASE_TARGET_MISMATCH"
+    assert result.data["expected_database"] == "app"
+    assert result.data["actual_database"] == "postgres"
+    assert dbx.executed == [("mom-dev/app", "select current_database()")]
 
 
 def test_database_write_needs_approval_and_never_targets_production(tmp_path: Path) -> None:
