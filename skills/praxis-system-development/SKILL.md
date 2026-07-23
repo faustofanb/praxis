@@ -24,6 +24,8 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - 实现范围控制：Karpathy 开发准则
 - 缺陷或失败测试：系统化调试
 - 新增或修改测试：测试编写规范
+- AOTU/MOM 接口权限迁移：`api-permission-migration`
+- AOTU/MOM UniApp OpenAPI/Alova 生成：`uniapp-api-generation`
 - 调查节点：头脑风暴、逐问式需求确认（`grilling`）、最小范围控制和文件检索
 - 计划节点：实施计划编写和复杂度约束
 - 验证、评审和交付节点：只有获得用户对当前范围的明确批准后才调用相应技能
@@ -45,6 +47,8 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 ## 七、依赖工具
 
 所选技能必须真实安装；缺失时报告来源和安装候选，不在 bootstrap 中自动下载或执行。
+“已安装”只表示 Provider 可发现，“已登记”表示存在于路由策略，“已路由”表示当前节点和
+意图确实匹配。三者不得互相替代。Agent 角色是匹配建议之一，明确意图可独立命中。
 
 ## 八、业务约束
 
@@ -65,6 +69,9 @@ Markdown 不直接执行行为，权限和门禁仍由 Praxis Python 服务裁�
 3. 完成 Skill 流程后使用 `praxis skill complete` 写入完成凭证。
 4. 节点流转前使用 `praxis skill gate`；`skill.routed` 或命令记录不能替代调用凭证。
 5. `blocked_pending_approval`、`unavailable` 和 `omitted_budget` 状态不得伪装为已调用。
+6. 使用 `praxis doctor` 核对 `policy_without_provider`、
+   `installed_without_policy` 和 `delegate_without_policy`；未登记的安装项不会自动进入路由。
+7. `orca-cli`、`orca-per-workspace-env` 和 `obsidian-markdown` 明确排除，不参与 Provider 扫描。
 
 ## 十一、验证方法
 

@@ -210,8 +210,33 @@ nodes = ["verifying"]
 mode = "approval_required"
 availability = "external"
 agent_roles = ["reviewer"]
+intent_triggers = ["代码审查", "代码质量", "质量复核", "最终 diff", "调用链", "review"]
 priority = 80
 context_budget = 900
+
+[[providers]]
+id = "api-permission-migration"
+source = "installed-business-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["planned", "in_progress", "verifying"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["无此权限", "11051", "权限迁移", "def_resource_api", "API permission", "接口权限"]
+priority = 78
+context_budget = 700
+
+[[providers]]
+id = "uniapp-api-generation"
+source = "installed-business-skill"
+source_version = "installed"
+license = "unknown"
+nodes = ["planned", "in_progress", "verifying"]
+mode = "conditional"
+availability = "external"
+intent_triggers = ["alova-gen", "alova", "apiDefinitions", "globals.d.ts", "UniApp API", "OpenAPI 生成", "接口生成"]
+priority = 78
+context_budget = 700
 
 [[providers]]
 id = "requesting-code-review"

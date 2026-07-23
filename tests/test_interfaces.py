@@ -48,6 +48,29 @@ def test_workspace_cli_initializes_v3_facts(tmp_path: Path, capsys) -> None:
     assert (tmp_path / "praxis.toml").exists()
 
 
+def test_doctor_reports_skill_provider_registration_status(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    unmanaged = home / ".codex" / "skills" / "unmanaged-helper" / "SKILL.md"
+    unmanaged.parent.mkdir(parents=True)
+    unmanaged.write_text("---\nname: unmanaged-helper\n---\n\n# Helper\n")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    PraxisApplication(tmp_path).execute(
+        "init", {"workspace_id": "demo", "name": "演示工作空间"}
+    )
+
+    result = PraxisApplication(tmp_path).execute("doctor")
+
+    assert result.ok
+    assert result.data["skill_providers"]["installed_without_policy"] == [
+        "unmanaged-helper"
+    ]
+    assert "code-quality-review" in result.data["skill_providers"][
+        "policy_without_provider"
+    ]
+
+
 def test_mcp_server_registers_praxis_tools_and_skill_resource(tmp_path: Path) -> None:
     from praxis.mcp.server import create_server
 

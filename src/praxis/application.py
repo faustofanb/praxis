@@ -120,10 +120,15 @@ class PraxisApplication:
         if operation == "doctor":
             workspace = WorkspaceService(self.root).load()
             audit_valid = StateStore(self.root).verify_audit_chain()
+            skill_providers = NodeSkillRouter(self.root).provider_diagnostics()
             return Result(
                 audit_valid,
                 "OK" if audit_valid else "AUDIT_CHAIN_INVALID",
-                data={"schema_version": workspace["schema_version"], "audit_chain": audit_valid},
+                data={
+                    "schema_version": workspace["schema_version"],
+                    "audit_chain": audit_valid,
+                    "skill_providers": skill_providers,
+                },
             )
         if operation in {"workspace.inspect", "workspace.show"}:
             return WorkspaceService(self.root).inspect()

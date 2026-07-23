@@ -14,6 +14,11 @@ from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
 
 _MODES = {"required", "conditional", "approval_required"}
+_EXCLUDED_PROVIDER_IDS = {
+    "obsidian-markdown",
+    "orca-cli",
+    "orca-per-workspace-env",
+}
 _NODE_ALIASES = {
     "investigation": "investigating",
     "analysis": "analyzed",
@@ -216,6 +221,7 @@ class NodeSkillRouter:
             decisions.append(
                 {
                     **asdict(policy),
+                    "recommended_agent_roles": list(policy.agent_roles),
                     "content_hash": registered[policy.id].content_hash
                     if policy.id in registered
                     else installed.get(policy.id, {}).get("content_hash", ""),
@@ -254,6 +260,7 @@ class NodeSkillRouter:
                     "intent_triggers": list(skill.triggers),
                     "repository_kinds": list(skill.repository_roles),
                     "agent_roles": [],
+                    "recommended_agent_roles": [],
                     "artifact_types": list(skill.artifact_types),
                     "risks": [],
                     "status": "available",
@@ -311,6 +318,8 @@ class NodeSkillRouter:
                 except OSError:
                     continue
                 skill_id = NodeSkillRouter._skill_name(content) or path.parent.name
+                if skill_id in _EXCLUDED_PROVIDER_IDS:
+                    continue
                 installed.setdefault(
                     skill_id,
                     {
@@ -319,6 +328,53 @@ class NodeSkillRouter:
                     },
                 )
         return installed
+
+    def provider_diagnostics(self) -> dict[str, Any]:
+        policies = {policy.id for policy in self.policies()}
+        installed = self._installed_skills()
+        registered = {
+            skill.id: {
+                "path": str(skill.path),
+                "content_hash": skill.content_hash,
+            }
+            for skill in SkillRegistry.workspace(self.root).all()
+        }
+        providers = {**registered, **installed}
+        delegates = self._delegates()
+        normalized_policies = {self._normalized_id(skill_id) for skill_id in policies}
+        delegate_without_policy = sorted(
+            skill_id
+            for skill_id in delegates
+            if self._normalized_id(skill_id) not in normalized_policies
+        )
+        installed_details = {
+            skill_id: {
+                **details,
+                "registered": skill_id in policies,
+            }
+            for skill_id, details in sorted(installed.items())
+        }
+        return {
+            "policy_count": len(policies),
+            "provider_count": len(providers),
+            "installed": installed_details,
+            "policy_without_provider": sorted(policies - providers.keys()),
+            "installed_without_policy": sorted(installed.keys() - policies),
+            "delegate_without_policy": delegate_without_policy,
+            "excluded_provider_ids": sorted(_EXCLUDED_PROVIDER_IDS),
+        }
+
+    @classmethod
+    def _delegates(cls) -> tuple[str, ...]:
+        path = cls.policy_path().parent.parent / "skill.toml"
+        if not path.is_file():
+            return ()
+        payload = tomllib.loads(path.read_text(encoding="utf-8"))
+        return tuple(payload.get("delegates", []))
+
+    @staticmethod
+    def _normalized_id(value: str) -> str:
+        return "-".join(value.casefold().replace("_", "-").split())
 
     @staticmethod
     def _skill_name(content: bytes) -> str:

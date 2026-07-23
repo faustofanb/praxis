@@ -13,6 +13,8 @@ delegates = [
   "grilling",
   "writing-plans",
   "code-quality-review",
+  "api-permission-migration",
+  "uniapp-api-generation",
   "context-degradation",
   "context-optimization",
   "file-search",

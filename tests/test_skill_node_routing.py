@@ -411,3 +411,122 @@ def test_approval_skill_cannot_start_without_current_user_approval(tmp_path: Pat
     )
 
     assert result.code == "USER_APPROVAL_REQUIRED"
+
+
+def test_code_review_intent_routes_review_skill_for_coder_role(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="verifying",
+            intent="只读检查最终 diff 和调用链，执行代码质量审查",
+            agent_role="coder",
+            available_skills=("code-quality-review",),
+            token_budget=5_000,
+        )
+    )
+
+    decision = next(
+        item
+        for item in result.data["decisions"]
+        if item["id"] == "code-quality-review"
+    )
+    assert decision["status"] == "blocked_pending_approval"
+    assert decision["reasons"] == ["node:verifying", "intent"]
+    assert decision["recommended_agent_roles"] == ["reviewer"]
+
+
+def test_shared_aotu_and_mom_business_skills_are_registered_by_intent(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    available = ("api-permission-migration", "uniapp-api-generation")
+
+    permission = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="修复 MOM PDA 接口 11051 无此权限并生成 Flyway 权限迁移",
+            system_id="mom",
+            project_id="backend",
+            available_skills=available,
+            token_budget=5_000,
+        )
+    )
+    generation = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="在 AOTU MES_PDA 中根据 OpenAPI 运行 alova-gen 生成接口",
+            system_id="aotu",
+            project_id="mes-pda",
+            available_skills=available,
+            token_budget=5_000,
+        )
+    )
+    unrelated = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="调整移动端页面间距",
+            system_id="mom",
+            project_id="mes-pda",
+            available_skills=available,
+            token_budget=5_000,
+        )
+    )
+
+    assert next(
+        item
+        for item in permission.data["decisions"]
+        if item["id"] == "api-permission-migration"
+    )["status"] == "available"
+    assert next(
+        item
+        for item in generation.data["decisions"]
+        if item["id"] == "uniapp-api-generation"
+    )["status"] == "available"
+    unrelated_ids = {item["id"] for item in unrelated.data["decisions"]}
+    assert "api-permission-migration" not in unrelated_ids
+    assert "uniapp-api-generation" not in unrelated_ids
+
+
+def test_provider_diagnostics_separates_installation_policy_and_delegation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    extra = home / ".codex" / "skills" / "unmanaged-helper" / "SKILL.md"
+    extra.parent.mkdir(parents=True)
+    extra.write_text("---\nname: unmanaged-helper\n---\n\n# Helper\n")
+    review = home / ".codex" / "skills" / "code-quality-review" / "SKILL.md"
+    review.parent.mkdir(parents=True)
+    review.write_text("---\nname: code-quality-review\n---\n\n# Review\n")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    _workspace(tmp_path)
+
+    diagnostics = NodeSkillRouter(tmp_path).provider_diagnostics()
+
+    assert diagnostics["installed"]["code-quality-review"]["registered"] is True
+    assert diagnostics["installed"]["unmanaged-helper"]["registered"] is False
+    assert "unmanaged-helper" in diagnostics["installed_without_policy"]
+    assert "code-quality-review" not in diagnostics["policy_without_provider"]
+    assert "api-permission-migration" not in diagnostics["delegate_without_policy"]
+    assert "uniapp-api-generation" not in diagnostics["delegate_without_policy"]
+
+
+def test_orca_and_obsidian_providers_are_never_discovered(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    for skill_id in ("orca-cli", "orca-per-workspace-env", "obsidian-markdown"):
+        skill = home / ".codex" / "skills" / skill_id / "SKILL.md"
+        skill.parent.mkdir(parents=True)
+        skill.write_text(f"---\nname: {skill_id}\n---\n\n# Excluded\n")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    _workspace(tmp_path)
+
+    diagnostics = NodeSkillRouter(tmp_path).provider_diagnostics()
+
+    assert diagnostics["installed"] == {}
+    assert diagnostics["excluded_provider_ids"] == [
+        "obsidian-markdown",
+        "orca-cli",
+        "orca-per-workspace-env",
+    ]
