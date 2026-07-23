@@ -46,7 +46,7 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "praxis skill route-node" in agents
     assert "praxis skill invoke" in agents
     assert "praxis skill complete" in agents
-    assert "praxis skill gate" in agents
+    assert "lifecycle complete-node" in agents
     assert "自动生成当前项目的 coder context" in agents
     assert "select current_database()" in agents
     assert "database investigate" in agents

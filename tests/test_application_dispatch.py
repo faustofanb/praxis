@@ -203,7 +203,7 @@ def test_workspace_requirement_and_skill_dispatch(application: PraxisApplication
             "domains": ["demo"],
         },
     ).ok
-    assert list((root / "知识库" / "需求").rglob("原始需求.md"))
+    assert list((root / "知识库" / "需求").rglob("01-原始需求.md"))
     assert application.execute("skill.inspect", {"id": "dbx-database-investigation"}).ok
     uri = "praxis://skills/system/dbx-database-investigation"
     assert application.execute("skill.resource", {"uri": uri}).ok

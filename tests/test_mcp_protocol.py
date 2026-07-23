@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -82,6 +83,10 @@ def test_mcp_stdio_exposes_tools_resources_and_shared_results(tmp_path: Path) ->
         parameters = StdioServerParameters(
             command=sys.executable,
             args=["-m", "praxis", "--root", str(tmp_path), "mcp", "serve"],
+            env={
+                **os.environ,
+                "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src"),
+            },
         )
         async with (
             stdio_client(parameters) as (read, write),

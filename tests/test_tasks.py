@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from praxis.knowledge.requirements import RequirementService
+from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.tasks.service import TaskService
@@ -54,7 +55,24 @@ def test_task_progress_updates_state_and_requirement_context(tmp_path: Path) -> 
     assert service.progress("T-1", "Gate implementation complete").ok
     task = service.inspect("T-1")
     assert task is not None and task["status"] == "active"
-    assert "Gate implementation complete" in (requirement_path / "执行进度.md").read_text()
+    assert "Gate implementation complete" in (requirement_path / "04-执行进度.md").read_text()
+
+
+def test_task_progress_updates_legacy_requirement_layout_before_repair(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "family", "knowledge", [])
+    requirement = RequirementService(tmp_path).create("旧布局进度", "原始需求", [], [])
+    requirement_id = requirement.data["requirement_id"]
+    current = Path(requirement.data["path"])
+    policy = RequirementPathPolicy(tmp_path / "knowledge")
+    legacy = policy.legacy_requirement_path(requirement_id, "旧布局进度")
+    current.rename(legacy)
+    service = TaskService(tmp_path, context_gate=lambda project, required: Result(True))
+
+    assert service.start("T-LEGACY", "Implement", "backend", requirement_id=requirement_id).ok
+    assert service.progress("T-LEGACY", "Legacy progress").ok
+    assert "Legacy progress" in (legacy / "04-执行进度.md").read_text()
 
 
 def test_task_resume_rechecks_context_freshness(tmp_path: Path) -> None:

@@ -7,7 +7,11 @@ from uuid import uuid4
 
 from praxis.documents.requirements import RequirementProjector
 from praxis.domain.requirement import RequirementStatus, next_requirement_status
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import (
+    REQUIREMENT_DOCUMENTS,
+    RequirementPathPolicy,
+    requirement_document,
+)
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
@@ -188,7 +192,10 @@ class RequirementService:
         requirement_root = self._path(workspace, record)
         missing_documents = [
             name
-            for name in ("调查分析.md", "实施计划.md")
+            for name in (
+                requirement_document("analysis"),
+                requirement_document("plan"),
+            )
             if not _has_meaningful_content(requirement_root / name)
         ]
         ok = not unknown_domains and not missing_documents
@@ -205,7 +212,7 @@ class RequirementService:
         from praxis.artifacts.service import ArtifactService
 
         workspace = WorkspaceService(self.root).load()
-        acceptance = self._path(workspace, record) / "验收结论.md"
+        acceptance = self._path(workspace, record) / requirement_document("acceptance")
         artifacts = [
             item
             for item in self.store.list_scope("artifact")
@@ -213,7 +220,7 @@ class RequirementService:
         ]
         missing = []
         if not _has_meaningful_content(acceptance):
-            missing.append("验收结论.md")
+            missing.append(requirement_document("acceptance"))
         if not artifacts:
             missing.append("产出物")
         elif any(
@@ -227,7 +234,9 @@ class RequirementService:
         )
 
     def _path(self, workspace: dict[str, Any], record: dict[str, Any]) -> Path:
-        return RequirementPathPolicy(self.root / str(workspace["knowledge_root"])).requirement_path(
+        return RequirementPathPolicy(
+            self.root / str(workspace["knowledge_root"])
+        ).locate_requirement_path(
             str(record["requirement_id"]), str(record["short_name"])
         )
 
@@ -405,7 +414,7 @@ class RequirementService:
         if not message.strip():
             return Result(False, "REQUIREMENT_PROGRESS_EMPTY")
         workspace = WorkspaceService(self.root).load()
-        path = self._path(workspace, record) / "执行进度.md"
+        path = self._path(workspace, record) / requirement_document("progress")
         timestamp = datetime.now().astimezone().isoformat()
         with path.open("a", encoding="utf-8") as progress:
             progress.write(f"\n- {timestamp}：{message.strip()}\n")
@@ -423,7 +432,7 @@ class RequirementService:
         workspace = WorkspaceService(self.root).load()
         policy = RequirementPathPolicy(self.root / workspace["knowledge_root"])
         normalized = policy.validate_short_name(short_name)
-        old_path = policy.requirement_path(requirement_id, record["short_name"])
+        old_path = policy.locate_requirement_path(requirement_id, record["short_name"])
         new_path = policy.requirement_path(requirement_id, normalized)
         if new_path.exists():
             return Result(False, "REQUIREMENT_PATH_EXISTS", data={"path": str(new_path)})
@@ -440,6 +449,51 @@ class RequirementService:
                 "requirement_id": requirement_id,
                 "short_name": normalized,
                 "path": str(new_path),
+            },
+        )
+
+    def repair_layout(self) -> Result:
+        workspace = WorkspaceService(self.root).load()
+        policy = RequirementPathPolicy(self.root / workspace["knowledge_root"])
+        migrated = []
+        projected = []
+        for record in self.store.requirements():
+            try:
+                path, changed = policy.migrate_layout(
+                    record["requirement_id"], record["short_name"]
+                )
+            except FileExistsError as error:
+                return Result(
+                    False,
+                    "REQUIREMENT_LAYOUT_CONFLICT",
+                    data={
+                        "requirement_id": record["requirement_id"],
+                        "message": str(error),
+                    },
+                )
+            if changed:
+                migrated.append(record["requirement_id"])
+            required_paths = [
+                path / name for name in REQUIREMENT_DOCUMENTS.values()
+            ] + [path / "产出物"]
+            if changed or any(not item.exists() for item in required_paths):
+                RequirementProjector(policy.knowledge_root).project(
+                    self._enriched_record(record)
+                )
+                projected.append(record["requirement_id"])
+        audit_id = self.store.audit(
+            "requirement.layout_repaired",
+            "OK",
+            {"migrated_requirements": migrated, "layout_version": 2},
+        )
+        return Result(
+            True,
+            "REQUIREMENT_LAYOUT_REPAIRED",
+            data={
+                "layout_version": 2,
+                "migrated_requirements": migrated,
+                "projected_requirements": projected,
+                "audit_id": audit_id,
             },
         )
 

@@ -172,6 +172,25 @@ class PraxisApplication:
             return DomainService(self.root).add(
                 values["system_id"], values["domain_id"], values["name_zh"]
             )
+        if operation == "domain.upsert":
+            return DomainService(self.root).upsert(
+                values["system_id"],
+                values["domain_id"],
+                values["name_zh"],
+                **{
+                    key: values[key]
+                    for key in (
+                        "objectives",
+                        "responsibilities",
+                        "entities",
+                        "processes",
+                        "rules",
+                        "interfaces",
+                        "owners",
+                    )
+                    if key in values
+                },
+            )
         if operation == "domain.list":
             return DomainService(self.root).list()
         if operation == "domain.merge":
@@ -307,6 +326,12 @@ class PraxisApplication:
             )
         if operation == "repair.projections":
             return RequirementService(self.root).repair_projections()
+        if operation == "repair.requirement-layout":
+            return RequirementService(self.root).repair_layout()
+        if operation == "repair.artifact-archives":
+            return ArtifactService(self.root).repair_archives(
+                values.get("requirement_id", "")
+            )
         if operation == "skill.inspect":
             return Result(True, data=_skill_data(self._skills().inspect(values["id"])))
         if operation == "skill.list":

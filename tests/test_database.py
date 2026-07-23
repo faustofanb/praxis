@@ -6,6 +6,7 @@ import pytest
 
 from praxis.database.service import DatabaseService
 from praxis.gates.sql import inspect_sql
+from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
@@ -249,3 +250,29 @@ def test_database_write_needs_approval_and_never_targets_production(tmp_path: Pa
     assert approved.data["artifact_id"].startswith("ART-")
     assert production.code == "DATABASE_PRODUCTION_WRITE_BLOCKED"
     assert dbx.executed == [("mom-dev", sql)]
+
+
+def test_database_write_archives_sql_in_legacy_requirement_layout(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _workspace(tmp_path)
+    requirement = StateStore(tmp_path).requirement(requirement_id)
+    assert requirement
+    policy = RequirementPathPolicy(tmp_path / "知识库")
+    legacy = policy.legacy_requirement_path(requirement_id, requirement["short_name"])
+    legacy.mkdir(parents=True)
+
+    result = DatabaseService(tmp_path, dbx=FakeDbx()).query(
+        "backend",
+        "dbx://mom-dev",
+        "update orders set status = 'done' where id = 1",
+        approved=True,
+        write_context=_write_context(requirement_id),
+    )
+
+    assert result.ok
+    artifact = StateStore(tmp_path).get("artifact", result.data["artifact_id"])
+    assert artifact
+    archived = Path(artifact["archived_path"])
+    assert archived.is_relative_to(legacy)
+    assert archived != Path(artifact["source_path"])

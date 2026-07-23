@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from praxis.application import PraxisApplication
-from praxis.cli import _operation, _parser, main
+from praxis.cli import _compact_payload, _operation, _parser, main
 from praxis.mcp.server import execute as mcp_execute
 
 
@@ -46,6 +46,97 @@ def test_workspace_cli_initializes_v3_facts(tmp_path: Path, capsys) -> None:
     assert exit_code == 0
     assert payload["ok"] is True
     assert (tmp_path / "praxis.toml").exists()
+
+
+def test_compact_route_output_omits_repeated_skill_metadata() -> None:
+    payload = {
+        "ok": True,
+        "code": "OK",
+        "data": {
+            "requirement_id": "REQ-20260723-001",
+            "node": "in_progress",
+            "decisions": [
+                {
+                    "id": "test-driven-development",
+                    "mode": "required",
+                    "status": "available",
+                    "reasons": ["node:in_progress"],
+                    "installed_path": "/very/long/path/SKILL.md",
+                    "content_hash": "f" * 64,
+                }
+            ],
+            "context_budget": 4000,
+            "used_budget": 900,
+            "blocked_required_skills": [],
+            "audit_id": "AUD-1",
+        },
+        "diagnostics": [],
+    }
+
+    compact = _compact_payload("skill.route-node", payload)
+
+    assert compact["data"]["skills"] == [
+        {
+            "id": "test-driven-development",
+            "mode": "required",
+            "status": "available",
+            "reasons": ["node:in_progress"],
+        }
+    ]
+    assert "installed_path" not in str(compact)
+    assert len(str(compact)) < len(str(payload)) * 0.8
+
+
+def test_compact_artifact_add_omits_code_change_manifest() -> None:
+    payload = {
+        "ok": True,
+        "code": "ARTIFACT_REGISTERED",
+        "data": {
+            "artifact_id": "ART-1",
+            "requirement_id": "REQ-20260723-001",
+            "type": "code-change",
+            "stage": "development",
+            "archived_path": "/archive/ART-1.json",
+            "archived_hash": "blake2b:abc",
+            "metadata": {"code_change": {"files": [{"path": f"src/{i}.py"} for i in range(50)]}},
+        },
+        "diagnostics": [],
+    }
+
+    compact = _compact_payload("artifact.add", payload)
+
+    assert compact["data"] == {
+        "artifact_id": "ART-1",
+        "requirement_id": "REQ-20260723-001",
+        "type": "code-change",
+        "stage": "development",
+        "archived_path": "/archive/ART-1.json",
+        "archived_hash": "blake2b:abc",
+    }
+    assert "metadata" not in str(compact)
+
+
+def test_domain_upsert_cli_preserves_omitted_profile_fields() -> None:
+    args = _parser().parse_args(
+        [
+            "domain",
+            "upsert",
+            "--system",
+            "demo",
+            "--id",
+            "production",
+            "--name",
+            "生产管理",
+            "--objective",
+            "稳定交付",
+        ]
+    )
+
+    operation, values = _operation(args)
+
+    assert operation == "domain.upsert"
+    assert values["objectives"] == ["稳定交付"]
+    assert "responsibilities" not in values
 
 
 def test_doctor_reports_skill_provider_registration_status(

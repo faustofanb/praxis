@@ -39,6 +39,19 @@ _GIT_REF_UNSAFE = re.compile(r"[\x00-\x20\x7f~^:?*\[\]\\]+")
 _PNPM_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
 
 
+def _utf8_environment(overrides: dict[str, str] | None = None) -> dict[str, str]:
+    environment = {**os.environ, **(overrides or {})}
+    safe: dict[str, str] = {}
+    for key, value in environment.items():
+        try:
+            key.encode("utf-8")
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            continue
+        safe[key] = value
+    return safe
+
+
 @dataclass(frozen=True, slots=True)
 class WorktreeNames:
     requirement_id: str
@@ -746,7 +759,7 @@ class WorktreeService:
         return subprocess.run(
             command,
             cwd=cwd,
-            env={**os.environ, **(environment or {})},
+            env=_utf8_environment(environment),
             check=False,
             capture_output=True,
             text=True,

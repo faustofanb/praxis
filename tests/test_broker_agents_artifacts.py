@@ -9,6 +9,7 @@ from time import sleep
 from praxis.agents.lifecycle import AgentLifecycle
 from praxis.agents.service import AgentSessionService
 from praxis.artifacts.service import ArtifactService
+from praxis.knowledge.requirements import RequirementService
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
@@ -351,9 +352,16 @@ def test_artifact_registration_indexes_and_verifies_content(tmp_path: Path) -> N
     ]
     assert artifacts.verify(added.data["artifact_id"]).ok
     report.write_text("tampered")
-    assert artifacts.verify(added.data["artifact_id"]).code == "ARTIFACT_HASH_MISMATCH"
-    index = next((tmp_path / "知识库" / "需求").rglob("产出物清单.yaml"))
+    verified = artifacts.verify(added.data["artifact_id"])
+    assert verified.ok
+    assert verified.data["source_status"] == "changed"
+    archived = Path(added.data["archived_path"])
+    assert archived.read_text() == "109 tests passed"
+    report.unlink()
+    assert artifacts.verify(added.data["artifact_id"]).ok
+    index = next((tmp_path / "知识库" / "需求").rglob("09-产出物清单.yaml"))
     assert added.data["artifact_id"] in index.read_text()
+    assert str(archived) in index.read_text()
 
 
 def test_code_change_artifact_captures_git_diff_and_changed_file_hashes(
@@ -390,6 +398,81 @@ def test_code_change_artifact_captures_git_diff_and_changed_file_hashes(
             "content_hash": added.data["content_hash"],
         }
     ]
+    manifest = Path(added.data["archived_path"])
+    assert manifest.parent.name == "代码变更"
+    assert manifest.suffix == ".json"
+    assert '"repository"' in manifest.read_text()
+
+
+def test_legacy_artifact_can_be_verified_and_backfilled_to_archive(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _workspace(tmp_path)
+    source = tmp_path / "legacy-report.txt"
+    source.write_text("legacy passed")
+    legacy = {
+        "artifact_id": "ART-LEGACY",
+        "requirement_id": requirement_id,
+        "type": "test-report",
+        "category_zh": "测试报告",
+        "source_path": str(source),
+        "stage": "verify",
+        "content_hash": ArtifactService(tmp_path).add(
+            requirement_id,
+            "test-report",
+            source,
+            stage="verify",
+        ).data["content_hash"],
+        "size": source.stat().st_size,
+        "metadata": {},
+    }
+    store = StateStore(tmp_path)
+    for artifact in store.list_scope("artifact"):
+        store.delete("artifact", artifact["artifact_id"])
+    store.set("artifact", "ART-LEGACY", legacy)
+
+    verified = ArtifactService(tmp_path).verify("ART-LEGACY")
+    repaired = ArtifactService(tmp_path).repair_archives()
+
+    assert verified.ok and verified.code == "ARTIFACT_LEGACY_SOURCE_VERIFIED"
+    assert repaired.ok and repaired.data["migrated"] == ["ART-LEGACY"]
+    migrated = store.get("artifact", "ART-LEGACY")
+    assert migrated and Path(migrated["archived_path"]).is_file()
+    source.unlink()
+    assert ArtifactService(tmp_path).verify("ART-LEGACY").ok
+
+
+def test_sql_source_inside_artifact_directory_still_gets_independent_snapshot(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _workspace(tmp_path)
+    RequirementService(tmp_path).project_current(requirement_id)
+    requirement = StateStore(tmp_path).requirement(requirement_id)
+    assert requirement
+    root = next((tmp_path / "知识库" / "需求").glob(f"**/{requirement_id}__*"))
+    source = root / "产出物" / "SQL" / "migration.sql"
+    source.write_text("update demo set active = 1 where id = 1;")
+
+    added = ArtifactService(tmp_path).add(
+        requirement_id,
+        "sql",
+        source,
+        stage="database",
+        metadata={
+            "connection_ref": "dbx://LOCAL/demo",
+            "purpose": "修复数据",
+            "stage": "database",
+            "parameters": {},
+            "precheck": "select 1",
+            "postimpact": "select 1",
+            "approval": "APR-1",
+        },
+    )
+
+    assert added.ok
+    assert Path(added.data["archived_path"]) != source
+    source.unlink()
+    assert ArtifactService(tmp_path).verify(added.data["artifact_id"]).ok
 
 
 def test_audit_events_can_be_listed_shown_and_chain_verified(tmp_path: Path) -> None:

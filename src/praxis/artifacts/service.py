@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import shutil
 import subprocess
 from datetime import UTC, datetime
 from hashlib import blake2b
@@ -8,7 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from praxis.documents.atomic_writer import atomic_write_text
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
@@ -80,6 +82,13 @@ class ArtifactService:
             if existing
             else f"ART-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
         )
+        archived = self._archive(
+            requirement,
+            artifact_id,
+            artifact_type,
+            source,
+            facts,
+        )
         data = {
             **(existing or {}),
             "artifact_id": artifact_id,
@@ -87,8 +96,10 @@ class ArtifactService:
             "type": artifact_type,
             "category_zh": _ARTIFACT_TYPES[artifact_type],
             "source_path": str(source),
+            "archived_path": str(archived),
             "stage": stage,
             "content_hash": _hash(source),
+            "archived_hash": _hash(archived),
             "size": source.stat().st_size,
             "metadata": facts,
             "created_at": (
@@ -119,19 +130,145 @@ class ArtifactService:
         artifact = self.store.get("artifact", artifact_id)
         if not artifact:
             return Result(False, "ARTIFACT_NOT_FOUND")
+        if not artifact.get("archived_path"):
+            source = Path(artifact["source_path"])
+            if not source.is_file():
+                return Result(
+                    False,
+                    "ARTIFACT_LEGACY_SOURCE_MISSING",
+                    data={"artifact_id": artifact_id, "migration_required": True},
+                )
+            actual = _hash(source)
+            ok = actual == artifact["content_hash"]
+            return Result(
+                ok,
+                (
+                    "ARTIFACT_LEGACY_SOURCE_VERIFIED"
+                    if ok
+                    else "ARTIFACT_LEGACY_HASH_MISMATCH"
+                ),
+                data={
+                    "artifact_id": artifact_id,
+                    "expected": artifact["content_hash"],
+                    "actual": actual,
+                    "source_status": "matched" if ok else "changed",
+                    "migration_required": True,
+                },
+            )
+        archived = Path(artifact["archived_path"])
+        if not archived.is_file():
+            return Result(
+                False,
+                "ARTIFACT_ARCHIVE_MISSING",
+                data={"artifact_id": artifact_id, "archived_path": str(archived)},
+            )
+        actual = _hash(archived)
+        ok = actual == artifact.get("archived_hash", artifact["content_hash"])
         source = Path(artifact["source_path"])
-        if not source.is_file():
-            return Result(False, "ARTIFACT_SOURCE_MISSING", data={"artifact_id": artifact_id})
-        actual = _hash(source)
-        ok = actual == artifact["content_hash"]
+        source_status = "missing"
+        if source.is_file():
+            source_status = (
+                "matched"
+                if _hash(source) == artifact["content_hash"]
+                else "changed"
+            )
         return Result(
             ok,
-            "OK" if ok else "ARTIFACT_HASH_MISMATCH",
+            "OK" if ok else "ARTIFACT_ARCHIVE_HASH_MISMATCH",
             data={
                 "artifact_id": artifact_id,
-                "expected": artifact["content_hash"],
+                "expected": artifact.get("archived_hash", artifact["content_hash"]),
                 "actual": actual,
+                "archived_path": str(archived),
+                "source_status": source_status,
             },
+        )
+
+    def repair_archives(self, requirement_id: str = "") -> Result:
+        artifacts = [
+            artifact
+            for artifact in self.store.list_scope("artifact")
+            if not requirement_id or artifact.get("requirement_id") == requirement_id
+        ]
+        migrated: list[str] = []
+        blocked: list[dict[str, str]] = []
+        affected_requirements: set[str] = set()
+        for artifact in artifacts:
+            archived_value = artifact.get("archived_path")
+            archived = Path(str(archived_value)) if archived_value else None
+            if archived and archived.is_file() and artifact.get("archived_hash"):
+                continue
+            requirement = self.store.requirement(artifact["requirement_id"])
+            if not requirement:
+                blocked.append(
+                    {
+                        "artifact_id": artifact["artifact_id"],
+                        "reason": "requirement_missing",
+                    }
+                )
+                continue
+            source = Path(artifact["source_path"]).resolve()
+            code_change = artifact.get("metadata", {}).get("code_change")
+            if artifact["type"] != "code-change":
+                if (
+                    not source.is_file()
+                    or not source.is_relative_to(self.root.resolve())
+                ):
+                    blocked.append(
+                        {
+                            "artifact_id": artifact["artifact_id"],
+                            "reason": "source_missing",
+                        }
+                    )
+                    continue
+                if _hash(source) != artifact["content_hash"]:
+                    blocked.append(
+                        {
+                            "artifact_id": artifact["artifact_id"],
+                            "reason": "source_changed",
+                        }
+                    )
+                    continue
+            elif not isinstance(code_change, dict):
+                blocked.append(
+                    {
+                        "artifact_id": artifact["artifact_id"],
+                        "reason": "code_change_metadata_missing",
+                    }
+                )
+                continue
+            archived = self._archive(
+                requirement,
+                artifact["artifact_id"],
+                artifact["type"],
+                source,
+                artifact.get("metadata", {}),
+            )
+            updated = {
+                **artifact,
+                "archived_path": str(archived),
+                "archived_hash": _hash(archived),
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+            self.store.set("artifact", artifact["artifact_id"], updated)
+            migrated.append(artifact["artifact_id"])
+            affected_requirements.add(artifact["requirement_id"])
+        for affected in sorted(affected_requirements):
+            requirement = self.store.requirement(affected)
+            if requirement:
+                self._write_index(requirement)
+        data = {"migrated": migrated, "blocked": blocked}
+        data["audit_id"] = self.store.audit(
+            "artifact.archives_repaired",
+            "OK" if not blocked else "ARTIFACT_ARCHIVE_REPAIR_INCOMPLETE",
+            data,
+        )
+        return Result(
+            not blocked,
+            "ARTIFACT_ARCHIVES_REPAIRED"
+            if not blocked
+            else "ARTIFACT_ARCHIVE_REPAIR_INCOMPLETE",
+            data=data,
         )
 
     def refresh_index(self, requirement_id: str) -> Result:
@@ -143,9 +280,12 @@ class ArtifactService:
 
     def _write_index(self, requirement: dict[str, Any]) -> None:
         workspace = WorkspaceService(self.root).load()
-        requirement_root = RequirementPathPolicy(
+        policy = RequirementPathPolicy(
             self.root / workspace["knowledge_root"]
-        ).requirement_path(requirement["requirement_id"], requirement["short_name"])
+        )
+        requirement_root = policy.locate_requirement_path(
+            requirement["requirement_id"], requirement["short_name"]
+        )
         artifacts = self.list(requirement["requirement_id"]).data["artifacts"]
         lines = [f"需求编号: {requirement['requirement_id']}", "产出物:"]
         for artifact in artifacts:
@@ -154,11 +294,48 @@ class ArtifactService:
                     f"  - 产出物编号: {artifact['artifact_id']}",
                     f"    类型: {artifact['category_zh']}",
                     f"    任务阶段: {artifact['stage']}",
-                    f"    路径: {artifact['source_path']}",
-                    f"    内容哈希: {artifact['content_hash']}",
+                    f"    源路径: {artifact['source_path']}",
+                    f"    归档路径: {artifact.get('archived_path', '')}",
+                    f"    源内容哈希: {artifact['content_hash']}",
+                    f"    归档内容哈希: {artifact.get('archived_hash', '')}",
                 )
             )
-        atomic_write_text(requirement_root / "产出物清单.yaml", "\n".join(lines) + "\n")
+        atomic_write_text(
+            requirement_root / requirement_document("artifacts"),
+            "\n".join(lines) + "\n",
+        )
+
+    def _archive(
+        self,
+        requirement: dict[str, Any],
+        artifact_id: str,
+        artifact_type: str,
+        source: Path,
+        metadata: dict[str, Any],
+    ) -> Path:
+        workspace = WorkspaceService(self.root).load()
+        policy = RequirementPathPolicy(self.root / workspace["knowledge_root"])
+        requirement_root = policy.locate_requirement_path(
+            requirement["requirement_id"], requirement["short_name"]
+        )
+        category = requirement_root / "产出物" / _ARTIFACT_TYPES[artifact_type]
+        category.mkdir(parents=True, exist_ok=True)
+        if artifact_type == "code-change":
+            archived = category / f"{artifact_id}.json"
+            atomic_write_text(
+                archived,
+                json.dumps(
+                    metadata["code_change"],
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+            )
+            return archived
+        archived = category / f"{artifact_id}__{source.name}"
+        shutil.copy2(source, archived)
+        return archived
 
 
 def _hash(path: Path) -> str:

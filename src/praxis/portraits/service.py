@@ -45,6 +45,9 @@ class PortraitService:
         technology_stack, evidence = self._technology(files, repo)
         build_commands, test_commands = self._commands(project, files)
         branches = self._branches(repo)
+        entrypoints = self._entrypoints(files)
+        interface_surfaces = self._interface_surfaces(files)
+        data_and_config_assets = self._data_and_config_assets(files)
         deployment_commands = list(project.deployment_commands)
         if "Dockerfile" in files:
             deployment_commands.append("docker build .")
@@ -60,6 +63,16 @@ class PortraitService:
             "input_hash": input_hash,
             "scanned_at": datetime.now(UTC).isoformat(),
             "technology_stack": technology_stack,
+            "repository": {
+                "path": project.path,
+                "file_count": len(files),
+                "top_level_paths": sorted(
+                    {name.split("/", 1)[0] for name in files}
+                ),
+            },
+            "entrypoints": entrypoints,
+            "interface_surfaces": interface_surfaces,
+            "data_and_config_assets": data_and_config_assets,
             "build_commands": build_commands,
             "lint_commands": list(project.lint_commands),
             "typecheck_commands": list(project.typecheck_commands),
@@ -251,6 +264,51 @@ class PortraitService:
         return build, tests
 
     @staticmethod
+    def _entrypoints(files: set[str]) -> list[str]:
+        markers = {
+            "pyproject.toml",
+            "pom.xml",
+            "build.gradle",
+            "build.gradle.kts",
+            "package.json",
+            "manifest.json",
+        }
+        return sorted(
+            name
+            for name in files
+            if name in markers
+            or name.endswith(("/__main__.py", "/main.py", "/Application.java"))
+        )
+
+    @staticmethod
+    def _interface_surfaces(files: set[str]) -> list[str]:
+        terms = ("/cli/", "/mcp/", "/api/", "/controller/", "/routes/")
+        return sorted(
+            name
+            for name in files
+            if any(term in f"/{name.casefold()}" for term in terms)
+        )[:50]
+
+    @staticmethod
+    def _data_and_config_assets(files: set[str]) -> list[str]:
+        names = {
+            "Dockerfile",
+            "docker-compose.yml",
+            "compose.yaml",
+            "praxis.toml",
+            "pyproject.toml",
+            "package.json",
+            "pom.xml",
+        }
+        return sorted(
+            name
+            for name in files
+            if name in names
+            or "/migrations/" in f"/{name.casefold()}"
+            or name.endswith((".yaml", ".yml", ".toml"))
+        )[:100]
+
+    @staticmethod
     def _branches(repo: Path) -> list[str]:
         process = subprocess.run(
             ["git", "branch", "--format=%(refname:short)"],
@@ -274,13 +332,34 @@ class PortraitService:
             "",
             f"# {project.name or project.id}仓库画像",
             "",
+            "## 仓库范围与结构",
+            "",
+            f"- 仓库类型：`{project.kind}`",
+            f"- 配置路径：`{data['repository']['path']}`",
+            f"- 已识别文件数：{data['repository']['file_count']}",
+            *(
+                f"- 顶层路径：`{item}`"
+                for item in data["repository"]["top_level_paths"]
+            ),
+            "",
             "## 技术栈",
             "",
             *(f"- {item}" for item in data["technology_stack"]),
             "",
-            "## 构建与测试",
+            "## 工程入口与接口面",
+            "",
+            *(f"- 工程入口：`{item}`" for item in data["entrypoints"]),
+            *(f"- 接口面：`{item}`" for item in data["interface_surfaces"]),
+            "",
+            "## 数据与配置资产",
+            "",
+            *(f"- `{item}`" for item in data["data_and_config_assets"]),
+            "",
+            "## 质量与交付命令",
             "",
             *(f"- 构建：`{item}`" for item in data["build_commands"]),
+            *(f"- Lint：`{item}`" for item in data["lint_commands"]),
+            *(f"- 类型检查：`{item}`" for item in data["typecheck_commands"]),
             *(f"- 测试：`{item}`" for item in data["test_commands"]),
             "",
             "## 数据库连接引用",

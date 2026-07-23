@@ -13,11 +13,16 @@ def test_codex_manifest_exposes_single_skill_source_and_mcp() -> None:
     assert manifest["skills"] == "./skills/"
     skills = {path.name: path for path in (ROOT / "skills").iterdir()}
     assert set(skills) == {
+        "add-mom-magic-api",
+        "api-permission-migration",
+        "build-mes-pda-readonly-overview",
+        "codegraph-impact-analysis",
         "dbx-database-investigation",
         "minimum-module-compile",
         "ponytail",
         "praxis-requirement-workflow",
         "praxis-system-development",
+        "uniapp-api-generation",
     }
     assert all(path.is_dir() and not path.is_symlink() for path in skills.values())
     assert all((path / "SKILL.md").is_file() for path in skills.values())

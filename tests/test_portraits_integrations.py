@@ -48,7 +48,15 @@ def test_static_portrait_records_commands_and_branches_without_running_them(tmp_
     assert result.data["scan_mode"] == "incremental"
     portrait = tmp_path / "knowledge" / "系统画像" / "demo" / "backend.md"
     assert portrait.exists()
-    assert "类型: 系统画像" in portrait.read_text()
+    content = portrait.read_text()
+    assert "类型: 系统画像" in content
+    assert "## 仓库范围与结构" in content
+    assert "## 工程入口与接口面" in content
+    assert "## 数据与配置资产" in content
+    assert "## 质量与交付命令" in content
+    assert result.data["repository"]["file_count"] >= 2
+    assert "pom.xml" in result.data["entrypoints"]
+    assert "Dockerfile" in result.data["data_and_config_assets"]
     assert PortraitService(tmp_path).scan("backend").code == "PORTRAIT_UNCHANGED"
 
 

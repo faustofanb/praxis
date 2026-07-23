@@ -100,7 +100,7 @@ class StateStore:
                 "select value from runtime_state where scope=? and key=?",
                 ("requirement_delivery", requirement_id),
             ).fetchone()
-            delivery = (
+            delivery: dict[str, Any] = (
                 json.loads(row["value"])
                 if row
                 else {
@@ -110,8 +110,12 @@ class StateStore:
                     "manual_acceptance_status": "awaiting_manual_acceptance",
                 }
             )
+            implementation = delivery.get("implementation")
+            if not isinstance(implementation, dict):
+                implementation = {}
+                delivery["implementation"] = implementation
             for project_id, artifact_ids in projects.items():
-                delivery["implementation"][project_id] = {
+                implementation[project_id] = {
                     "status": "implemented",
                     "artifact_ids": artifact_ids,
                     "recorded_at": recorded_at,
@@ -336,6 +340,13 @@ class StateStore:
                 "select * from requirements where requirement_id=?", (requirement_id,)
             ).fetchone()
         return self._requirement_record(row) if row else None
+
+    def requirements(self) -> list[dict[str, Any]]:
+        with self._connect() as database:
+            rows = database.execute(
+                "select * from requirements order by requirement_id"
+            ).fetchall()
+        return [self._requirement_record(row) for row in rows]
 
     def transition_requirement(
         self,
