@@ -112,12 +112,43 @@ def test_requirement_layout_repair_migrates_legacy_names_idempotently(
     (legacy / "调查分析.md").write_text("# 调查分析\n\n保留人工证据。\n")
 
     first = requirements.repair_layout()
+    snapshot = {
+        path.relative_to(current): path.read_bytes()
+        for path in current.rglob("*")
+        if path.is_file()
+    }
     second = requirements.repair_layout()
 
     assert first.ok and first.data["migrated_requirements"] == [requirement_id]
     assert second.ok and second.data["migrated_requirements"] == []
     assert not legacy.exists()
     assert "保留人工证据" in (current / "02-调查分析.md").read_text()
+    assert snapshot == {
+        path.relative_to(current): path.read_bytes()
+        for path in current.rglob("*")
+        if path.is_file()
+    }
+
+
+def test_requirement_layout_conflict_does_not_partially_rename_directory(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("冲突布局迁移", "冲突时保持原目录", [], [])
+    requirement_id = created.data["requirement_id"]
+    current = Path(created.data["path"])
+    legacy = current.with_name(f"冲突布局迁移__{requirement_id}")
+    current.rename(legacy)
+    (legacy / "调查分析.md").write_text("# 旧调查\n")
+    (legacy / "02-调查分析.md").write_text("# 新调查\n")
+
+    repaired = requirements.repair_layout()
+
+    assert not repaired.ok
+    assert repaired.code == "REQUIREMENT_LAYOUT_CONFLICT"
+    assert legacy.is_dir()
+    assert not current.exists()
 
 
 def test_requirement_state_machine_rejects_skipped_transition() -> None:

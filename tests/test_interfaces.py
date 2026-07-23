@@ -87,6 +87,58 @@ def test_compact_route_output_omits_repeated_skill_metadata() -> None:
     assert len(str(compact)) < len(str(payload)) * 0.8
 
 
+def test_compact_artifact_add_omits_code_change_manifest() -> None:
+    payload = {
+        "ok": True,
+        "code": "ARTIFACT_REGISTERED",
+        "data": {
+            "artifact_id": "ART-1",
+            "requirement_id": "REQ-20260723-001",
+            "type": "code-change",
+            "stage": "development",
+            "archived_path": "/archive/ART-1.json",
+            "archived_hash": "blake2b:abc",
+            "metadata": {"code_change": {"files": [{"path": f"src/{i}.py"} for i in range(50)]}},
+        },
+        "diagnostics": [],
+    }
+
+    compact = _compact_payload("artifact.add", payload)
+
+    assert compact["data"] == {
+        "artifact_id": "ART-1",
+        "requirement_id": "REQ-20260723-001",
+        "type": "code-change",
+        "stage": "development",
+        "archived_path": "/archive/ART-1.json",
+        "archived_hash": "blake2b:abc",
+    }
+    assert "metadata" not in str(compact)
+
+
+def test_domain_upsert_cli_preserves_omitted_profile_fields() -> None:
+    args = _parser().parse_args(
+        [
+            "domain",
+            "upsert",
+            "--system",
+            "demo",
+            "--id",
+            "production",
+            "--name",
+            "生产管理",
+            "--objective",
+            "稳定交付",
+        ]
+    )
+
+    operation, values = _operation(args)
+
+    assert operation == "domain.upsert"
+    assert values["objectives"] == ["稳定交付"]
+    assert "responsibilities" not in values
+
+
 def test_doctor_reports_skill_provider_registration_status(
     tmp_path: Path, monkeypatch
 ) -> None:

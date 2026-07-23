@@ -111,7 +111,7 @@ class TaskService:
             if not requirement:
                 return Result(False, "REQUIREMENT_NOT_FOUND")
             vault = WorkspaceService(self.root).load()["knowledge_root"]
-            path = RequirementPathPolicy(self.root / vault).requirement_path(
+            path = RequirementPathPolicy(self.root / vault).locate_requirement_path(
                 requirement_id, requirement["short_name"]
             ) / requirement_document("progress")
             timestamp = datetime.now(UTC).isoformat()

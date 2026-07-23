@@ -260,7 +260,9 @@ class DatabaseService:
         workspace = WorkspaceService(self.root).load()
         requirement_root = RequirementPathPolicy(
             self.root / workspace["knowledge_root"]
-        ).requirement_path(requirement["requirement_id"], requirement["short_name"])
+        ).locate_requirement_path(
+            requirement["requirement_id"], requirement["short_name"]
+        )
         timestamp = datetime.now(UTC)
         path = (
             requirement_root

@@ -102,7 +102,7 @@ def _parser() -> argparse.ArgumentParser:
         "interface",
         "owner",
     ):
-        domain_upsert.add_argument(f"--{option}", action="append", default=[])
+        domain_upsert.add_argument(f"--{option}", action="append")
     _json_flag(domain_upsert)
     _json_flag(domain.add_parser("list"))
     domain_merge = domain.add_parser("merge")
@@ -598,6 +598,9 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(repair.add_parser("projections"))
     _json_flag(repair.add_parser("indexes"))
     _json_flag(repair.add_parser("requirement-layout"))
+    repair_artifacts = repair.add_parser("artifact-archives")
+    repair_artifacts.add_argument("--requirement")
+    _json_flag(repair_artifacts)
     return parser
 
 
@@ -652,18 +655,23 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "name_zh": args.name,
             }
         if args.action == "upsert":
-            return "domain.upsert", {
+            values = {
                 "system_id": args.system,
                 "domain_id": args.id,
                 "name_zh": args.name,
-                "objectives": args.objective,
-                "responsibilities": args.responsibility,
-                "entities": args.entity,
-                "processes": args.process,
-                "rules": args.rule,
-                "interfaces": args.interface,
-                "owners": args.owner,
             }
+            for key, value in (
+                ("objectives", args.objective),
+                ("responsibilities", args.responsibility),
+                ("entities", args.entity),
+                ("processes", args.process),
+                ("rules", args.rule),
+                ("interfaces", args.interface),
+                ("owners", args.owner),
+            ):
+                if value is not None:
+                    values[key] = value
+            return "domain.upsert", values
         if args.action == "list":
             return "domain.list", {}
         return "domain.merge", {"source": args.source, "target": args.target}
@@ -1107,7 +1115,11 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             return "audit.show", {"audit_id": args.audit_id}
         return "audit.verify", {}
     if args.group == "repair":
-        return f"repair.{args.action}", {}
+        return f"repair.{args.action}", (
+            {"requirement_id": args.requirement or ""}
+            if args.action == "artifact-archives"
+            else {}
+        )
     raise ValueError(args.group)
 
 
@@ -1217,6 +1229,20 @@ def _compact_payload(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
                 }
                 for item in data.get("artifacts", [])
             ]
+        }
+    elif operation == "artifact.add":
+        compact = {
+            key: data[key]
+            for key in (
+                "artifact_id",
+                "requirement_id",
+                "type",
+                "stage",
+                "archived_path",
+                "archived_hash",
+                "audit_id",
+            )
+            if key in data
         }
     elif operation in {"context.build", "context.show"}:
         compact = {

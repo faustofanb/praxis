@@ -130,7 +130,32 @@ class ArtifactService:
         artifact = self.store.get("artifact", artifact_id)
         if not artifact:
             return Result(False, "ARTIFACT_NOT_FOUND")
-        archived = Path(artifact.get("archived_path", ""))
+        if not artifact.get("archived_path"):
+            source = Path(artifact["source_path"])
+            if not source.is_file():
+                return Result(
+                    False,
+                    "ARTIFACT_LEGACY_SOURCE_MISSING",
+                    data={"artifact_id": artifact_id, "migration_required": True},
+                )
+            actual = _hash(source)
+            ok = actual == artifact["content_hash"]
+            return Result(
+                ok,
+                (
+                    "ARTIFACT_LEGACY_SOURCE_VERIFIED"
+                    if ok
+                    else "ARTIFACT_LEGACY_HASH_MISMATCH"
+                ),
+                data={
+                    "artifact_id": artifact_id,
+                    "expected": artifact["content_hash"],
+                    "actual": actual,
+                    "source_status": "matched" if ok else "changed",
+                    "migration_required": True,
+                },
+            )
+        archived = Path(artifact["archived_path"])
         if not archived.is_file():
             return Result(
                 False,
@@ -157,6 +182,93 @@ class ArtifactService:
                 "archived_path": str(archived),
                 "source_status": source_status,
             },
+        )
+
+    def repair_archives(self, requirement_id: str = "") -> Result:
+        artifacts = [
+            artifact
+            for artifact in self.store.list_scope("artifact")
+            if not requirement_id or artifact.get("requirement_id") == requirement_id
+        ]
+        migrated: list[str] = []
+        blocked: list[dict[str, str]] = []
+        affected_requirements: set[str] = set()
+        for artifact in artifacts:
+            archived_value = artifact.get("archived_path")
+            archived = Path(str(archived_value)) if archived_value else None
+            if archived and archived.is_file() and artifact.get("archived_hash"):
+                continue
+            requirement = self.store.requirement(artifact["requirement_id"])
+            if not requirement:
+                blocked.append(
+                    {
+                        "artifact_id": artifact["artifact_id"],
+                        "reason": "requirement_missing",
+                    }
+                )
+                continue
+            source = Path(artifact["source_path"]).resolve()
+            code_change = artifact.get("metadata", {}).get("code_change")
+            if artifact["type"] != "code-change":
+                if (
+                    not source.is_file()
+                    or not source.is_relative_to(self.root.resolve())
+                ):
+                    blocked.append(
+                        {
+                            "artifact_id": artifact["artifact_id"],
+                            "reason": "source_missing",
+                        }
+                    )
+                    continue
+                if _hash(source) != artifact["content_hash"]:
+                    blocked.append(
+                        {
+                            "artifact_id": artifact["artifact_id"],
+                            "reason": "source_changed",
+                        }
+                    )
+                    continue
+            elif not isinstance(code_change, dict):
+                blocked.append(
+                    {
+                        "artifact_id": artifact["artifact_id"],
+                        "reason": "code_change_metadata_missing",
+                    }
+                )
+                continue
+            archived = self._archive(
+                requirement,
+                artifact["artifact_id"],
+                artifact["type"],
+                source,
+                artifact.get("metadata", {}),
+            )
+            updated = {
+                **artifact,
+                "archived_path": str(archived),
+                "archived_hash": _hash(archived),
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+            self.store.set("artifact", artifact["artifact_id"], updated)
+            migrated.append(artifact["artifact_id"])
+            affected_requirements.add(artifact["requirement_id"])
+        for affected in sorted(affected_requirements):
+            requirement = self.store.requirement(affected)
+            if requirement:
+                self._write_index(requirement)
+        data = {"migrated": migrated, "blocked": blocked}
+        data["audit_id"] = self.store.audit(
+            "artifact.archives_repaired",
+            "OK" if not blocked else "ARTIFACT_ARCHIVE_REPAIR_INCOMPLETE",
+            data,
+        )
+        return Result(
+            not blocked,
+            "ARTIFACT_ARCHIVES_REPAIRED"
+            if not blocked
+            else "ARTIFACT_ARCHIVE_REPAIR_INCOMPLETE",
+            data=data,
         )
 
     def refresh_index(self, requirement_id: str) -> Result:
@@ -221,8 +333,6 @@ class ArtifactService:
                 + "\n",
             )
             return archived
-        if source.parent == category.resolve():
-            return source
         archived = category / f"{artifact_id}__{source.name}"
         shutil.copy2(source, archived)
         return archived

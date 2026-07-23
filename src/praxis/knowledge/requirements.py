@@ -7,7 +7,11 @@ from uuid import uuid4
 
 from praxis.documents.requirements import RequirementProjector
 from praxis.domain.requirement import RequirementStatus, next_requirement_status
-from praxis.naming.requirement import RequirementPathPolicy, requirement_document
+from praxis.naming.requirement import (
+    REQUIREMENT_DOCUMENTS,
+    RequirementPathPolicy,
+    requirement_document,
+)
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
@@ -452,9 +456,10 @@ class RequirementService:
         workspace = WorkspaceService(self.root).load()
         policy = RequirementPathPolicy(self.root / workspace["knowledge_root"])
         migrated = []
+        projected = []
         for record in self.store.requirements():
             try:
-                _, changed = policy.migrate_layout(
+                path, changed = policy.migrate_layout(
                     record["requirement_id"], record["short_name"]
                 )
             except FileExistsError as error:
@@ -468,9 +473,14 @@ class RequirementService:
                 )
             if changed:
                 migrated.append(record["requirement_id"])
-            RequirementProjector(policy.knowledge_root).project(
-                self._enriched_record(record)
-            )
+            required_paths = [
+                path / name for name in REQUIREMENT_DOCUMENTS.values()
+            ] + [path / "产出物"]
+            if changed or any(not item.exists() for item in required_paths):
+                RequirementProjector(policy.knowledge_root).project(
+                    self._enriched_record(record)
+                )
+                projected.append(record["requirement_id"])
         audit_id = self.store.audit(
             "requirement.layout_repaired",
             "OK",
@@ -482,6 +492,7 @@ class RequirementService:
             data={
                 "layout_version": 2,
                 "migrated_requirements": migrated,
+                "projected_requirements": projected,
                 "audit_id": audit_id,
             },
         )

@@ -97,19 +97,26 @@ class RequirementPathPolicy:
         migrated = False
         if legacy.exists() and current.exists():
             raise FileExistsError(f"需求新旧目录同时存在：{legacy}，{current}")
+        source_root = legacy if legacy.exists() else current
+        migrations = []
+        if source_root.exists():
+            for key, target_name in REQUIREMENT_DOCUMENTS.items():
+                source = source_root / LEGACY_REQUIREMENT_DOCUMENTS[key]
+                target = source_root / target_name
+                if not source.exists():
+                    continue
+                if target.exists() and source.read_bytes() != target.read_bytes():
+                    raise FileExistsError(f"需求文档迁移冲突：{source}，{target}")
+                migrations.append((source.name, target.name))
         if legacy.exists():
             legacy.rename(current)
             migrated = True
         if not current.exists():
             return current, migrated
-        for key, target_name in REQUIREMENT_DOCUMENTS.items():
-            source = current / LEGACY_REQUIREMENT_DOCUMENTS[key]
+        for source_name, target_name in migrations:
+            source = current / source_name
             target = current / target_name
-            if not source.exists():
-                continue
             if target.exists():
-                if source.read_bytes() != target.read_bytes():
-                    raise FileExistsError(f"需求文档迁移冲突：{source}，{target}")
                 source.unlink()
             else:
                 source.rename(target)

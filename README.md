@@ -80,6 +80,12 @@ praxis repair requirement-layout --json
 The repair stops on content conflicts instead of overwriting either copy. Artifact registration
 archives an independently hashed snapshot under the requirement's `产出物/` directory; source-path
 drift is reported separately and does not invalidate the archived delivery evidence.
+Pre-V2 artifact records remain verifiable from their original source and can be explicitly
+backfilled without changing successful registrations:
+
+```bash
+praxis repair artifact-archives --requirement REQ-20260723-001 --json
+```
 
 `praxis workspace bootstrap` generates or refreshes the Praxis-managed blocks in root-level
 `AGENTS.md` for Codex and `CLAUDE.md` for Claude Code. Text outside

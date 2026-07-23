@@ -6,6 +6,7 @@ from pathlib import Path
 from praxis.context.service import ContextBuildRequest, ContextCompiler, ContextFragment
 from praxis.governance.service import ApprovalService
 from praxis.knowledge.requirements import RequirementService
+from praxis.naming.requirement import RequirementPathPolicy
 from praxis.portraits.service import PortraitService
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import Project, WorkspaceService
@@ -71,6 +72,26 @@ def test_context_build_keeps_required_facts_and_persists_manifest(tmp_path: Path
     )
     assert routed["details"]["skills"]
     assert "ponytail" in routed["details"]["skills"]
+
+
+def test_context_build_reads_legacy_requirement_layout_before_repair(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _workspace_with_requirement(tmp_path)
+    requirement = StateStore(tmp_path).requirement(requirement_id)
+    assert requirement
+    policy = RequirementPathPolicy(tmp_path / "知识库")
+    current = policy.requirement_path(requirement_id, requirement["short_name"])
+    legacy = policy.legacy_requirement_path(requirement_id, requirement["short_name"])
+    current.rename(legacy)
+
+    result = ContextCompiler(tmp_path).build(
+        ContextBuildRequest(requirement_id, "backend", "backend", "coder")
+    )
+
+    assert result.ok
+    assert legacy.is_dir()
+    assert any(item["source_type"] == "original_request" for item in result.data["sources"])
 
 
 def test_context_build_fails_instead_of_dropping_required_fragments(tmp_path: Path) -> None:

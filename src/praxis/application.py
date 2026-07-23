@@ -178,7 +178,7 @@ class PraxisApplication:
                 values["domain_id"],
                 values["name_zh"],
                 **{
-                    key: values.get(key, [])
+                    key: values[key]
                     for key in (
                         "objectives",
                         "responsibilities",
@@ -188,6 +188,7 @@ class PraxisApplication:
                         "interfaces",
                         "owners",
                     )
+                    if key in values
                 },
             )
         if operation == "domain.list":
@@ -327,6 +328,10 @@ class PraxisApplication:
             return RequirementService(self.root).repair_projections()
         if operation == "repair.requirement-layout":
             return RequirementService(self.root).repair_layout()
+        if operation == "repair.artifact-archives":
+            return ArtifactService(self.root).repair_archives(
+                values.get("requirement_id", "")
+            )
         if operation == "skill.inspect":
             return Result(True, data=_skill_data(self._skills().inspect(values["id"])))
         if operation == "skill.list":

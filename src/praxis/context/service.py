@@ -171,7 +171,7 @@ class ContextCompiler:
         facts = critical_facts or self._critical_facts(request)
         requirement_root = RequirementPathPolicy(
             self.root / workspace["knowledge_root"]
-        ).requirement_path(request.requirement_id, requirement["short_name"])
+        ).locate_requirement_path(request.requirement_id, requirement["short_name"])
         original_request_path = requirement_root / requirement_document("original_request")
         original_request = (
             self._file_fragment(
