@@ -360,6 +360,14 @@ def test_codegraph_status_resolves_bound_repository_worktree(
     assert by_path.ok
     assert by_path.data["binding_id"] == "WT-REQ-TEST--backend"
 
+    ensured = application.execute(
+        "codegraph.ensure-fresh",
+        {"binding_id": "WT-REQ-TEST--backend", "initialize": True},
+    )
+    assert ensured.ok
+    assert ensured.data["action"] == "ensure"
+    assert Path(FakeGraph.last_repo) == repository_path
+
 
 def test_governance_operations_dispatch_with_timing_metadata(tmp_path: Path) -> None:
     application = PraxisApplication(tmp_path)

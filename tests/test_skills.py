@@ -45,6 +45,23 @@ def test_minimum_module_compile_is_a_bundled_workflow_skill() -> None:
     assert "降级命令" in content
 
 
+def test_codegraph_impact_analysis_requires_pre_edit_semantic_evidence() -> None:
+    registry = SkillRegistry.bundled()
+    assert "codegraph-impact-analysis" in {skill.id for skill in registry.all()}
+
+    skill = registry.inspect("codegraph-impact-analysis")
+    content = skill.path.read_text()
+
+    assert skill.type == "workflow"
+    assert skill.source == "praxis"
+    assert "编辑前" in content
+    assert "codegraph_explore" in content
+    assert "调用路径" in content
+    assert "Blast Radius" in content
+    assert "rg_fallback" in content
+    assert "连续错误" not in content
+
+
 def test_dbx_skill_metadata_and_resource_contract() -> None:
     registry = SkillRegistry.bundled()
     skill = registry.inspect("dbx-database-investigation")

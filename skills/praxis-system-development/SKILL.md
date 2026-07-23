@@ -25,6 +25,7 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - 缺陷或失败测试：系统化调试
 - 功能、缺陷修复、重构和行为变更：默认测试驱动开发
 - TDD GREEN 后：最小受影响模块编译
+- 高风险共享改动：编辑前 CodeGraph 调用链和影响范围分析
 - 新增或修改测试：测试编写规范
 - AOTU/MOM 接口权限迁移：`api-permission-migration`
 - AOTU/MOM UniApp OpenAPI/Alova 生成：`uniapp-api-generation`
@@ -32,6 +33,8 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - 计划节点：实施计划编写和复杂度约束
 - 开发节点：必需调用 `test-driven-development`，保留先 RED、后最小 GREEN 的真实凭证
 - 开发节点：必需调用内置 `minimum-module-compile`，记录模块、精确命令和 exit code
+- 事务、锁、原生 SQL、并发、公共接口、共享服务、跨模块和高扇出改动：条件调用
+  `codegraph-impact-analysis`，在编辑前保存调用路径和 Blast Radius，不能等返工后才刷新
 - 验证、评审和交付节点：只有获得用户对当前范围的明确批准后才调用相应技能
 
 ## 四、不适用场景
@@ -45,7 +48,7 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 
 ## 六、提供能力
 
-返回必需、条件、需批准和不可用四类决策，以及选择原因、来源、版本、许可证、风险、
+返回必需、命中后必需、条件、需批准和不可用决策，以及选择原因、来源、版本、许可证、风险、
 内容哈希和预算。完整 Provider 规则见 `references/node-routing.toml`。
 
 ## 七、依赖工具

@@ -63,6 +63,10 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "rtk proxy" in agents
     assert "RTK 自身执行失败" in agents
     assert "降级命令" in agents
+    assert "高风险改动必须在编辑前" in agents
+    assert "codegraph-impact-analysis" in agents
+    assert "调用路径和 Blast Radius" in agents
+    assert "连续错误后才刷新" in agents
     assert "实施完成不等于验证通过" in agents
     assert claude.startswith("# Claude Code 项目规则")
 

@@ -305,6 +305,35 @@ def test_development_routes_tdd_and_minimum_compile_as_required_by_default(
     assert "minimum-module-compile" in gate.data["missing"]
 
 
+def test_high_risk_change_routes_codegraph_before_development(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="修改共享事务和锁，核对调用链影响范围",
+            requirement_id="REQ-GRAPH",
+            project_id="backend",
+            repository_kind="java-maven",
+            risks=("transaction", "shared-code"),
+            available_skills=("test-driven-development",),
+            token_budget=6_000,
+        )
+    )
+
+    decisions = {item["id"]: item for item in result.data["decisions"]}
+    assert "codegraph-impact-analysis" in decisions
+    decision = decisions["codegraph-impact-analysis"]
+    assert decision["mode"] == "conditional_required"
+    assert decision["availability"] == "bundled"
+    assert decision["status"] == "available"
+    assert "intent" in decision["reasons"]
+    assert "risk" in decision["reasons"]
+    assert "codegraph-impact-analysis" in SkillInvocationService(
+        tmp_path
+    ).gate("REQ-GRAPH", "in_progress").data["missing"]
+
+
 def test_skill_invocation_gate_requires_completed_evidence(tmp_path: Path) -> None:
     _workspace(tmp_path)
     router = NodeSkillRouter(tmp_path)

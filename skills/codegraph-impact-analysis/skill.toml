@@ -1,0 +1,10 @@
+id = "codegraph-impact-analysis"
+type = "workflow"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "none"
+context_budget = 700
+required_tools = ["codegraph_explore"]
+triggers = ["CodeGraph", "调用链", "影响范围", "事务", "锁", "FOR UPDATE", "原生 SQL", "跨模块", "共享服务"]

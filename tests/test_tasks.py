@@ -22,6 +22,27 @@ def test_task_start_is_blocked_when_required_graph_is_unavailable(tmp_path: Path
     )
 
 
+def test_high_risk_task_requires_graph_before_any_failure(tmp_path: Path) -> None:
+    required_values: list[bool] = []
+
+    def gate(project: str, required: bool) -> Result:
+        required_values.append(required)
+        return Result(not required, "OK" if not required else "CODEGRAPH_NOT_FRESH")
+
+    service = TaskService(tmp_path, context_gate=gate)
+
+    result = service.start(
+        "T-RISK",
+        "修改 FOR UPDATE 事务锁并核对共享调用链影响范围",
+        "backend",
+    )
+
+    assert not result.ok
+    assert result.code == "CODEGRAPH_NOT_FRESH"
+    assert required_values == [True]
+    assert service.inspect("T-RISK") is None
+
+
 def test_task_progress_updates_state_and_requirement_context(tmp_path: Path) -> None:
     WorkspaceService(tmp_path).init("demo", "family", "knowledge", [])
     requirement = RequirementService(tmp_path).create("任务进度记录", "原始需求", [], [])

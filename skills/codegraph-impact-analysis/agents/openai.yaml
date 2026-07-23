@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeGraph Impact Analysis"
+  short_description: "Require pre-edit call paths and blast radius"
+  default_prompt: "Use $codegraph-impact-analysis to verify fresh call paths and blast radius before editing high-risk code."

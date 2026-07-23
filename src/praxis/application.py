@@ -704,7 +704,7 @@ class PraxisApplication:
         if action == "ensure-fresh":
             return graph.ensure_fresh(initialize=values.get("initialize", False))
         if action == "run-pending":
-            return graph.run_pending(binding_id=values.get("binding_id", ""))
+            return graph.run_pending(binding_id=binding_id)
         if action == "wait":
             return graph.wait(timeout=float(values.get("timeout", 0)))
         if action in {"query", "explore", "node"}:

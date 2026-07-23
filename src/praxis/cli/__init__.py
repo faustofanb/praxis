@@ -15,6 +15,17 @@ def _json_flag(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true")
 
 
+def _codegraph_selector(
+    parser: argparse.ArgumentParser,
+    *,
+    required: bool,
+) -> None:
+    selector = parser.add_mutually_exclusive_group(required=required)
+    selector.add_argument("--project")
+    selector.add_argument("--binding")
+    selector.add_argument("--worktree", type=Path)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="praxis")
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -238,31 +249,27 @@ def _parser() -> argparse.ArgumentParser:
 
     codegraph = commands.add_parser("codegraph").add_subparsers(dest="action", required=True)
     status = codegraph.add_parser("status")
-    status.add_argument("--project")
-    status.add_argument("--binding")
-    status.add_argument("--worktree", type=Path)
+    _codegraph_selector(status, required=False)
     _json_flag(status)
     for action in ("build", "sync", "affected"):
         child = codegraph.add_parser(action)
-        child.add_argument("--project", required=True)
+        _codegraph_selector(child, required=True)
         _json_flag(child)
     fresh = codegraph.add_parser("ensure-fresh")
-    fresh.add_argument("--project", required=True)
+    _codegraph_selector(fresh, required=True)
     fresh.add_argument("--initialize", action="store_true")
     _json_flag(fresh)
     run_pending_graph = codegraph.add_parser("run-pending")
-    run_pending_graph.add_argument("--project")
-    run_pending_graph.add_argument("--binding", default="")
+    _codegraph_selector(run_pending_graph, required=True)
     _json_flag(run_pending_graph)
     wait_graph = codegraph.add_parser("wait")
-    wait_graph.add_argument("--project")
-    wait_graph.add_argument("--binding", default="")
+    _codegraph_selector(wait_graph, required=True)
     wait_graph.add_argument("--timeout", type=float, default=0)
     _json_flag(wait_graph)
     for action in ("query", "explore", "node"):
         child = codegraph.add_parser(action)
         child.add_argument("target")
-        child.add_argument("--project", required=True)
+        _codegraph_selector(child, required=True)
         _json_flag(child)
 
     worktree = commands.add_parser("worktree").add_subparsers(dest="action", required=True)

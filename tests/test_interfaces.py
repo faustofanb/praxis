@@ -128,6 +128,32 @@ def test_portrait_and_database_cli_preserve_requested_action() -> None:
     )
 
 
+def test_codegraph_cli_maps_worktree_scoped_selectors() -> None:
+    binding = "WT-REQ-20260722-001--backend"
+    ensure = _parser().parse_args(
+        ["codegraph", "ensure-fresh", "--binding", binding, "--initialize"]
+    )
+    affected = _parser().parse_args(
+        ["codegraph", "affected", "--worktree", "/tmp/backend"]
+    )
+    explore = _parser().parse_args(
+        ["codegraph", "explore", "OrderService", "--binding", binding]
+    )
+
+    assert _operation(ensure) == (
+        "codegraph.ensure-fresh",
+        {"binding_id": binding, "initialize": True},
+    )
+    assert _operation(affected) == (
+        "codegraph.affected",
+        {"worktree": Path("/tmp/backend")},
+    )
+    assert _operation(explore) == (
+        "codegraph.explore",
+        {"binding_id": binding, "target": "OrderService"},
+    )
+
+
 def test_context_cli_build_maps_traceability_inputs() -> None:
     args = _parser().parse_args(
         [

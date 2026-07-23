@@ -62,7 +62,10 @@ class AgentGuidanceService:
             "- 禁止在工作空间根目录或未绑定目录修改业务代码。",
             "- Git 工作树与 binding active 后即可编码；CodeGraph 后台排队，普通文本搜索默认",
             "  使用 `rg`（不是 `grep` 或“rg-grep”）；RTK 可用时使用 `rtk rg`，",
-            "  只有语义图谱确实必需时才显式 `codegraph wait`。",
+            "  低风险局部任务才允许回退。",
+            "- 高风险改动必须在编辑前调用 `codegraph-impact-analysis`：事务、锁、原生 SQL、",
+            "  并发、公共接口、共享服务、跨模块、结构迁移和高扇出改动先等待新鲜索引，再用",
+            "  `codegraph_explore` 保存调用路径和 Blast Radius；不得等连续错误后才刷新。",
             "- 所有外部命令必须先由 RTK 代理：优先专用子命令（如 `rtk rg`、`rtk mvn`），",
             "  其余按输出类型使用 `rtk test`、`rtk err` 或保留原始输出的 `rtk proxy`；",
             "  机器 JSON、交互式命令和无专用适配命令也必须先用 `rtk proxy`。",
@@ -127,6 +130,7 @@ class AgentGuidanceService:
         for policy in NodeSkillRouter.policies():
             label = {
                 "required": "必需",
+                "conditional_required": "命中后必需",
                 "conditional": "条件",
                 "approval_required": "需批准",
             }[policy.mode]

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from praxis.codegraph.hooks import CodeGraphHooks
+from praxis.codegraph.policy import decide_codegraph_usage
 from praxis.gates.engine import GateEvent
 from praxis.naming.requirement import RequirementPathPolicy
 from praxis.result import Result
@@ -26,7 +27,12 @@ class TaskService:
             "task-context", project_id, graph_required=graph_required
         )
 
-    def _run_context_gate(self, project_id: str, graph_required: bool) -> Result:
+    def _run_context_gate(
+        self,
+        project_id: str,
+        graph_required: bool,
+        graph_reasons: tuple[str, ...] = (),
+    ) -> Result:
         result = self.context_gate(project_id, graph_required)
         audit_id = self.store.audit(
             "gate.run",
@@ -35,6 +41,7 @@ class TaskService:
                 "event": GateEvent.TASK_START.value,
                 "project_id": project_id,
                 "graph_required": graph_required,
+                "graph_reasons": list(graph_reasons),
             },
         )
         return Result(
@@ -53,7 +60,11 @@ class TaskService:
         requirement_id: str | None = None,
         graph_required: bool = False,
     ) -> Result:
-        context = self._run_context_gate(project_id, graph_required)
+        graph = decide_codegraph_usage(
+            title,
+            explicit_required=graph_required,
+        )
+        context = self._run_context_gate(project_id, graph.required, graph.reasons)
         if not context.ok:
             return context
         task = {
@@ -61,7 +72,8 @@ class TaskService:
             "title": title,
             "project_id": project_id,
             "requirement_id": requirement_id,
-            "graph_required": graph_required,
+            "graph_required": graph.required,
+            "graph_reasons": list(graph.reasons),
             "status": "active",
             "gate_audit_id": context.data["audit_id"],
             "updated_at": datetime.now(UTC).isoformat(),
@@ -77,7 +89,11 @@ class TaskService:
         task = self.inspect(task_id)
         if task is None:
             return Result(False, "TASK_NOT_FOUND")
-        context = self._run_context_gate(task["project_id"], task["graph_required"])
+        context = self._run_context_gate(
+            task["project_id"],
+            task["graph_required"],
+            tuple(task.get("graph_reasons", ())),
+        )
         if not context.ok:
             return context
         task["status"] = "active"

@@ -118,6 +118,37 @@ def test_changed_worktree_syncs_before_affected_query(tmp_path: Path) -> None:
     ]
 
 
+def test_wait_revalidates_current_worktree_after_completed_background_job(
+    tmp_path: Path,
+) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+    calls: list[list[str]] = []
+
+    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, "{}", "")
+
+    service = CodeGraphService(tmp_path, "app", run=run)
+    service.store.set(
+        "codegraph_background",
+        service.key,
+        {
+            "job_id": "CGJ-OLD",
+            "status": "completed",
+            "code": "CODEGRAPH_INITED",
+        },
+    )
+
+    result = service.wait()
+
+    assert result.ok
+    assert result.code == "CODEGRAPH_SYNCED"
+    assert result.data["background"]["job_id"] == "CGJ-OLD"
+    assert result.data["codegraph"]["fresh"] is True
+    assert calls == [["codegraph", "sync", str(repo)]]
+
+
 def test_concurrent_ensure_fresh_runs_one_sync(tmp_path: Path) -> None:
     repo = _workspace(tmp_path)
     (repo / ".codegraph").mkdir()

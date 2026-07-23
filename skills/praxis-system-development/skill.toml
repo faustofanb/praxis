@@ -21,6 +21,7 @@ delegates = [
   "find-skills",
   "java-coding-standards",
   "karpathy-guidelines",
+  "codegraph-impact-analysis",
   "minimum-module-compile",
   "prompt-engineering",
   "receiving-code-review",

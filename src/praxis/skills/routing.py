@@ -13,7 +13,8 @@ from praxis.result import Result
 from praxis.skills.registry import SkillRegistry, SkillRoutingContext
 from praxis.storage.sqlite import StateStore
 
-_MODES = {"required", "conditional", "approval_required"}
+_MODES = {"required", "conditional_required", "conditional", "approval_required"}
+_GATED_MODES = {"required", "conditional_required"}
 _EXCLUDED_PROVIDER_IDS = {
     "obsidian-markdown",
     "orca-cli",
@@ -187,7 +188,7 @@ class NodeSkillRouter:
         required_budget = sum(
             policy.context_budget
             for policy, _ in matched_policies
-            if policy.mode == "required"
+            if policy.mode in _GATED_MODES
         )
         business = registry.route_context(
             SkillRoutingContext(
@@ -277,7 +278,7 @@ class NodeSkillRouter:
         blocked = [
             item["id"]
             for item in decisions
-            if item["mode"] == "required" and item["status"] != "available"
+            if item["mode"] in _GATED_MODES and item["status"] != "available"
         ]
         data = {
             "requirement_id": request.requirement_id,
@@ -508,7 +509,7 @@ class SkillInvocationService:
         required = {
             item["id"]
             for item in route["decisions"]
-            if item["mode"] == "required"
+            if item["mode"] in _GATED_MODES
             or (item["mode"] == "approval_required" and item["status"] == "available")
         }
         missing_outcomes = sorted(required - outcomes.keys())
@@ -584,7 +585,7 @@ class SkillInvocationService:
         required = {
             item["id"]
             for item in route["decisions"]
-            if item["mode"] == "required"
+            if item["mode"] in _GATED_MODES
             or (item["mode"] == "approval_required" and item["status"] == "available")
         }
         completed = {

@@ -309,8 +309,20 @@ class CodeGraphService:
             if not job:
                 return Result(False, "CODEGRAPH_BACKGROUND_NOT_QUEUED")
             if job.get("status") not in {"queued", "running"}:
+                if job.get("status") == "completed":
+                    freshness = self.ensure_fresh()
+                    current = self.status().data if freshness.ok else freshness.data
+                    return Result(
+                        freshness.ok,
+                        freshness.code,
+                        data={
+                            "background": job,
+                            "codegraph": current,
+                        },
+                        diagnostics=freshness.diagnostics,
+                    )
                 return Result(
-                    job.get("status") == "completed",
+                    False,
                     str(job.get("code", "CODEGRAPH_BACKGROUND_FAILED")),
                     data=job,
                 )
