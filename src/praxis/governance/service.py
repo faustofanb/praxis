@@ -86,6 +86,56 @@ class ApprovalService:
         return Result(True, data={"receipts": receipts})
 
 
+class VerificationService:
+    def __init__(self, root: Path | str):
+        self.root = Path(root)
+        self.store = StateStore(root)
+
+    def decline(
+        self,
+        requirement_id: str,
+        entry: str,
+        *,
+        user_evidence: str,
+        authorized_by_user: bool,
+    ) -> Result:
+        if not self.store.requirement(requirement_id):
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        if not authorized_by_user or not user_evidence.strip():
+            return Result(False, "USER_APPROVAL_REQUIRED")
+        if not entry.strip():
+            return Result(False, "VERIFICATION_ENTRY_REQUIRED")
+        timestamp = datetime.now(UTC)
+        receipt_id = f"VDR-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
+        receipt = {
+            "receipt_id": receipt_id,
+            "requirement_id": requirement_id,
+            "entry": entry.strip(),
+            "status": "declined",
+            "user_evidence": user_evidence.strip(),
+            "authorized_by_user": True,
+            "created_at": timestamp.isoformat(),
+        }
+        from praxis.knowledge.requirements import RequirementService
+
+        requirements = RequirementService(self.root)
+        delivery = requirements._delivery(requirement_id)
+        delivery["verification"][entry.strip()] = {
+            "status": "declined",
+            "receipt_id": receipt_id,
+            "recorded_at": timestamp.isoformat(),
+        }
+        self.store.set_many(
+            (
+                ("verification_decline", receipt_id, receipt),
+                ("requirement_delivery", requirement_id, delivery),
+            )
+        )
+        audit_id = self.store.audit("verification.declined", "OK", receipt)
+        requirements.project_current(requirement_id)
+        return Result(True, "VERIFICATION_DECLINED", data={**receipt, "audit_id": audit_id})
+
+
 class ExecutionBudgetService:
     def __init__(self, root: Path | str):
         self.store = StateStore(root)

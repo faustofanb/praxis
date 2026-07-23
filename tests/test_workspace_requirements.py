@@ -79,6 +79,7 @@ def test_requirement_create_persists_state_and_projects_chinese_documents(tmp_pa
         "调查分析.md",
         "实施计划.md",
         "执行进度.md",
+        "决策记录.md",
         "验收结论.md",
         "变更记录.md",
         "关联关系.yaml",
@@ -137,6 +138,81 @@ def test_requirement_reopen_returns_verification_to_development_with_reason(
     assert reopened.ok and reopened.code == "REQUIREMENT_REOPENED"
     assert reopened.data["status"] == "in_progress"
     assert reopened.data["reason"] == "验证发现兼容性问题"
+
+
+def test_requirement_constraints_supersede_atomically_and_project_active_state(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("约束治理", "沉淀当前有效约束", [], [])
+    other = requirements.create("其他需求", "验证跨需求拒绝", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    original = requirements.add_constraint(
+        requirement_id,
+        "不新增业务表",
+        source="首次计划",
+    )
+    foreign = requirements.add_constraint(
+        other.data["requirement_id"],
+        "其他需求约束",
+    )
+    rejected = requirements.add_constraint(
+        requirement_id,
+        "新增独立时效记录表",
+        supersedes=[foreign.data["constraint_id"]],
+        source="用户后续纠正",
+    )
+    replacement = requirements.add_constraint(
+        requirement_id,
+        "新增独立时效记录表",
+        supersedes=[original.data["constraint_id"]],
+        source="用户后续纠正",
+    )
+
+    assert rejected.code == "REQUIREMENT_CONSTRAINT_SUPERSEDES_INVALID"
+    assert replacement.ok
+    listed = requirements.list_constraints(requirement_id).data
+    assert [item["statement"] for item in listed["active"]] == [
+        "新增独立时效记录表"
+    ]
+    historical = {item["constraint_id"]: item for item in listed["historical"]}
+    assert historical[original.data["constraint_id"]]["status"] == "superseded"
+    assert historical[original.data["constraint_id"]]["superseded_by"] == (
+        replacement.data["constraint_id"]
+    )
+    overview = Path(created.data["path"]) / "需求总览.md"
+    decisions = Path(created.data["path"]) / "决策记录.md"
+    assert "新增独立时效记录表" in overview.read_text()
+    assert "不新增业务表" not in overview.read_text()
+    assert "不新增业务表" in decisions.read_text()
+    assert replacement.data["constraint_id"] in decisions.read_text()
+
+
+def test_record_implementation_is_independent_from_lifecycle_and_projects_delivery(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("交付状态", "拆分实施与验证", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    result = requirements.record_implementation(
+        requirement_id,
+        "backend",
+        artifact_ids=["ART-1"],
+    )
+
+    assert result.ok
+    assert requirements.show(requirement_id).data["status"] == "captured"
+    delivery = requirements.delivery(requirement_id).data
+    assert delivery["implementation_status"] == "implemented"
+    assert delivery["verification_status"] == "not_recorded"
+    assert delivery["manual_acceptance_status"] == "awaiting_manual_acceptance"
+    overview = Path(created.data["path"]) / "需求总览.md"
+    assert "实施状态：implemented" in overview.read_text()
+    assert "验证状态：not_recorded" in overview.read_text()
 
 
 def test_requirement_path_and_commit_message_apply_shared_naming_rules(tmp_path: Path) -> None:

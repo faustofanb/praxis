@@ -107,6 +107,7 @@ def test_context_cli_build_maps_traceability_inputs() -> None:
             "project_id": "backend",
             "stage": "backend",
             "agent_role": "coder",
+            "intent": "",
             "token_budget": 24_000,
             "allowed_paths": ["src/**"],
             "forbidden_paths": [],
@@ -115,6 +116,76 @@ def test_context_cli_build_maps_traceability_inputs() -> None:
             "risks": [],
             "available_skills": [],
             "approved_skills": [],
+        },
+    )
+
+
+def test_requirement_constraint_delivery_and_verification_decline_cli_mapping() -> None:
+    constraint = _parser().parse_args(
+        [
+            "requirement",
+            "constraint",
+            "add",
+            "--requirement",
+            "REQ-1",
+            "--statement",
+            "新增独立记录表",
+            "--supersedes",
+            "CON-OLD",
+            "--source",
+            "用户纠正",
+        ]
+    )
+    implementation = _parser().parse_args(
+        [
+            "requirement",
+            "record-implementation",
+            "--requirement",
+            "REQ-1",
+            "--project",
+            "backend",
+            "--artifact",
+            "ART-1",
+        ]
+    )
+    decline = _parser().parse_args(
+        [
+            "verification",
+            "decline",
+            "--requirement",
+            "REQ-1",
+            "--entry",
+            "pytest",
+            "--user-evidence",
+            "用户拒绝",
+            "--authorized-by-user",
+        ]
+    )
+
+    assert _operation(constraint) == (
+        "requirement.constraint.add",
+        {
+            "requirement_id": "REQ-1",
+            "statement": "新增独立记录表",
+            "supersedes": ["CON-OLD"],
+            "source": "用户纠正",
+        },
+    )
+    assert _operation(implementation) == (
+        "requirement.record-implementation",
+        {
+            "requirement_id": "REQ-1",
+            "project_id": "backend",
+            "artifact_ids": ["ART-1"],
+        },
+    )
+    assert _operation(decline) == (
+        "verification.decline",
+        {
+            "requirement_id": "REQ-1",
+            "entry": "pytest",
+            "user_evidence": "用户拒绝",
+            "authorized_by_user": True,
         },
     )
 
@@ -266,6 +337,32 @@ def test_agent_install_and_launch_cli_preserve_explicit_execution() -> None:
         "agent.launch",
         {"session_id": "SES-TEST", "execute": True},
     )
+
+
+def test_agent_start_cli_allows_automatic_context() -> None:
+    args = _parser().parse_args(
+        [
+            "agent",
+            "start",
+            "--type",
+            "codex",
+            "--role",
+            "coder",
+            "--requirement",
+            "REQ-1",
+            "--worktree",
+            "WT-REQ-1--backend",
+            "--capability",
+            "requirement.read",
+            "--intent",
+            "修复上下文",
+        ]
+    )
+
+    operation, values = _operation(args)
+    assert operation == "agent.start"
+    assert values["context_id"] == ""
+    assert values["intent"] == "修复上下文"
 
 
 def test_worktree_create_cli_allows_omitted_stage() -> None:

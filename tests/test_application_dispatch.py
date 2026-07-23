@@ -76,7 +76,29 @@ class FakeWorktree:
         return Result(True, "WORKTREE_PREVIEWED", data={"repositories": repository_ids})
 
     def ensure_for_requirement(self, requirement_id: str, repository_ids, *, preview_id) -> Result:
-        return Result(True, "WORKTREE_ENSURED", data={"preview_id": preview_id})
+        return Result(
+            True,
+            "WORKTREE_ENSURED",
+            data={
+                "preview_id": preview_id,
+                "items": [
+                    {
+                        "repository_id": repository_id,
+                        "ok": True,
+                        "code": "OK",
+                        "data": {
+                            "binding_id": f"WT-{requirement_id}--{repository_id}",
+                            "repository_id": repository_id,
+                            "stage": "development",
+                            "allowed_paths": ["**"],
+                            "forbidden_paths": [".git", ".praxis", ".env"],
+                            "path": str(Path("worktrees") / requirement_id),
+                        },
+                    }
+                    for repository_id in repository_ids
+                ],
+            },
+        )
 
     def prepare_for_requirement(self, requirement_id: str, repository_id: str) -> Result:
         return Result(True, "WORKTREE_SETUP_COMPLETED", data={"repository_id": repository_id})
@@ -474,6 +496,121 @@ def test_fast_path_operations_dispatch_through_public_application(
         "requirement.reopen",
         {"requirement_id": requirement_id, "reason": "验证后继续开发"},
     ).ok
+
+
+def test_worktree_ensure_builds_coder_context_bundle_without_portrait(
+    application: PraxisApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = application.root / "backend"
+    repository.mkdir()
+    from praxis.workspace.service import Project, WorkspaceService
+
+    WorkspaceService(application.root).init(
+        "demo",
+        "演示工作空间",
+        projects=[
+            Project(
+                "backend",
+                "python",
+                "backend",
+                "main",
+                database_connections=("dbx://LOCAL/demo",),
+            )
+        ],
+    )
+    requirement = application.execute(
+        "requirement.new",
+        {
+            "short_name": "自动上下文",
+            "request": "创建工作树后自动生成上下文",
+            "systems": ["demo"],
+            "domains": [],
+        },
+    )
+    monkeypatch.setattr(application, "_gate_current_skill_route", lambda _: Result(True))
+
+    result = application.execute(
+        "worktree.ensure",
+        {
+            "requirement_id": requirement.data["requirement_id"],
+            "repository_ids": ["backend"],
+            "preview_id": "WTP-CONTEXT",
+        },
+    )
+
+    assert result.ok
+    assert result.data["context_errors"] == []
+    assert result.data["context_bundles"][0]["project_id"] == "backend"
+    assert result.data["context_bundles"][0]["critical_facts"]["database"][
+        "registered"
+    ] == ["dbx://LOCAL/demo"]
+
+
+def test_worktree_partial_ensure_keeps_context_for_successful_repository(
+    application: PraxisApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = application.root / "backend"
+    repository.mkdir()
+    from praxis.workspace.service import Project, WorkspaceService
+
+    WorkspaceService(application.root).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("backend", "python", "backend", "main")],
+    )
+    requirement = application.execute(
+        "requirement.new",
+        {
+            "short_name": "部分工作树",
+            "request": "成功仓库仍需生成上下文",
+            "systems": ["demo"],
+            "domains": [],
+        },
+    )
+    monkeypatch.setattr(application, "_gate_current_skill_route", lambda _: Result(True))
+
+    def partial_ensure(*args, **kwargs) -> Result:
+        return Result(
+            False,
+            "WORKTREE_ENSURE_PARTIAL",
+            data={
+                "items": [
+                    {
+                        "repository_id": "backend",
+                        "ok": True,
+                        "code": "OK",
+                        "data": {
+                            "repository_id": "backend",
+                            "stage": "development",
+                            "allowed_paths": ["**"],
+                            "forbidden_paths": [".env"],
+                        },
+                    },
+                    {
+                        "repository_id": "missing",
+                        "ok": False,
+                        "code": "WORKTREE_ENSURE_REPOSITORY_FAILED",
+                        "data": {},
+                    },
+                ]
+            },
+        )
+
+    monkeypatch.setattr(FakeWorktree, "ensure_for_requirement", partial_ensure)
+    result = application.execute(
+        "worktree.ensure",
+        {
+            "requirement_id": requirement.data["requirement_id"],
+            "repository_ids": ["backend", "missing"],
+            "preview_id": "WTP-PARTIAL",
+        },
+    )
+
+    assert not result.ok
+    assert result.code == "WORKTREE_ENSURE_PARTIAL"
+    assert [item["project_id"] for item in result.data["context_bundles"]] == [
+        "backend"
+    ]
 
 
 @pytest.mark.parametrize(

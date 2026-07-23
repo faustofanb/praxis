@@ -230,7 +230,8 @@ every gate outcome is audited. Tests, quality review, reviewer or
 tester Agents, subagents, verification, and branch-finishing Skills remain pending until the user
 explicitly approves the current scope. Bootstrap reports missing external providers and never
 installs them automatically. The router discovers installed providers in the standard Codex,
-shared Agent, and Claude Skill directories and records the selected `SKILL.md` path and content hash.
+SkillDock, shared Agent, and Claude Skill directories and records the selected `SKILL.md` path and
+content hash.
 Identical node inputs reuse a route fingerprint; reuse never manufactures invocation or approval
 evidence. Direct user authorization can be recorded once for an exact validation matrix, while
 evidence, recovery, and retry loops use explicit per-stage budgets:
@@ -247,9 +248,13 @@ connection registration, authorization, SQL safety, execution, and audit.
 
 ## Minimal context bundles
 
-Context compilation keeps original requirements, task stage, modification scope, and gates as P0
-facts. It then deduplicates, redacts, ranks, fits optional portrait/analysis/skill fragments to the
-budget, and persists a source manifest and fingerprint:
+Context compilation keeps original requirements, exact project and database connection facts,
+active constraints, verification receipts, task stage, modification scope, and gates as P0 facts.
+Database facts do not depend on a portrait and require an explicit registered connection plus a
+`select current_database()` precheck. Optional portrait/analysis/skill fragments are fitted to the
+remaining budget. `worktree ensure` builds coder bundles automatically; `agent start` can infer the
+project from its binding when `--context` is omitted and launches with an explicit handoff/context
+reading prompt:
 
 Subagent sessions default to `fork_turns=none`, render a compact `handoff.json`, and treat the parent
 session as the single writer for requirement transitions and Skill gates. A child returns a bounded
@@ -328,6 +333,8 @@ praxis audit verify --json
 
 `artifact add` is an upsert keyed by requirement plus normalized source path. Re-adding a modified
 file preserves its artifact ID and creation time while refreshing hash, size, stage, and metadata.
+Use `--type code-change` for source changes; Praxis captures the Git repository, branch, diff totals,
+and hashes of changed files in structured metadata.
 
 WITR is also opt-in through `praxis runtime diagnose`. Commands execute once: uncompressed,
 secret-redacted output is retained under `.praxis/raw-logs/`, while RTK filters only the copy returned

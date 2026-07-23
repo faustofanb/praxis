@@ -115,6 +115,33 @@ def _parser() -> argparse.ArgumentParser:
     reopen_requirement.add_argument("id")
     reopen_requirement.add_argument("--reason", required=True)
     _json_flag(reopen_requirement)
+    constraint = requirement.add_parser("constraint").add_subparsers(
+        dest="constraint_action", required=True
+    )
+    add_constraint = constraint.add_parser("add")
+    add_constraint.add_argument("--requirement", required=True)
+    add_constraint.add_argument("--statement", required=True)
+    add_constraint.add_argument("--supersedes", action="append", default=[])
+    add_constraint.add_argument("--source", default="")
+    _json_flag(add_constraint)
+    list_constraints = constraint.add_parser("list")
+    list_constraints.add_argument("--requirement", required=True)
+    _json_flag(list_constraints)
+    record_implementation = requirement.add_parser("record-implementation")
+    record_implementation.add_argument("--requirement", required=True)
+    record_implementation.add_argument("--project", required=True)
+    record_implementation.add_argument("--artifact", action="append", default=[])
+    _json_flag(record_implementation)
+
+    verification = commands.add_parser("verification").add_subparsers(
+        dest="action", required=True
+    )
+    decline_verification = verification.add_parser("decline")
+    decline_verification.add_argument("--requirement", required=True)
+    decline_verification.add_argument("--entry", required=True)
+    decline_verification.add_argument("--user-evidence", required=True)
+    decline_verification.add_argument("--authorized-by-user", action="store_true")
+    _json_flag(decline_verification)
 
     task = commands.add_parser("task").add_subparsers(dest="action", required=True)
     start = task.add_parser("start")
@@ -352,6 +379,7 @@ def _parser() -> argparse.ArgumentParser:
     build_context.add_argument("--project", required=True)
     build_context.add_argument("--stage", required=True)
     build_context.add_argument("--agent-role", required=True)
+    build_context.add_argument("--intent", default="")
     build_context.add_argument("--workflow-node", default="in_progress")
     build_context.add_argument("--token-budget", type=int, default=24_000)
     build_context.add_argument("--allow-path", action="append", default=[])
@@ -446,8 +474,9 @@ def _parser() -> argparse.ArgumentParser:
     start_agent.add_argument("--type", choices=("codex", "claude-code", "oh-my-pi"), required=True)
     start_agent.add_argument("--role", required=True)
     start_agent.add_argument("--requirement", required=True)
-    start_agent.add_argument("--context", required=True)
+    start_agent.add_argument("--context", default="")
     start_agent.add_argument("--worktree", required=True)
+    start_agent.add_argument("--intent", default="")
     start_agent.add_argument("--capability", action="append", default=[], required=True)
     start_agent.add_argument("--skill", action="append", default=[])
     start_agent.add_argument("--approve-external", action="store_true")
@@ -587,6 +616,25 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             return "domain.list", {}
         return "domain.merge", {"source": args.source, "target": args.target}
     if args.group == "requirement":
+        if args.action == "constraint":
+            return f"requirement.constraint.{args.constraint_action}", {
+                "requirement_id": args.requirement,
+                **(
+                    {
+                        "statement": args.statement,
+                        "supersedes": args.supersedes,
+                        "source": args.source,
+                    }
+                    if args.constraint_action == "add"
+                    else {}
+                ),
+            }
+        if args.action == "record-implementation":
+            return "requirement.record-implementation", {
+                "requirement_id": args.requirement,
+                "project_id": args.project,
+                "artifact_ids": args.artifact,
+            }
         if args.action == "new":
             return "requirement.new", {
                 "short_name": args.name,
@@ -602,6 +650,13 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
         if args.action == "reopen":
             payload["reason"] = args.reason
         return f"requirement.{args.action}", payload
+    if args.group == "verification":
+        return "verification.decline", {
+            "requirement_id": args.requirement,
+            "entry": args.entry,
+            "user_evidence": args.user_evidence,
+            "authorized_by_user": args.authorized_by_user,
+        }
     if args.group == "task":
         if args.action == "start":
             return "task.start", {
@@ -802,6 +857,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "project_id": args.project,
                 "stage": args.stage,
                 "agent_role": args.agent_role,
+                "intent": args.intent,
                 "token_budget": args.token_budget,
                 "allowed_paths": args.allow_path,
                 "forbidden_paths": args.forbid_path,
@@ -878,6 +934,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "skills": args.skill,
                 "approved_external": args.approve_external,
                 "parent_session_id": args.parent_session or "",
+                "intent": args.intent,
             }
         if args.action == "render":
             return "agent.render", {"session_id": args.session_id}

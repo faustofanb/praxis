@@ -139,6 +139,82 @@ def test_default_budget_reserves_context_for_matching_business_skill(tmp_path: P
     assert result.data["used_budget"] == 4_000
 
 
+def test_business_skill_requires_project_and_intent_but_development_stays_automatic(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+    catalog = tmp_path / "知识库" / "skills" / "business"
+    specialized = catalog / "business.demo.backend.uniapp-api-generation"
+    specialized.mkdir(parents=True)
+    (specialized / "skill.toml").write_text(
+        'id = "business.demo.backend.uniapp-api-generation"\n'
+        'type = "business"\nversion = "1.0.0"\nlicense = "Proprietary"\n'
+        'risk = "generated-code"\ncontext_budget = 400\nrequired_tools = []\n'
+        'source = "test"\nsource_version = "1"\n'
+        'triggers = ["openapi", "接口生成"]\n'
+        'systems = ["demo"]\nprojects = ["backend"]\n'
+        'repository_roles = ["java-maven"]\n'
+    )
+    (specialized / "SKILL.md").write_text("# UniApp API generation\n")
+    development = catalog / "business.demo.backend.development"
+    development.mkdir(parents=True)
+    (development / "skill.toml").write_text(
+        'id = "business.demo.backend.development"\n'
+        'type = "business"\nversion = "1.0.0"\nlicense = "Proprietary"\n'
+        'risk = "none"\ncontext_budget = 400\nrequired_tools = []\n'
+        'source = "test"\nsource_version = "1"\ntriggers = ["backend"]\n'
+        'systems = ["demo"]\nprojects = ["backend"]\n'
+        'repository_roles = ["java-maven"]\n'
+    )
+    (development / "SKILL.md").write_text("# Backend development\n")
+
+    unrelated = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="调整页面布局",
+            project_id="backend",
+            system_id="demo",
+            repository_kind="java-maven",
+            token_budget=4_000,
+        )
+    )
+    matching = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="根据 OpenAPI 完成接口生成",
+            project_id="backend",
+            system_id="demo",
+            repository_kind="java-maven",
+            token_budget=4_000,
+        )
+    )
+    wrong_system = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="根据 OpenAPI 完成接口生成",
+            project_id="backend",
+            system_id="other",
+            repository_kind="java-maven",
+            token_budget=4_000,
+        )
+    )
+
+    unrelated_decisions = {item["id"]: item for item in unrelated.data["decisions"]}
+    matching_decisions = {item["id"]: item for item in matching.data["decisions"]}
+    wrong_system_decisions = {
+        item["id"]: item for item in wrong_system.data["decisions"]
+    }
+    assert "business.demo.backend.uniapp-api-generation" not in unrelated_decisions
+    assert "business.demo.backend.development" in unrelated_decisions
+    assert "business.demo.backend.uniapp-api-generation" not in wrong_system_decisions
+    assert "business.demo.backend.development" not in wrong_system_decisions
+    specialized_decision = matching_decisions[
+        "business.demo.backend.uniapp-api-generation"
+    ]
+    assert specialized_decision["intent_triggers"] == ["openapi", "接口生成"]
+    assert specialized_decision["reasons"] == ["business-context", "intent"]
+
+
 def test_installed_skill_is_discovered_with_content_hash(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "home"
     skill = home / ".codex" / "skills" / "external-brainstorming" / "SKILL.md"
@@ -164,6 +240,29 @@ def test_installed_skill_is_discovered_with_content_hash(tmp_path: Path, monkeyp
     )
     assert decision["status"] == "available"
     assert decision["content_hash"]
+    assert decision["installed_path"] == str(skill)
+
+
+def test_skilldock_skill_is_discovered(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "home"
+    skill = home / ".skilldock" / "skills" / "karpathy-guidelines" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: karpathy-guidelines\n---\n\n# Guidelines\n")
+    monkeypatch.setattr(Path, "home", lambda: home)
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="修复 Python 实现",
+            token_budget=5_000,
+        )
+    )
+
+    decision = next(
+        item for item in result.data["decisions"] if item["id"] == "karpathy-guidelines"
+    )
+    assert decision["status"] == "available"
     assert decision["installed_path"] == str(skill)
 
 

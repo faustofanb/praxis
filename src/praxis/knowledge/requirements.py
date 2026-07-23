@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from praxis.documents.requirements import RequirementProjector
 from praxis.domain.requirement import RequirementStatus
@@ -161,7 +162,168 @@ class RequirementService:
 
     def show(self, requirement_id: str) -> Result:
         record = self.store.requirement(requirement_id)
-        return Result(bool(record), "OK" if record else "REQUIREMENT_NOT_FOUND", data=record or {})
+        return Result(
+            bool(record),
+            "OK" if record else "REQUIREMENT_NOT_FOUND",
+            data=self._enriched_record(record) if record else {},
+        )
+
+    def add_constraint(
+        self,
+        requirement_id: str,
+        statement: str,
+        *,
+        supersedes: list[str] | None = None,
+        source: str = "",
+    ) -> Result:
+        requirement = self.store.requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        if not statement.strip():
+            return Result(False, "REQUIREMENT_CONSTRAINT_EMPTY")
+        requested = list(dict.fromkeys(supersedes or []))
+        records = {
+            item["constraint_id"]: item
+            for item in self.store.list_scope("requirement_constraint")
+        }
+        invalid = [
+            constraint_id
+            for constraint_id in requested
+            if constraint_id not in records
+            or records[constraint_id].get("requirement_id") != requirement_id
+            or records[constraint_id].get("status") != "active"
+        ]
+        if invalid:
+            return Result(
+                False,
+                "REQUIREMENT_CONSTRAINT_SUPERSEDES_INVALID",
+                data={"invalid": invalid},
+            )
+        timestamp = datetime.now(UTC)
+        constraint_id = f"CON-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
+        constraint = {
+            "constraint_id": constraint_id,
+            "requirement_id": requirement_id,
+            "statement": statement.strip(),
+            "source": source.strip(),
+            "status": "active",
+            "supersedes": requested,
+            "superseded_by": "",
+            "created_at": timestamp.isoformat(),
+        }
+        updates = [("requirement_constraint", constraint_id, constraint)]
+        for replaced_id in requested:
+            replaced = {**records[replaced_id]}
+            replaced.update(status="superseded", superseded_by=constraint_id)
+            updates.append(("requirement_constraint", replaced_id, replaced))
+        self.store.set_many(updates)
+        self.store.audit("requirement.constraint_added", "OK", constraint)
+        self.project_current(requirement_id)
+        return Result(True, "REQUIREMENT_CONSTRAINT_ADDED", data=constraint)
+
+    def list_constraints(self, requirement_id: str) -> Result:
+        if not self.store.requirement(requirement_id):
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        historical = sorted(
+            (
+                item
+                for item in self.store.list_scope("requirement_constraint")
+                if item.get("requirement_id") == requirement_id
+            ),
+            key=lambda item: (item.get("created_at", ""), item["constraint_id"]),
+        )
+        return Result(
+            True,
+            data={
+                "active": [item for item in historical if item.get("status") == "active"],
+                "historical": historical,
+            },
+        )
+
+    def record_implementation(
+        self,
+        requirement_id: str,
+        project_id: str,
+        *,
+        artifact_ids: list[str] | None = None,
+    ) -> Result:
+        if not self.store.requirement(requirement_id):
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        if not project_id.strip():
+            return Result(False, "REQUIREMENT_PROJECT_REQUIRED")
+        delivery = self._delivery(requirement_id)
+        delivery["implementation"][project_id] = {
+            "status": "implemented",
+            "artifact_ids": list(dict.fromkeys(artifact_ids or [])),
+            "recorded_at": datetime.now(UTC).isoformat(),
+        }
+        self.store.set("requirement_delivery", requirement_id, delivery)
+        self.store.audit(
+            "requirement.implementation_recorded",
+            "OK",
+            {"requirement_id": requirement_id, "project_id": project_id},
+        )
+        self.project_current(requirement_id)
+        return Result(
+            True,
+            "REQUIREMENT_IMPLEMENTATION_RECORDED",
+            data=self._delivery_summary(delivery),
+        )
+
+    def delivery(self, requirement_id: str) -> Result:
+        if not self.store.requirement(requirement_id):
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        return Result(True, data=self._delivery_summary(self._delivery(requirement_id)))
+
+    def project_current(self, requirement_id: str) -> None:
+        record = self.store.requirement(requirement_id)
+        if not record:
+            raise KeyError(requirement_id)
+        workspace = WorkspaceService(self.root).load()
+        RequirementProjector(self.root / workspace["knowledge_root"]).project(
+            self._enriched_record(record)
+        )
+
+    def _delivery(self, requirement_id: str) -> dict[str, Any]:
+        return self.store.get("requirement_delivery", requirement_id) or {
+            "requirement_id": requirement_id,
+            "implementation": {},
+            "verification": {},
+            "manual_acceptance_status": "awaiting_manual_acceptance",
+        }
+
+    @staticmethod
+    def _delivery_summary(delivery: dict[str, Any]) -> dict[str, Any]:
+        implementations = delivery.get("implementation", {})
+        verification = delivery.get("verification", {})
+        return {
+            **delivery,
+            "implementation_status": (
+                "implemented"
+                if implementations
+                and all(item.get("status") == "implemented" for item in implementations.values())
+                else "not_recorded"
+            ),
+            "verification_status": (
+                "verification_not_authorized"
+                if any(
+                    item.get("status") in {"declined", "not_authorized"}
+                    for item in verification.values()
+                )
+                else "not_recorded"
+            ),
+            "manual_acceptance_status": delivery.get(
+                "manual_acceptance_status", "awaiting_manual_acceptance"
+            ),
+        }
+
+    def _enriched_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        constraints = self.list_constraints(record["requirement_id"]).data
+        return {
+            **record,
+            "constraints": constraints,
+            "delivery": self._delivery_summary(self._delivery(record["requirement_id"])),
+        }
 
     def progress(self, requirement_id: str, message: str) -> Result:
         record = self.store.requirement(requirement_id)
@@ -218,7 +380,7 @@ class RequirementService:
         for item in self.store.pending_outbox():
             if item["topic"] != "requirement.project":
                 continue
-            projector.project(item["payload"])
+            projector.project(self._enriched_record(item["payload"]))
             self.store.mark_outbox_processed(item["id"])
             processed += 1
         return Result(True, data={"processed": processed})

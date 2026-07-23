@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import praxis.governance.service as governance_service
 from praxis.governance.service import ApprovalService, ExecutionBudgetService
+from praxis.knowledge.requirements import RequirementService
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
 
@@ -95,3 +97,33 @@ def test_execution_budget_allows_one_retry_then_stops(tmp_path: Path) -> None:
     )
     assert exhausted.code == "EXECUTION_BUDGET_EXHAUSTED"
     assert budgets.status(requirement_id, "in_progress").data["budgets"][0]["limit"] == 1
+
+
+def test_verification_decline_requires_user_evidence_and_updates_only_exact_entry(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _requirement(tmp_path)
+    assert hasattr(governance_service, "VerificationService")
+    verification = governance_service.VerificationService(tmp_path)
+
+    unauthorized = verification.decline(
+        requirement_id,
+        "pytest tests/test_context.py",
+        user_evidence="",
+        authorized_by_user=False,
+    )
+    declined = verification.decline(
+        requirement_id,
+        "pytest tests/test_context.py",
+        user_evidence="用户明确选择不执行该测试",
+        authorized_by_user=True,
+    )
+
+    assert unauthorized.code == "USER_APPROVAL_REQUIRED"
+    assert declined.ok and declined.code == "VERIFICATION_DECLINED"
+    delivery = RequirementService(tmp_path).delivery(requirement_id).data
+    assert delivery["verification_status"] == "verification_not_authorized"
+    assert list(delivery["verification"]) == ["pytest tests/test_context.py"]
+    assert delivery["verification"]["pytest tests/test_context.py"]["status"] == (
+        "declined"
+    )

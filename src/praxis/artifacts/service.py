@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from datetime import UTC, datetime
 from hashlib import blake2b
 from pathlib import Path
@@ -17,6 +18,7 @@ _ARTIFACT_TYPES = {
     "database-migration": "数据库迁移",
     "script": "脚本",
     "patch": "补丁",
+    "code-change": "代码变更",
     "test-report": "测试报告",
     "other": "其他",
 }
@@ -53,11 +55,16 @@ class ArtifactService:
         source = Path(source_path).resolve()
         if not source.is_file() or not source.is_relative_to(self.root.resolve()):
             return Result(False, "ARTIFACT_SOURCE_INVALID")
-        facts = metadata or {}
+        facts = dict(metadata or {})
         if artifact_type == "sql":
             missing = sorted(_SQL_METADATA - facts.keys())
             if missing:
                 return Result(False, "ARTIFACT_SQL_METADATA_REQUIRED", data={"missing": missing})
+        if artifact_type == "code-change":
+            code_change = _code_change_facts(source)
+            if code_change is None:
+                return Result(False, "ARTIFACT_CODE_CHANGE_GIT_REQUIRED")
+            facts["code_change"] = code_change
         timestamp = datetime.now(UTC)
         existing = next(
             (
@@ -156,3 +163,64 @@ class ArtifactService:
 
 def _hash(path: Path) -> str:
     return "blake2b:" + blake2b(path.read_bytes(), digest_size=20).hexdigest()
+
+
+def _code_change_facts(source: Path) -> dict[str, Any] | None:
+    root_result = _git(source.parent, "rev-parse", "--show-toplevel")
+    if root_result.returncode != 0:
+        return None
+    repository = Path(root_result.stdout.strip()).resolve()
+    branch_result = _git(repository, "branch", "--show-current")
+    stats_result = _git(repository, "diff", "--numstat", "HEAD")
+    names_result = _git(repository, "diff", "--name-only", "-z", "HEAD")
+    if any(
+        result.returncode != 0
+        for result in (branch_result, stats_result, names_result)
+    ):
+        return None
+
+    files = [item for item in names_result.stdout.split("\0") if item]
+    source_relative = source.relative_to(repository).as_posix()
+    if source_relative not in files:
+        files.append(source_relative)
+    file_hashes = []
+    for relative in sorted(set(files)):
+        path = repository / relative
+        if path.is_file():
+            file_hashes.append({"path": relative, "content_hash": _hash(path)})
+
+    insertions = 0
+    deletions = 0
+    changed = 0
+    for line in stats_result.stdout.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) != 3:
+            continue
+        changed += 1
+        if parts[0].isdigit():
+            insertions += int(parts[0])
+        if parts[1].isdigit():
+            deletions += int(parts[1])
+    if changed == 0 and source_relative in files:
+        changed = 1
+        insertions = len(source.read_text(encoding="utf-8", errors="replace").splitlines())
+    return {
+        "repository": str(repository),
+        "branch": branch_result.stdout.strip(),
+        "diff": {
+            "files": changed,
+            "insertions": insertions,
+            "deletions": deletions,
+        },
+        "files": file_hashes,
+    }
+
+
+def _git(cwd: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-c", "core.fsmonitor=false", *arguments],
+        cwd=cwd,
+        check=False,
+        capture_output=True,
+        text=True,
+    )

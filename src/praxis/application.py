@@ -18,7 +18,7 @@ from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
 from praxis.gates.commit_message import validate_commit_message
 from praxis.gates.engine import GateEngine, GateEvent
-from praxis.governance.service import ApprovalService, ExecutionBudgetService
+from praxis.governance.service import ApprovalService, ExecutionBudgetService, VerificationService
 from praxis.integrations.ponytail import diff_warning
 from praxis.integrations.witr import WitrService
 from praxis.knowledge.requirements import RequirementService
@@ -217,6 +217,28 @@ class PraxisApplication:
         if operation == "requirement.progress":
             return RequirementService(self.root).progress(
                 values["requirement_id"], values["message"]
+            )
+        if operation == "requirement.constraint.add":
+            return RequirementService(self.root).add_constraint(
+                values["requirement_id"],
+                values["statement"],
+                supersedes=values.get("supersedes", []),
+                source=values.get("source", ""),
+            )
+        if operation == "requirement.constraint.list":
+            return RequirementService(self.root).list_constraints(values["requirement_id"])
+        if operation == "requirement.record-implementation":
+            return RequirementService(self.root).record_implementation(
+                values["requirement_id"],
+                values["project_id"],
+                artifact_ids=values.get("artifact_ids", []),
+            )
+        if operation == "verification.decline":
+            return VerificationService(self.root).decline(
+                values["requirement_id"],
+                values["entry"],
+                user_evidence=values.get("user_evidence", ""),
+                authorized_by_user=values.get("authorized_by_user", False),
             )
         if operation == "requirement.rename":
             return RequirementService(self.root).rename(
@@ -447,6 +469,7 @@ class PraxisApplication:
                     project_id=values["project_id"],
                     stage=values["stage"],
                     agent_role=values["agent_role"],
+                    intent=values.get("intent", ""),
                     token_budget=values.get("token_budget", 24_000),
                     allowed_paths=tuple(values.get("allowed_paths", [])),
                     forbidden_paths=tuple(values.get("forbidden_paths", [])),
@@ -499,6 +522,7 @@ class PraxisApplication:
                 skills=values.get("skills", []),
                 approved_external=values.get("approved_external", False),
                 parent_session_id=values.get("parent_session_id", ""),
+                intent=values.get("intent", ""),
             )
         if operation == "agent.install":
             return AgentSessionService(self.root).install(values["agent_type"])
@@ -694,10 +718,62 @@ class PraxisApplication:
             skill_gate = self._gate_current_skill_route(values["requirement_id"])
             if not skill_gate.ok:
                 return skill_gate
-            return worktree.ensure_for_requirement(
+            ensured = worktree.ensure_for_requirement(
                 values["requirement_id"],
                 values["repository_ids"],
                 preview_id=values["preview_id"],
+            )
+            requirement = StateStore(self.root).requirement(values["requirement_id"]) or {}
+            bundles = []
+            errors = []
+            for item in ensured.data.get("items", []):
+                if not item.get("ok"):
+                    continue
+                worktree_data = item.get("data", {})
+                repository_id = str(
+                    worktree_data.get("repository_id") or item.get("repository_id", "")
+                )
+                try:
+                    built = ContextCompiler(self.root).build(
+                        ContextBuildRequest(
+                            requirement_id=values["requirement_id"],
+                            project_id=repository_id,
+                            stage=str(worktree_data.get("stage", "development")),
+                            agent_role="coder",
+                            intent=str(requirement.get("original_request", "")),
+                            allowed_paths=tuple(worktree_data.get("allowed_paths", [])),
+                            forbidden_paths=tuple(worktree_data.get("forbidden_paths", [])),
+                            workflow_node="in_progress",
+                        )
+                    )
+                except (KeyError, FileNotFoundError, ValueError) as error:
+                    errors.append(
+                        {
+                            "repository_id": repository_id,
+                            "code": "CONTEXT_AUTO_BUILD_FAILED",
+                            "data": {"error": str(error)},
+                        }
+                    )
+                    continue
+                if built.ok:
+                    bundles.append(built.data)
+                else:
+                    errors.append(
+                        {
+                            "repository_id": repository_id,
+                            "code": built.code,
+                            "data": built.data,
+                        }
+                    )
+            return Result(
+                ensured.ok,
+                ensured.code,
+                data={
+                    **ensured.data,
+                    "context_bundles": bundles,
+                    "context_errors": errors,
+                },
+                diagnostics=ensured.diagnostics,
             )
         if action == "prepare":
             return worktree.prepare_for_requirement(

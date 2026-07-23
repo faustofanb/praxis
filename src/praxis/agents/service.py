@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from praxis.context.service import ContextBuildRequest, ContextCompiler
 from praxis.documents.atomic_writer import atomic_write_text
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
@@ -72,13 +73,12 @@ class AgentSessionService:
         skills: list[str] | None = None,
         approved_external: bool = False,
         parent_session_id: str = "",
+        intent: str = "",
     ) -> Result:
         if agent_type not in _AGENT_TYPES:
             return Result(False, "AGENT_TYPE_INVALID")
         if not self.store.requirement(requirement_id):
             return Result(False, "REQUIREMENT_NOT_FOUND")
-        if not self.store.get("context", context_id):
-            return Result(False, "CONTEXT_NOT_FOUND")
         if parent_session_id and not self.store.get("agent_session", parent_session_id):
             return Result(False, "AGENT_PARENT_SESSION_NOT_FOUND")
         child_denied = {
@@ -100,6 +100,28 @@ class AgentSessionService:
         if not binding or binding.get("requirement_id") != requirement_id:
             return Result(False, "WORKTREE_BINDING_INVALID")
         assert resolved is not None
+        if context_id:
+            if not self.store.get("context", context_id):
+                return Result(False, "CONTEXT_NOT_FOUND")
+        else:
+            project_id = str(binding.get("repository_id", ""))
+            if not project_id:
+                return Result(False, "WORKTREE_PROJECT_UNRESOLVED")
+            built = ContextCompiler(self.root).build(
+                ContextBuildRequest(
+                    requirement_id=requirement_id,
+                    project_id=project_id,
+                    stage=str(binding.get("stage", "development")),
+                    agent_role=role,
+                    intent=intent,
+                    allowed_paths=tuple(binding.get("allowed_paths", [])),
+                    forbidden_paths=tuple(binding.get("forbidden_paths", [])),
+                    workflow_node="in_progress",
+                )
+            )
+            if not built.ok:
+                return built
+            context_id = str(built.data["context_id"])
         timestamp = datetime.now(UTC)
         session_id = f"SES-{timestamp:%Y%m%dT%H%M%S}-{uuid4().hex[:8].upper()}"
         grant = McpBrokerService(self.root).grant(
@@ -174,7 +196,13 @@ class AgentSessionService:
         rendered = self.render(session_id)
         if not rendered.ok:
             return rendered
-        command = [_AGENT_COMMANDS[session["agent_type"]]]
+        context = self.store.get("context", str(session["context_id"])) or {}
+        handoff_path = rendered.data["files"][1]
+        prompt = (
+            f"Read the Praxis handoff at {handoff_path} and context at "
+            f"{context.get('path', '')} before doing any work."
+        )
+        command = [_AGENT_COMMANDS[session["agent_type"]], prompt]
         data: dict[str, Any] = {
             "session_id": session_id,
             "command": command,
@@ -199,7 +227,7 @@ class AgentSessionService:
         )
         with log_path.open("ab") as stream:
             process = subprocess.Popen(
-                [executable],
+                [executable, *command[1:]],
                 cwd=session["worktree_path"],
                 env=environment,
                 stdin=subprocess.DEVNULL,
@@ -337,6 +365,7 @@ class AgentSessionService:
                 "path": context.get("path", ""),
                 "fingerprint": context.get("fingerprint", ""),
                 "estimated_tokens": context.get("estimated_tokens", 0),
+                "critical_facts": context.get("critical_facts", {}),
             },
             "worktree": {
                 "binding_id": session.get("worktree", ""),

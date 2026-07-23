@@ -20,6 +20,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 ## 2. 调查和规划
 
 - 只把有证据的结论写入 `调查分析.md`，把经用户确认的范围和步骤写入 `实施计划.md`。
+- 把开发约束写入结构化需求约束卡；后续结论改变时用 `supersedes` 明确覆盖旧约束，禁止只在
+  聊天或人工文档中留下互相冲突的结论。计划确认时把用户批准的精确验证矩阵保存为 receipt。
 - 路由业务技能和必要的方法技能，并记录真实调用来源；不要用执行命令冒充技能调用。
 - 调查节点必须先路由并完成 `brainstorming`、`grilling` 与 `ponytail`；`grill-me`
   只是用户入口，只有实际执行逐问确认的 `grilling` 才能作为完成凭证。涉及代码定位时条件路由
@@ -48,6 +50,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 迁移全程保持 binding 为 `migrating` 并持久化旧路径、分支和状态；进程中断后重复执行同一
   migrate-name 命令完成旧名称恢复与旧路径 CodeGraph 重建，create 在恢复前必须 fail-closed。
 - 创建成功后核对需求编号、仓库、阶段、分支、需求工作空间和仓库工作树路径；将 Agent 工作目录切换到需求工作空间，实际 Git 操作切换到对应仓库子目录。
+- `worktree ensure` 为每个成功仓库自动生成 coder context。开始编码前核对返回的
+  `context_bundles`；若 `context_errors` 非空，保留已创建工作树并先处理上下文诊断。
 - 仓库配置了 `local_files` 时，在 CodeGraph 初始化前只从 `project.path` 指向的主仓库复制这些
   ignored 本地运行文件到相同相对路径；不得扫描或批量复制 `.env*`。源缺失、越界、目录或
   不安全符号链接必须阻断并保留 blocked 工作树，禁止静默创建不可运行的环境。
@@ -81,6 +85,10 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 
 - 持续更新 `执行进度.md` 和产出物清单，不以聊天记录代替知识库。
 - 代码稳定后再登记产出物；`artifact add` 按“需求+路径” upsert 并刷新哈希。
+- 代码改动使用 `code-change` 类型登记，保留仓库、分支、diff 统计和变更文件哈希。
+- 实施完成后用 `requirement record-implementation` 记录实施维度；验证维度和人工验收维度独立。
+  用户明确选择不运行某个精确验证项时用 `verification decline` 记录收据，状态只能是 declined，
+  不得标为 verified 或 passed。
 - 从 verifying 回开发使用带原因的 `requirement reopen`；同一问题默认最多一次恢复、一次重试。
 - 完成多个 Skill 后可用 `skill complete-node --used-skill <id>=<outcome>` 批量写入调用、完成和 gate 凭证。
 - 节点路由统一保存为需求状态名；`investigation`、`analysis`、`planning`、`development`、

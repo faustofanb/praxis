@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from hashlib import blake2b
@@ -68,6 +68,23 @@ class StateStore:
                 on conflict(scope, key) do update set
                 value=excluded.value, updated_at=excluded.updated_at""",
                 (scope, key, json.dumps(value, sort_keys=True), datetime.now(UTC).isoformat()),
+            )
+
+    def set_many(
+        self, updates: Sequence[tuple[str, str, dict[str, Any]]]
+    ) -> None:
+        updated_at = datetime.now(UTC).isoformat()
+        with self._connect() as database:
+            database.execute("begin immediate")
+            database.executemany(
+                """insert into runtime_state(scope, key, value, updated_at)
+                values (?, ?, ?, ?)
+                on conflict(scope, key) do update set
+                value=excluded.value, updated_at=excluded.updated_at""",
+                [
+                    (scope, key, json.dumps(value, sort_keys=True), updated_at)
+                    for scope, key, value in updates
+                ],
             )
 
     def get(self, scope: str, key: str) -> dict[str, Any] | None:

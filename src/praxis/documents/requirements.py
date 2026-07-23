@@ -30,7 +30,10 @@ class RequirementProjector:
         target = self.policy.requirement_path(record["requirement_id"], record["short_name"])
         target.mkdir(parents=True, exist_ok=True)
         self._ensure_structure(target, record)
-        atomic_write_text(target / "需求总览.md", self._overview(record))
+        overview = target / "需求总览.md"
+        existing = overview.read_text(encoding="utf-8") if overview.is_file() else ""
+        atomic_write_text(overview, self._overview(record, existing))
+        atomic_write_text(target / "决策记录.md", self._decisions(record))
         progress = target / "执行进度.md"
         if not progress.exists():
             atomic_write_text(progress, self._progress(record))
@@ -68,9 +71,20 @@ class RequirementProjector:
                 atomic_write_text(path, content)
 
     @staticmethod
-    def _overview(record: dict[str, Any]) -> str:
+    def _overview(record: dict[str, Any], existing: str = "") -> str:
         systems = "\n".join(f"  - {value}" for value in record["systems"]) or "  []"
         domains = "\n".join(f"  - {value}" for value in record["domains"]) or "  []"
+        conclusion = _section(existing, "当前结论") or "待调查。"
+        active_constraints = record.get("constraints", {}).get("active", [])
+        constraints = (
+            "\n".join(
+                f"- {item['statement']} (`{item['constraint_id']}`)"
+                for item in active_constraints
+            )
+            or "暂无。"
+        )
+        delivery = record.get("delivery", {})
+        blocking = "需求已阻塞。" if record["status"] == "blocked" else "暂无。"
         return f"""---
 需求编号: {record["requirement_id"]}
 需求简称: {record["short_name"]}
@@ -87,7 +101,9 @@ class RequirementProjector:
 
 ## 当前结论
 
-待调查。
+{conclusion}
+
+<!-- PRAXIS:MANAGED:STATE:START -->
 
 ## 当前阶段
 
@@ -95,7 +111,19 @@ class RequirementProjector:
 
 ## 当前阻塞
 
-暂无。
+{blocking}
+
+## 当前有效约束
+
+{constraints}
+
+## 交付状态
+
+- 实施状态：{delivery.get("implementation_status", "not_recorded")}
+- 验证状态：{delivery.get("verification_status", "not_recorded")}
+- 人工验收：{delivery.get("manual_acceptance_status", "awaiting_manual_acceptance")}
+
+<!-- PRAXIS:MANAGED:STATE:END -->
 
 ## 文档导航
 
@@ -103,8 +131,30 @@ class RequirementProjector:
 - [调查分析](./调查分析.md)
 - [实施计划](./实施计划.md)
 - [执行进度](./执行进度.md)
+- [决策记录](./决策记录.md)
 - [验收结论](./验收结论.md)
 """
+
+    @staticmethod
+    def _decisions(record: dict[str, Any]) -> str:
+        items = record.get("constraints", {}).get("historical", [])
+        if not items:
+            return "# 决策记录\n\n暂无。\n"
+        lines = ["# 决策记录", ""]
+        for item in items:
+            lines.extend(
+                (
+                    f"## {item['constraint_id']}",
+                    "",
+                    f"- 结论：{item['statement']}",
+                    f"- 状态：{item['status']}",
+                    f"- 来源：{item.get('source') or '未记录'}",
+                    f"- 覆盖：{', '.join(item.get('supersedes', [])) or '无'}",
+                    f"- 被覆盖为：{item.get('superseded_by') or '无'}",
+                    "",
+                )
+            )
+        return "\n".join(lines)
 
     @staticmethod
     def _original_request(record: dict[str, Any]) -> str:
@@ -230,3 +280,12 @@ class RequirementProjector:
 关联仓库: []
 历史需求: []
 """
+
+
+def _section(content: str, heading: str) -> str:
+    marker = f"## {heading}"
+    if marker not in content:
+        return ""
+    tail = content.split(marker, 1)[1]
+    body = tail.split("\n## ", 1)[0]
+    return body.strip()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from praxis.agents.lifecycle import AgentLifecycle
@@ -8,7 +9,7 @@ from praxis.artifacts.service import ArtifactService
 from praxis.mcp.broker import McpBrokerService
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
-from praxis.workspace.service import WorkspaceService
+from praxis.workspace.service import Project, WorkspaceService
 
 
 def _workspace(root: Path) -> str:
@@ -211,11 +212,71 @@ def test_agent_install_and_safe_launch_create_workspace_owned_descriptors(
     assert Path(installed.data["path"]).is_file()
     assert launched.ok
     assert launched.data["executed"] is False
-    assert launched.data["command"] == ["codex"]
+    assert launched.data["command"][0] == "codex"
+    assert "handoff" in launched.data["command"][1]
     assert launched.data["cwd"] == str(worktree)
     assert launched.data["config_files"]
     stored = store.get("agent_session", started.data["session_id"])
     assert stored and stored["status"] == "ready"
+
+
+def test_agent_start_infers_project_and_builds_context_when_context_is_omitted(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "backend"
+    repository.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[
+            Project(
+                "backend",
+                "python",
+                "backend",
+                "main",
+                database_connections=("dbx://LOCAL/demo",),
+            )
+        ],
+    )
+    requirement_id = StateStore(tmp_path).create_requirement(
+        "自动上下文", "Agent 必须读取数据库事实", ["demo"], []
+    )["requirement_id"]
+    worktree = tmp_path / "worktree"
+    worktree.mkdir()
+    store = StateStore(tmp_path)
+    store.set(
+        "worktree",
+        "WT-AUTO",
+        {
+            "binding_id": "WT-AUTO",
+            "requirement_id": requirement_id,
+            "repository_id": "backend",
+            "stage": "development",
+            "branch": "req/auto",
+            "path": str(worktree),
+            "allowed_paths": ["**"],
+            "forbidden_paths": [".env"],
+        },
+    )
+
+    sessions = AgentSessionService(tmp_path)
+    started = sessions.start(
+        "codex",
+        "coder",
+        requirement_id,
+        "",
+        "WT-AUTO",
+        ["requirement.read"],
+        intent="修复上下文自动消费",
+    )
+    rendered = sessions.render(started.data["session_id"])
+    handoff = Path(rendered.data["files"][1]).read_text()
+
+    assert started.ok
+    context = store.get("context", started.data["context_id"])
+    assert context and context["project_id"] == "backend"
+    assert "dbx://LOCAL/demo" in handoff
+    assert "critical_facts" in handoff
 
 
 def test_agent_lifecycle_delegates_authorization_and_records_completion(tmp_path: Path) -> None:
@@ -290,6 +351,42 @@ def test_artifact_registration_indexes_and_verifies_content(tmp_path: Path) -> N
     assert artifacts.verify(added.data["artifact_id"]).code == "ARTIFACT_HASH_MISMATCH"
     index = next((tmp_path / "知识库" / "需求").rglob("产出物清单.yaml"))
     assert added.data["artifact_id"] in index.read_text()
+
+
+def test_code_change_artifact_captures_git_diff_and_changed_file_hashes(
+    tmp_path: Path,
+) -> None:
+    requirement_id = _workspace(tmp_path)
+    subprocess.run(["git", "init", "-b", "main"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "praxis@example.invalid"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Praxis Tests"], cwd=tmp_path, check=True
+    )
+    source = tmp_path / "service.py"
+    source.write_text("value = 1\n")
+    subprocess.run(["git", "add", "service.py"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", "baseline"], cwd=tmp_path, check=True)
+    source.write_text("value = 2\n")
+
+    added = ArtifactService(tmp_path).add(
+        requirement_id, "code-change", source, stage="development"
+    )
+
+    assert added.ok
+    change = added.data["metadata"]["code_change"]
+    assert change["repository"] == str(tmp_path.resolve())
+    assert change["branch"] == "main"
+    assert change["diff"] == {"files": 1, "insertions": 1, "deletions": 1}
+    assert change["files"] == [
+        {
+            "path": "service.py",
+            "content_hash": added.data["content_hash"],
+        }
+    ]
 
 
 def test_audit_events_can_be_listed_shown_and_chain_verified(tmp_path: Path) -> None:

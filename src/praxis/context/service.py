@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -65,6 +66,7 @@ class ContextBuildRequest:
     project_id: str
     stage: str
     agent_role: str
+    intent: str = ""
     token_budget: int = 24_000
     allowed_paths: tuple[str, ...] = ()
     forbidden_paths: tuple[str, ...] = ()
@@ -81,7 +83,8 @@ class ContextCompiler:
         self.store = StateStore(self.root)
 
     def build(self, request: ContextBuildRequest) -> Result:
-        fragments = self.collect(request)
+        critical_facts = self._critical_facts(request)
+        fragments = self.collect(request, critical_facts=critical_facts)
         selected, omitted = self.select(fragments, request.token_budget)
         required_tokens = sum(item.estimated_tokens for item in selected if item.priority == 0)
         if required_tokens > request.token_budget:
@@ -91,11 +94,19 @@ class ContextCompiler:
                 data={"required_tokens": required_tokens, "token_budget": request.token_budget},
             )
         estimated_tokens = sum(item.estimated_tokens for item in selected)
+        identity = {
+            "requirement_id": request.requirement_id,
+            "project_id": request.project_id,
+            "stage": request.stage,
+            "workflow_node": request.workflow_node,
+            "agent_role": request.agent_role,
+            "intent": request.intent.strip(),
+        }
+        identity_json = json.dumps(identity, ensure_ascii=False, sort_keys=True)
         fingerprint = _content_hash(
-            "\0".join(item.content_hash for item in selected)
-            + f"\0{request.stage}\0{request.agent_role}"
+            identity_json + "\0" + "\0".join(item.content_hash for item in selected)
         )
-        current_key = f"{request.requirement_id}:{request.stage}:{request.agent_role}"
+        current_key = _content_hash(identity_json)
         current = self.store.get("context_current", current_key)
         if current and current["fingerprint"] == fingerprint:
             return Result(True, "CONTEXT_UNCHANGED", data=current)
@@ -107,7 +118,11 @@ class ContextCompiler:
             "requirement_id": request.requirement_id,
             "project_id": request.project_id,
             "stage": request.stage,
+            "workflow_node": request.workflow_node,
             "agent_role": request.agent_role,
+            "intent": request.intent.strip(),
+            "identity": identity,
+            "critical_facts": critical_facts,
             "token_budget": request.token_budget,
             "estimated_tokens": estimated_tokens,
             "fingerprint": fingerprint,
@@ -142,22 +157,50 @@ class ContextCompiler:
         )
         return Result(True, data=data)
 
-    def collect(self, request: ContextBuildRequest) -> list[ContextFragment]:
+    def collect(
+        self,
+        request: ContextBuildRequest,
+        *,
+        critical_facts: dict[str, object] | None = None,
+    ) -> list[ContextFragment]:
         workspace = WorkspaceService(self.root).load()
         requirement = self.store.requirement(request.requirement_id)
         if not requirement:
             raise KeyError(request.requirement_id)
+        project = WorkspaceService(self.root).project(request.project_id)
+        facts = critical_facts or self._critical_facts(request)
         requirement_root = RequirementPathPolicy(
             self.root / workspace["knowledge_root"]
         ).requirement_path(request.requirement_id, requirement["short_name"])
-        fragments = [
+        original_request_path = requirement_root / "原始需求.md"
+        original_request = (
             self._file_fragment(
                 "original-request",
                 "original_request",
                 "用户原始需求",
-                requirement_root / "原始需求.md",
+                original_request_path,
                 0,
+            )
+            if original_request_path.is_file()
+            else ContextFragment.create(
+                "original-request",
+                "original_request",
+                "用户原始需求",
+                str(requirement["original_request"]),
+                0,
+                evidence_level="Praxis结构化事实",
+            )
+        )
+        fragments = [
+            ContextFragment.create(
+                "project-facts",
+                "project_facts",
+                "项目、数据库与治理关键事实",
+                self._render_critical_facts(facts),
+                0,
+                evidence_level="Praxis结构化事实",
             ),
+            original_request,
             ContextFragment.create(
                 "task-stage",
                 "task_stage",
@@ -200,8 +243,7 @@ class ContextCompiler:
                     1,
                 )
             )
-        project = WorkspaceService(self.root).project(request.project_id)
-        intent = f"{requirement['original_request']} {request.stage} {request.agent_role}"
+        intent = request.intent.strip() or str(requirement["original_request"])
         route = NodeSkillRouter(self.root).route(
             NodeSkillRoutingRequest(
                 node=request.workflow_node,
@@ -266,6 +308,75 @@ class ContextCompiler:
                 )
             )
         return fragments
+
+    def _critical_facts(self, request: ContextBuildRequest) -> dict[str, object]:
+        project = WorkspaceService(self.root).project(request.project_id)
+        project_path = (self.root / project.path).resolve()
+        constraints = [
+            item
+            for item in self.store.list_scope("requirement_constraint")
+            if item.get("requirement_id") == request.requirement_id
+            and item.get("status") == "active"
+        ]
+        approvals = [
+            item
+            for item in self.store.list_scope("approval_receipt")
+            if item.get("requirement_id") == request.requirement_id
+            and _approval_active(item)
+        ]
+        declines = [
+            item
+            for item in self.store.list_scope("verification_decline")
+            if item.get("requirement_id") == request.requirement_id
+        ]
+        return {
+            "requirement_id": request.requirement_id,
+            "project": {
+                "id": project.id,
+                "system_id": project.system_id,
+                "kind": project.kind,
+                "path": str(project_path),
+            },
+            "database": {
+                "registered": list(project.database_connections),
+                "production": list(project.production_database_connections),
+                "selection_required": True,
+                "precheck_sql": "select current_database()",
+            },
+            "constraints": sorted(
+                constraints,
+                key=lambda item: (
+                    str(item.get("created_at", "")),
+                    str(item.get("constraint_id", "")),
+                ),
+            ),
+            "verification": {
+                "approvals": sorted(
+                    approvals,
+                    key=lambda item: (
+                        str(item.get("created_at", "")),
+                        str(item.get("receipt_id", "")),
+                    ),
+                ),
+                "declines": sorted(
+                    declines,
+                    key=lambda item: (
+                        str(item.get("created_at", "")),
+                        str(item.get("receipt_id", "")),
+                    ),
+                ),
+            },
+        }
+
+    @staticmethod
+    def _render_critical_facts(facts: dict[str, object]) -> str:
+        database = facts["database"]
+        assert isinstance(database, dict)
+        return (
+            json.dumps(facts, ensure_ascii=False, indent=2)
+            + "\n\n数据库使用规则：必须显式选择上方已登记连接；禁止依赖默认数据库连接。"
+            + "在对表结构或数据作出判断前，必须执行 `select current_database()` 核对目标数据库。"
+        )
 
     def select(
         self, fragments: list[ContextFragment], token_budget: int
@@ -372,8 +483,11 @@ class ContextCompiler:
             "---",
             f"上下文编号: {data['context_id']}",
             f"需求编号: {data['requirement_id']}",
+            f"项目编号: {data['project_id']}",
             f"任务阶段: {data['stage']}",
+            f"工作流节点: {data['workflow_node']}",
             f"Agent角色: {data['agent_role']}",
+            f"任务意图: {data['intent']}",
             f"Token预算: {data['token_budget']}",
             f"预计Token: {data['estimated_tokens']}",
             f"内容指纹: {data['fingerprint']}",
@@ -406,3 +520,15 @@ def _estimate_tokens(content: str) -> int:
 def _sanitize(content: str) -> tuple[str, bool]:
     sanitized, count = _SECRET.subn(r"\1=\2[已脱敏]\2", content)
     return sanitized, count > 0
+
+
+def _approval_active(receipt: dict[str, object]) -> bool:
+    if receipt.get("status") != "active":
+        return False
+    expires_at = str(receipt.get("expires_at", ""))
+    if not expires_at:
+        return True
+    try:
+        return datetime.fromisoformat(expires_at) >= datetime.now(UTC)
+    except ValueError:
+        return False

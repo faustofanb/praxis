@@ -186,6 +186,7 @@ class NodeSkillRouter:
         )
         business = registry.route_context(
             SkillRoutingContext(
+                intent=request.intent,
                 system_id=request.system_id,
                 project_id=request.project_id,
                 business_domains=request.business_domains,
@@ -231,6 +232,14 @@ class NodeSkillRouter:
         for skill in business:
             if skill.id in known:
                 continue
+            intent_matched = bool(
+                skill.triggers
+                and not skill.id.endswith(".development")
+                and any(
+                    trigger.casefold() in request.intent.casefold()
+                    for trigger in skill.triggers
+                )
+            )
             decisions.append(
                 {
                     "id": skill.id,
@@ -242,7 +251,7 @@ class NodeSkillRouter:
                     "availability": "workspace",
                     "priority": 50,
                     "context_budget": skill.context_budget,
-                    "intent_triggers": [],
+                    "intent_triggers": list(skill.triggers),
                     "repository_kinds": list(skill.repository_roles),
                     "agent_roles": [],
                     "artifact_types": list(skill.artifact_types),
@@ -250,7 +259,10 @@ class NodeSkillRouter:
                     "status": "available",
                     "provider_available": True,
                     "content_hash": skill.content_hash,
-                    "reasons": ["business-context"],
+                    "reasons": [
+                        "business-context",
+                        *(["intent"] if intent_matched else []),
+                    ],
                 }
             )
             used += skill.context_budget
@@ -287,6 +299,7 @@ class NodeSkillRouter:
             Path.home() / ".codex" / "skills",
             Path.home() / ".agents" / "skills",
             Path.home() / ".claude" / "skills",
+            Path.home() / ".skilldock" / "skills",
         )
         installed: dict[str, dict[str, str]] = {}
         for root in roots:

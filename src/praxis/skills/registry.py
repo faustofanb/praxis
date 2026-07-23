@@ -35,6 +35,7 @@ class Skill:
 
 @dataclass(frozen=True, slots=True)
 class SkillRoutingContext:
+    intent: str = ""
     system_id: str = ""
     project_id: str = ""
     business_domains: tuple[str, ...] = ()
@@ -126,12 +127,24 @@ class SkillRegistry:
 
     def route_context(self, context: SkillRoutingContext) -> list[Skill]:
         scored: list[tuple[int, Skill]] = []
+        normalized_intent = context.intent.casefold()
         for skill in self.all():
             if set(context.risks) & set(skill.denied_risks):
                 continue
             if skill.type == "business" and context.project_id:
                 projects = skill.projects or self._legacy_projects(skill.id)
                 if context.project_id not in projects:
+                    continue
+                if context.system_id and skill.systems and context.system_id not in skill.systems:
+                    continue
+                is_project_base = skill.id.endswith(".development")
+                if (
+                    not is_project_base
+                    and skill.triggers
+                    and not any(
+                        trigger.casefold() in normalized_intent for trigger in skill.triggers
+                    )
+                ):
                     continue
             score = 0
             if context.system_id and context.system_id in skill.systems:

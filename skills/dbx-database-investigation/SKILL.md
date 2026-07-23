@@ -35,7 +35,10 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 
 ## 八、业务约束
 
-先通过系统画像匹配连接。未找到时返回：`未找到匹配 connection；请先在 DBX 中配置目标业务系统连接。`
+先读取当前 context 的 `critical_facts.database`，只能从 `registered` 中显式选择连接；
+`production` 中的连接必须明确标记为生产环境。禁止依赖 DBX 默认连接或默认 `postgres` 库。
+选定连接后，任何 Schema、表结构或数据判断之前都先执行 `select current_database()`，并核对
+返回库名与任务目标一致。未找到匹配连接时返回：`未找到匹配 connection；请先在 Praxis 项目配置中登记 DBX 连接。`
 
 ## 九、数据约束
 
