@@ -54,7 +54,7 @@ def test_task_progress_updates_state_and_requirement_context(tmp_path: Path) -> 
     assert service.progress("T-1", "Gate implementation complete").ok
     task = service.inspect("T-1")
     assert task is not None and task["status"] == "active"
-    assert "Gate implementation complete" in (requirement_path / "执行进度.md").read_text()
+    assert "Gate implementation complete" in (requirement_path / "04-执行进度.md").read_text()
 
 
 def test_task_resume_rechecks_context_freshness(tmp_path: Path) -> None:

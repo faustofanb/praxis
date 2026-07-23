@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from praxis.agents.service import AgentSessionService
 from praxis.application import PraxisApplication
 from praxis.mcp.broker import McpBrokerService
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 from praxis.portraits.service import PortraitService
 from praxis.skills.registry import SkillRegistry
 from praxis.storage.sqlite import StateStore
@@ -323,10 +323,10 @@ def create_server(root: Path | str) -> FastMCP:
         if not requirement:
             raise KeyError(requirement_id)
         facts = WorkspaceService(workspace).load()
-        path = RequirementPathPolicy(workspace / facts["knowledge_root"]).requirement_path(
-            requirement_id, requirement["short_name"]
-        )
-        return (path / "需求总览.md").read_text(encoding="utf-8")
+        path = RequirementPathPolicy(
+            workspace / facts["knowledge_root"]
+        ).locate_requirement_path(requirement_id, requirement["short_name"])
+        return (path / requirement_document("overview")).read_text(encoding="utf-8")
 
     @server.resource("praxis://systems/{system_id}/portrait")
     def system_portrait_resource(system_id: str) -> str:

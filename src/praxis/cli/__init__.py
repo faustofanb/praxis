@@ -12,7 +12,9 @@ from praxis.result import Result
 
 
 def _json_flag(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--json", action="store_true")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="输出完整机器结果")
+    output.add_argument("--summary", action="store_true", help="输出紧凑机器摘要")
 
 
 def _codegraph_selector(
@@ -87,6 +89,21 @@ def _parser() -> argparse.ArgumentParser:
     domain_add.add_argument("--id", required=True)
     domain_add.add_argument("--name", required=True)
     _json_flag(domain_add)
+    domain_upsert = domain.add_parser("upsert")
+    domain_upsert.add_argument("--system", required=True)
+    domain_upsert.add_argument("--id", required=True)
+    domain_upsert.add_argument("--name", required=True)
+    for option in (
+        "objective",
+        "responsibility",
+        "entity",
+        "process",
+        "rule",
+        "interface",
+        "owner",
+    ):
+        domain_upsert.add_argument(f"--{option}", action="append", default=[])
+    _json_flag(domain_upsert)
     _json_flag(domain.add_parser("list"))
     domain_merge = domain.add_parser("merge")
     domain_merge.add_argument("source")
@@ -580,6 +597,7 @@ def _parser() -> argparse.ArgumentParser:
     repair = commands.add_parser("repair").add_subparsers(dest="action", required=True)
     _json_flag(repair.add_parser("projections"))
     _json_flag(repair.add_parser("indexes"))
+    _json_flag(repair.add_parser("requirement-layout"))
     return parser
 
 
@@ -632,6 +650,19 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "system_id": args.system,
                 "domain_id": args.id,
                 "name_zh": args.name,
+            }
+        if args.action == "upsert":
+            return "domain.upsert", {
+                "system_id": args.system,
+                "domain_id": args.id,
+                "name_zh": args.name,
+                "objectives": args.objective,
+                "responsibilities": args.responsibility,
+                "entities": args.entity,
+                "processes": args.process,
+                "rules": args.rule,
+                "interfaces": args.interface,
+                "owners": args.owner,
             }
         if args.action == "list":
             return "domain.list", {}
@@ -1080,6 +1111,137 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
     raise ValueError(args.group)
 
 
+def _compact_payload(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
+    if not payload.get("ok"):
+        return payload
+    data = payload.get("data", {})
+    compact: dict[str, Any] | None = None
+    if operation == "skill.route-node":
+        compact = {
+            key: data[key]
+            for key in (
+                "requirement_id",
+                "project_id",
+                "node",
+                "context_budget",
+                "used_budget",
+                "budget_shortfall",
+                "blocked_required_skills",
+                "route_fingerprint",
+                "audit_id",
+            )
+            if key in data
+        }
+        compact["skills"] = [
+            {
+                key: item[key]
+                for key in ("id", "mode", "status", "reasons")
+                if key in item
+            }
+            for item in data.get("decisions", [])
+        ]
+    elif operation in {"skill.complete-node", "lifecycle.complete-node"}:
+        compact = {
+            key: data[key]
+            for key in (
+                "requirement_id",
+                "node",
+                "source_status",
+                "target_status",
+                "transition_audit_id",
+            )
+            if key in data
+        }
+        compact["skills"] = [
+            {
+                "id": item.get("skill_id"),
+                "outcome": item.get("result", item.get("outcome")),
+            }
+            for item in data.get("results", [])
+        ]
+        gate = data.get("gate", {})
+        compact["gate"] = {
+            key: gate.get(key, [])
+            for key in ("code", "missing", "approval_missing", "failed")
+        }
+    elif operation == "requirement.show":
+        compact = {
+            key: data[key]
+            for key in (
+                "requirement_id",
+                "short_name",
+                "status",
+                "systems",
+                "domains",
+                "delivery",
+            )
+            if key in data
+        }
+    elif operation in {"portrait.scan", "portrait.show"}:
+        compact = {
+            key: data[key]
+            for key in (
+                "project_id",
+                "system_id",
+                "kind",
+                "technology_stack",
+                "repository",
+                "codegraph",
+                "runtime_scanned",
+            )
+            if key in data
+        }
+        compact["command_counts"] = {
+            key: len(data.get(key, []))
+            for key in (
+                "build_commands",
+                "lint_commands",
+                "typecheck_commands",
+                "test_commands",
+                "deployment_commands",
+            )
+        }
+        compact["evidence_count"] = len(data.get("evidence", []))
+    elif operation == "artifact.list":
+        compact = {
+            "artifacts": [
+                {
+                    key: item.get(key)
+                    for key in (
+                        "artifact_id",
+                        "requirement_id",
+                        "type",
+                        "stage",
+                        "archived_path",
+                    )
+                }
+                for item in data.get("artifacts", [])
+            ]
+        }
+    elif operation in {"context.build", "context.show"}:
+        compact = {
+            key: data[key]
+            for key in (
+                "context_id",
+                "requirement_id",
+                "project_id",
+                "stage",
+                "token_budget",
+                "estimated_tokens",
+                "path",
+            )
+            if key in data
+        }
+    if compact is None:
+        return payload
+    return {
+        "ok": payload["ok"],
+        "code": payload.get("code", "OK"),
+        "data": compact,
+        "diagnostics": payload.get("diagnostics", []),
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.group == "mcp" and args.action == "serve":
@@ -1101,10 +1263,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = result.to_dict()
     if args.group == "lifecycle" or args.json:
         print(json.dumps(payload, ensure_ascii=False))
+    elif args.summary:
+        print(json.dumps(_compact_payload(operation, payload), ensure_ascii=False))
     elif operation == "version" and result.ok:
         print(result.data["version"])
     elif result.ok:
-        print(json.dumps(result.data, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                _compact_payload(operation, payload)["data"],
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     else:
         print(f"{result.code}: {result.data.get('message', '')}")
     return 0 if result.ok else 2

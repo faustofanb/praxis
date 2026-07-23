@@ -15,6 +15,11 @@ uv run praxis version --json
 
 The locked toolchain includes Worktrunk, uv, ruff, ty, pytest, coverage, xdist, Hypothesis, pre-commit, and pip-audit.
 
+CLI output has two deliberate modes. Human output is compact by default for high-volume route,
+context, portrait, requirement, and artifact commands. Use `--summary` for the same compact
+single-line JSON, or `--json` for the complete stable result envelope. State, audit records, and MCP
+results are never truncated.
+
 ## Workspace and requirements
 
 ```bash
@@ -48,9 +53,33 @@ praxis requirement new \
   --system ifc-mom \
   --domain metal-balance \
   --json
+
+praxis domain upsert \
+  --system ifc-mom \
+  --id metal-balance \
+  --name "金属平衡" \
+  --objective "统一金属投入与产出口径" \
+  --responsibility "维护跨工序平衡规则" \
+  --entity "金属批次" \
+  --process "投入 → 工序流转 → 产出复核" \
+  --rule "统计必须限定当前租户" \
+  --interface "金属平衡报表 API" \
+  --owner "制造运营团队" \
+  --json
 ```
 
 `praxis.toml` stores workspace and system facts. Chinese Markdown/YAML under `知识库/` stores authoritative human knowledge. SQLite at `.praxis/workspace.db` stores requirement state, Outbox projection work, runtime state, and the audit hash chain.
+
+Requirement directories use `<REQ-ID>__<short-name>` and documents use stable numeric prefixes.
+Existing workspaces migrate legacy names idempotently with:
+
+```bash
+praxis repair requirement-layout --json
+```
+
+The repair stops on content conflicts instead of overwriting either copy. Artifact registration
+archives an independently hashed snapshot under the requirement's `产出物/` directory; source-path
+drift is reported separately and does not invalidate the archived delivery evidence.
 
 `praxis workspace bootstrap` generates or refreshes the Praxis-managed blocks in root-level
 `AGENTS.md` for Codex and `CLAUDE.md` for Claude Code. Text outside
@@ -167,7 +196,9 @@ praxis codegraph affected --project backend --json
 ## Portraits, runtime, and DBX
 
 Static portraits never execute deployment or database commands. Runtime inspection is opt-in and
-requires an explicit witr target:
+requires an explicit witr target. The generated portrait includes repository scope and structure,
+engineering entrypoints, interface surfaces, data/configuration assets, quality commands, delivery,
+runtime, CodeGraph, and evidence:
 
 ```bash
 praxis portrait scan --project backend --json

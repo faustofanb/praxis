@@ -70,27 +70,54 @@ def test_requirement_create_persists_state_and_projects_chinese_documents(tmp_pa
     )
 
     assert result.ok and result.data["requirement_id"] == "REQ-20260720-001"
-    root = tmp_path / "知识库" / "需求" / "2026" / "07" / "金属平衡块复制__REQ-20260720-001"
-    assert "用户原始要求：支持二维区域复制。" in (root / "原始需求.md").read_text()
-    assert "需求状态: 已捕获" in (root / "需求总览.md").read_text()
+    root = tmp_path / "知识库" / "需求" / "2026" / "07" / "REQ-20260720-001__金属平衡块复制"
+    assert "用户原始要求：支持二维区域复制。" in (root / "01-原始需求.md").read_text()
+    assert "需求状态: 已捕获" in (root / "00-需求总览.md").read_text()
     assert {path.name for path in root.iterdir()} == {
-        "需求总览.md",
-        "原始需求.md",
-        "调查分析.md",
-        "实施计划.md",
-        "执行进度.md",
-        "决策记录.md",
-        "验收结论.md",
-        "变更记录.md",
-        "关联关系.yaml",
-        "产出物清单.yaml",
-        "事件记录.jsonl",
+        "00-需求总览.md",
+        "01-原始需求.md",
+        "02-调查分析.md",
+        "03-实施计划.md",
+        "04-执行进度.md",
+        "05-决策记录.md",
+        "06-验收结论.md",
+        "07-变更记录.md",
+        "08-关联关系.yaml",
+        "09-产出物清单.yaml",
+        "10-事件记录.jsonl",
         "产出物",
     }
     with closing(sqlite3.connect(tmp_path / ".praxis" / "workspace.db")) as database:
         assert database.execute("select status from requirements").fetchone()[0] == "captured"
         assert database.execute("select processed_at from outbox").fetchone()[0] is not None
     assert StateStore(tmp_path).verify_audit_chain()
+
+
+def test_requirement_layout_repair_migrates_legacy_names_idempotently(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("历史布局迁移", "迁移后保持人工内容", [], [])
+    requirement_id = created.data["requirement_id"]
+    current = Path(created.data["path"])
+    legacy = current.with_name(f"历史布局迁移__{requirement_id}")
+    current.rename(legacy)
+    for path in list(legacy.iterdir()):
+        if path.name == "产出物":
+            continue
+        prefix, separator, suffix = path.name.partition("-")
+        if separator and prefix.isdigit():
+            path.rename(legacy / suffix)
+    (legacy / "调查分析.md").write_text("# 调查分析\n\n保留人工证据。\n")
+
+    first = requirements.repair_layout()
+    second = requirements.repair_layout()
+
+    assert first.ok and first.data["migrated_requirements"] == [requirement_id]
+    assert second.ok and second.data["migrated_requirements"] == []
+    assert not legacy.exists()
+    assert "保留人工证据" in (current / "02-调查分析.md").read_text()
 
 
 def test_requirement_state_machine_rejects_skipped_transition() -> None:
@@ -126,7 +153,7 @@ def test_requirement_projection_managed_state_is_idempotent(tmp_path: Path) -> N
     for _ in range(5):
         requirements.project_current(requirement_id)
 
-    overview = (Path(created.data["path"]) / "需求总览.md").read_text()
+    overview = (Path(created.data["path"]) / "00-需求总览.md").read_text()
     assert overview.count("<!-- PRAXIS:MANAGED:STATE:START -->") == 1
     assert overview.count("<!-- PRAXIS:MANAGED:STATE:END -->") == 1
 
@@ -173,7 +200,7 @@ def test_requirement_transition_preserves_existing_progress_content(tmp_path: Pa
     WorkspaceService(tmp_path).init("demo", "演示工作空间")
     requirements = RequirementService(tmp_path)
     created = requirements.create("进度保留", "保留已有执行记录", [], [])
-    progress = Path(created.data["path"]) / "执行进度.md"
+    progress = Path(created.data["path"]) / "04-执行进度.md"
     progress.write_text(progress.read_text() + "\n- 已完成调查证据。\n")
 
     assert requirements.transition(
@@ -251,8 +278,8 @@ def test_requirement_constraints_supersede_atomically_and_project_active_state(
     assert historical[original.data["constraint_id"]]["superseded_by"] == (
         replacement.data["constraint_id"]
     )
-    overview = Path(created.data["path"]) / "需求总览.md"
-    decisions = Path(created.data["path"]) / "决策记录.md"
+    overview = Path(created.data["path"]) / "00-需求总览.md"
+    decisions = Path(created.data["path"]) / "05-决策记录.md"
     assert "新增独立时效记录表" in overview.read_text()
     assert "不新增业务表" not in overview.read_text()
     assert "不新增业务表" in decisions.read_text()
@@ -279,7 +306,7 @@ def test_record_implementation_is_independent_from_lifecycle_and_projects_delive
     assert delivery["implementation_status"] == "implemented"
     assert delivery["verification_status"] == "not_recorded"
     assert delivery["manual_acceptance_status"] == "awaiting_manual_acceptance"
-    overview = Path(created.data["path"]) / "需求总览.md"
+    overview = Path(created.data["path"]) / "00-需求总览.md"
     assert "实施状态：implemented" in overview.read_text()
     assert "验证状态：not_recorded" in overview.read_text()
 
@@ -353,11 +380,11 @@ def test_ready_gate_requires_registered_domains_and_meaningful_documents(tmp_pat
 
     blocked = requirements.transition(requirement_id, RequirementStatus.READY)
     requirement_path = Path(created.data["path"])
-    (requirement_path / "调查分析.md").write_text("# 调查分析\n\n已确认影响范围。\n")
-    (requirement_path / "实施计划.md").write_text("# 实施计划\n\n按后端阶段实现并验证。\n")
+    (requirement_path / "02-调查分析.md").write_text("# 调查分析\n\n已确认影响范围。\n")
+    (requirement_path / "03-实施计划.md").write_text("# 实施计划\n\n按后端阶段实现并验证。\n")
 
     assert blocked.code == "REQUIREMENT_NOT_READY"
-    assert blocked.data["missing_documents"] == ["调查分析.md", "实施计划.md"]
+    assert blocked.data["missing_documents"] == ["02-调查分析.md", "03-实施计划.md"]
     assert requirements.transition(requirement_id, RequirementStatus.READY).ok
     assert requirements.progress(requirement_id, "已完成调查与计划").ok
     renamed = requirements.rename(requirement_id, "生产报表性能优化")

@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from praxis.documents.atomic_writer import atomic_write_text
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 from praxis.portraits.service import PortraitService
 from praxis.result import Result
 from praxis.skills.registry import SkillRegistry
@@ -172,7 +172,7 @@ class ContextCompiler:
         requirement_root = RequirementPathPolicy(
             self.root / workspace["knowledge_root"]
         ).requirement_path(request.requirement_id, requirement["short_name"])
-        original_request_path = requirement_root / "原始需求.md"
+        original_request_path = requirement_root / requirement_document("original_request")
         original_request = (
             self._file_fragment(
                 "original-request",
@@ -221,7 +221,7 @@ class ContextCompiler:
                 0,
             ),
         ]
-        analysis = requirement_root / "调查分析.md"
+        analysis = requirement_root / requirement_document("analysis")
         if analysis.is_file():
             fragments.append(
                 self._file_fragment(

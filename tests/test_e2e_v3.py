@@ -8,6 +8,7 @@ import pytest
 
 from praxis.agents.service import AgentSessionService
 from praxis.artifacts.service import ArtifactService
+from praxis.codegraph.service import CodeGraphService
 from praxis.context.service import ContextBuildRequest, ContextCompiler
 from praxis.domain.requirement import RequirementStatus
 from praxis.gates.commit_message import validate_commit_message
@@ -57,9 +58,11 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
     requirement_id = requirements.create(
         "合计逻辑优化", "优化合计逻辑并完成验证", ["demo"], []
     ).data["requirement_id"]
-    requirement_path = next((tmp_path / "知识库" / "需求").rglob(f"*{requirement_id}"))
-    (requirement_path / "调查分析.md").write_text("# 调查分析\n\n已确认合计逻辑影响范围。\n")
-    (requirement_path / "实施计划.md").write_text("# 实施计划\n\n修改函数并运行质量与测试门禁。\n")
+    requirement_path = next((tmp_path / "知识库" / "需求").glob(f"**/{requirement_id}__*"))
+    (requirement_path / "02-调查分析.md").write_text("# 调查分析\n\n已确认合计逻辑影响范围。\n")
+    (requirement_path / "03-实施计划.md").write_text(
+        "# 实施计划\n\n修改函数并运行质量与测试门禁。\n"
+    )
     for status in (
         RequirementStatus.INVESTIGATING,
         RequirementStatus.ANALYZED,
@@ -93,6 +96,8 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
     assert lifecycle.run("worktree-pre-start", hook_context).ok
     initialized = lifecycle.run("worktree-post-start", hook_context)
     assert initialized.ok, initialized.to_dict()
+    graph = CodeGraphService(tmp_path, "backend", repo=worktree).wait(timeout=10)
+    assert graph.ok, graph.to_dict()
 
     (worktree / "app.py").write_text(
         "def total(values):\n    return sum(value for value in values if value is not None)\n"
@@ -128,7 +133,7 @@ def test_real_requirement_to_agent_artifact_loop(tmp_path: Path) -> None:
     )
 
     assert artifact.ok
-    (requirement_path / "验收结论.md").write_text(
+    (requirement_path / "06-验收结论.md").write_text(
         "# 验收结论\n\n功能、质量、测试和影响范围复核均通过。\n"
     )
     message = (

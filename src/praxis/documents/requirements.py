@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from praxis.documents.atomic_writer import atomic_write_text
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 
 _MANAGED_STATE_START = "<!-- PRAXIS:MANAGED:STATE:START -->"
 _MANAGED_STATE_END = "<!-- PRAXIS:MANAGED:STATE:END -->"
@@ -31,17 +31,23 @@ class RequirementProjector:
         self.policy = RequirementPathPolicy(knowledge_root)
 
     def project(self, record: dict[str, Any]) -> Path:
-        target = self.policy.requirement_path(record["requirement_id"], record["short_name"])
+        target, _ = self.policy.migrate_layout(
+            record["requirement_id"], record["short_name"]
+        )
         target.mkdir(parents=True, exist_ok=True)
         self._ensure_structure(target, record)
-        overview = target / "需求总览.md"
+        overview = target / requirement_document("overview")
         existing = overview.read_text(encoding="utf-8") if overview.is_file() else ""
         atomic_write_text(overview, self._overview(record, existing))
-        atomic_write_text(target / "决策记录.md", self._decisions(record))
-        progress = target / "执行进度.md"
+        atomic_write_text(
+            target / requirement_document("decisions"), self._decisions(record)
+        )
+        progress = target / requirement_document("progress")
         if not progress.exists():
             atomic_write_text(progress, self._progress(record))
-        with (target / "事件记录.jsonl").open("a", encoding="utf-8", newline="\n") as stream:
+        with (target / requirement_document("events")).open(
+            "a", encoding="utf-8", newline="\n"
+        ) as stream:
             stream.write(
                 json.dumps(
                     {
@@ -61,13 +67,15 @@ class RequirementProjector:
         for directory in ("SQL", "数据库迁移", "脚本", "补丁", "测试报告", "其他"):
             (target / "产出物" / directory).mkdir(parents=True, exist_ok=True)
         files = {
-            "原始需求.md": self._original_request(record),
-            "调查分析.md": self._analysis(),
-            "实施计划.md": self._plan(),
-            "验收结论.md": self._acceptance(),
-            "变更记录.md": "# 变更记录\n\n暂无变更。\n",
-            "关联关系.yaml": self._relations(record),
-            "产出物清单.yaml": "需求编号: " + record["requirement_id"] + "\n产出物: []\n",
+            requirement_document("original_request"): self._original_request(record),
+            requirement_document("analysis"): self._analysis(),
+            requirement_document("plan"): self._plan(),
+            requirement_document("acceptance"): self._acceptance(),
+            requirement_document("changes"): "# 变更记录\n\n暂无变更。\n",
+            requirement_document("relations"): self._relations(record),
+            requirement_document("artifacts"): (
+                "需求编号: " + record["requirement_id"] + "\n产出物: []\n"
+            ),
         }
         for name, content in files.items():
             path = target / name
@@ -131,12 +139,12 @@ class RequirementProjector:
 
 ## 文档导航
 
-- [原始需求](./原始需求.md)
-- [调查分析](./调查分析.md)
-- [实施计划](./实施计划.md)
-- [执行进度](./执行进度.md)
-- [决策记录](./决策记录.md)
-- [验收结论](./验收结论.md)
+- [原始需求](./01-原始需求.md)
+- [调查分析](./02-调查分析.md)
+- [实施计划](./03-实施计划.md)
+- [执行进度](./04-执行进度.md)
+- [决策记录](./05-决策记录.md)
+- [验收结论](./06-验收结论.md)
 """
 
     @staticmethod

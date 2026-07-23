@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from praxis.application import PraxisApplication
-from praxis.cli import _operation, _parser, main
+from praxis.cli import _compact_payload, _operation, _parser, main
 from praxis.mcp.server import execute as mcp_execute
 
 
@@ -46,6 +46,45 @@ def test_workspace_cli_initializes_v3_facts(tmp_path: Path, capsys) -> None:
     assert exit_code == 0
     assert payload["ok"] is True
     assert (tmp_path / "praxis.toml").exists()
+
+
+def test_compact_route_output_omits_repeated_skill_metadata() -> None:
+    payload = {
+        "ok": True,
+        "code": "OK",
+        "data": {
+            "requirement_id": "REQ-20260723-001",
+            "node": "in_progress",
+            "decisions": [
+                {
+                    "id": "test-driven-development",
+                    "mode": "required",
+                    "status": "available",
+                    "reasons": ["node:in_progress"],
+                    "installed_path": "/very/long/path/SKILL.md",
+                    "content_hash": "f" * 64,
+                }
+            ],
+            "context_budget": 4000,
+            "used_budget": 900,
+            "blocked_required_skills": [],
+            "audit_id": "AUD-1",
+        },
+        "diagnostics": [],
+    }
+
+    compact = _compact_payload("skill.route-node", payload)
+
+    assert compact["data"]["skills"] == [
+        {
+            "id": "test-driven-development",
+            "mode": "required",
+            "status": "available",
+            "reasons": ["node:in_progress"],
+        }
+    ]
+    assert "installed_path" not in str(compact)
+    assert len(str(compact)) < len(str(payload)) * 0.8
 
 
 def test_doctor_reports_skill_provider_registration_status(

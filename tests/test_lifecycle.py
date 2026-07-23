@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -474,7 +475,7 @@ def test_worktree_prepare_runs_deferred_setup_once(tmp_path: Path) -> None:
                 "python",
                 "repo",
                 "local",
-                worktree_setup_commands=("python --version",),
+                worktree_setup_commands=(f"{sys.executable} --version",),
             )
         ],
     )
@@ -507,7 +508,24 @@ def test_worktree_prepare_runs_deferred_setup_once(tmp_path: Path) -> None:
 
     assert prepared.ok and prepared.code == "WORKTREE_SETUP_COMPLETED"
     assert repeated.code == "WORKTREE_SETUP_ALREADY_PREPARED"
-    assert calls == [["python", "--version"]]
+    assert calls == [[sys.executable, "--version"]]
+
+
+def test_worktree_runner_drops_environment_values_that_are_not_utf8(
+    tmp_path: Path, monkeypatch
+) -> None:
+    captured: dict[str, str] = {}
+    monkeypatch.setenv("_", "invalid\udcff")
+
+    def run(command, **kwargs):
+        captured.update(kwargs["env"])
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", run)
+
+    WorktreeService._run(["wt", "--version"], tmp_path)
+
+    assert "_" not in captured
 
 
 def test_worktree_setup_reports_missing_and_failed_commands(tmp_path: Path) -> None:

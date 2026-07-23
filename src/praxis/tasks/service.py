@@ -8,7 +8,7 @@ from typing import Any
 from praxis.codegraph.hooks import CodeGraphHooks
 from praxis.codegraph.policy import decide_codegraph_usage
 from praxis.gates.engine import GateEvent
-from praxis.naming.requirement import RequirementPathPolicy
+from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
@@ -113,7 +113,7 @@ class TaskService:
             vault = WorkspaceService(self.root).load()["knowledge_root"]
             path = RequirementPathPolicy(self.root / vault).requirement_path(
                 requirement_id, requirement["short_name"]
-            ) / "执行进度.md"
+            ) / requirement_document("progress")
             timestamp = datetime.now(UTC).isoformat()
             with path.open("a", encoding="utf-8") as progress:
                 progress.write(f"\n- {timestamp}: {message}\n")

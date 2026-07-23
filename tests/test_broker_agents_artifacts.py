@@ -351,9 +351,16 @@ def test_artifact_registration_indexes_and_verifies_content(tmp_path: Path) -> N
     ]
     assert artifacts.verify(added.data["artifact_id"]).ok
     report.write_text("tampered")
-    assert artifacts.verify(added.data["artifact_id"]).code == "ARTIFACT_HASH_MISMATCH"
-    index = next((tmp_path / "知识库" / "需求").rglob("产出物清单.yaml"))
+    verified = artifacts.verify(added.data["artifact_id"])
+    assert verified.ok
+    assert verified.data["source_status"] == "changed"
+    archived = Path(added.data["archived_path"])
+    assert archived.read_text() == "109 tests passed"
+    report.unlink()
+    assert artifacts.verify(added.data["artifact_id"]).ok
+    index = next((tmp_path / "知识库" / "需求").rglob("09-产出物清单.yaml"))
     assert added.data["artifact_id"] in index.read_text()
+    assert str(archived) in index.read_text()
 
 
 def test_code_change_artifact_captures_git_diff_and_changed_file_hashes(
@@ -390,6 +397,10 @@ def test_code_change_artifact_captures_git_diff_and_changed_file_hashes(
             "content_hash": added.data["content_hash"],
         }
     ]
+    manifest = Path(added.data["archived_path"])
+    assert manifest.parent.name == "代码变更"
+    assert manifest.suffix == ".json"
+    assert '"repository"' in manifest.read_text()
 
 
 def test_audit_events_can_be_listed_shown_and_chain_verified(tmp_path: Path) -> None:
