@@ -1,0 +1,107 @@
+{
+  "branch": "praxis/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化",
+  "diff": {
+    "deletions": 37,
+    "files": 24,
+    "insertions": 1368
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:9534f8711c1903c4a601f3036ab7bd42689130bf",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:b2e787848a6113b2a9950a1e73aeed43810fdd54",
+      "path": "README.md"
+    },
+    {
+      "content_hash": "blake2b:6e47160564c14d2d8402d46af23cfa89ac737f0a",
+      "path": "skills/dbx-database-investigation/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:cc1bfe584f9ba674fcf14b7972b82972cad7a92a",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:9b51c5682f79be7c1ca4a92da64cd8716971961d",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:816dfd9ce7be070b227274e1cf4265e546a7e694",
+      "path": "src/praxis/agents/service.py"
+    },
+    {
+      "content_hash": "blake2b:b19716facb79bf80655f2bd88b5c84ff81d25df2",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:ac1a3475d83d4b33c651ad01da14f8862de6258a",
+      "path": "src/praxis/artifacts/service.py"
+    },
+    {
+      "content_hash": "blake2b:689352ee22039bb715cec1c6027d692eaafdba37",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:0b08ee4c2f20f98c67be08a840a61f08d8b3a609",
+      "path": "src/praxis/context/service.py"
+    },
+    {
+      "content_hash": "blake2b:b9889c24cf108723dd1cfd044edbc7d0bd4314a3",
+      "path": "src/praxis/documents/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:5f6350d0c6a16fa373bd0be2327ab7525ef24026",
+      "path": "src/praxis/governance/service.py"
+    },
+    {
+      "content_hash": "blake2b:c560c048ea76ab914cf270372ae098dc91217c0d",
+      "path": "src/praxis/knowledge/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:b049d6168a6d71e50ffbb10cc2176cdf94984959",
+      "path": "src/praxis/skills/registry.py"
+    },
+    {
+      "content_hash": "blake2b:dd2d4a9411da1263e6318576ff86835fdab5f0b0",
+      "path": "src/praxis/skills/routing.py"
+    },
+    {
+      "content_hash": "blake2b:8049e53fbc318d4f8316f2603251d1347116ac67",
+      "path": "src/praxis/storage/sqlite.py"
+    },
+    {
+      "content_hash": "blake2b:6ad64079131c9625b80d2e92af38f500e6bffc0f",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:6ca979d0f5715fa645fcd52b8a914e925e981ee9",
+      "path": "tests/test_application_dispatch.py"
+    },
+    {
+      "content_hash": "blake2b:1d99c11e026d2e7b26788dc74385fbbe983916eb",
+      "path": "tests/test_broker_agents_artifacts.py"
+    },
+    {
+      "content_hash": "blake2b:8228a9894b956959ec6041d69acc046804cf4b82",
+      "path": "tests/test_context.py"
+    },
+    {
+      "content_hash": "blake2b:39fc84b393cfd10cda817ad80c0553f33fedd85f",
+      "path": "tests/test_governance.py"
+    },
+    {
+      "content_hash": "blake2b:51079de11dcec31a1a0fa219c99580b3bc5f2418",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:2a5c7e0e28f0d982458039b74c29ba781e64ee0c",
+      "path": "tests/test_skill_node_routing.py"
+    },
+    {
+      "content_hash": "blake2b:1127cfbd6be39f620ee56a33359ed3f6ef3928b0",
+      "path": "tests/test_workspace_requirements.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next"
+}

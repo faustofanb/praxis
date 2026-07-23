@@ -1,0 +1,55 @@
+{
+  "branch": "praxis/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化",
+  "diff": {
+    "deletions": 6,
+    "files": 11,
+    "insertions": 304
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:1628636b2a306053fdb933624c8b4e5c70697412",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:ce3835bdab57291ddeea40f919837d2b8c4c2664",
+      "path": "skills/dbx-database-investigation/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:c14d15601406c0b579f83a66e3027ab10553f987",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:4a05f67c334d05a54f66c425bbe2d35114f09856",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:a52776194af1c6b7667e1fee356c25e307215357",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:2c7d12f31a1af264ee3743066cf5eb86a3436b78",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:c6fc521d1096c0e99e8a9ef6f52d307bb02ef835",
+      "path": "src/praxis/database/service.py"
+    },
+    {
+      "content_hash": "blake2b:634c2874e64e7ab3f9292b2da88f5720aa8f9ea0",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:51a8dc78b5de129e968fd223a7612b1e1e94592d",
+      "path": "tests/test_application_dispatch.py"
+    },
+    {
+      "content_hash": "blake2b:50e566e1f1eadceeaa8ccefbee0373be46052d56",
+      "path": "tests/test_database.py"
+    },
+    {
+      "content_hash": "blake2b:35f55dad31e320fb45f911b43fadb4888964182d",
+      "path": "tests/test_interfaces.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next"
+}

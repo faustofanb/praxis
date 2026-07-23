@@ -1,0 +1,63 @@
+{
+  "branch": "praxis/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化",
+  "diff": {
+    "deletions": 9,
+    "files": 13,
+    "insertions": 289
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:051c70224f5acf8c639803f60704e8ec20f81f0e",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:fac26fce4de2809dddfff6d50fd571312f476862",
+      "path": "skills/minimum-module-compile/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:d7e9c9a27f92105aaa01edd3b74c6e01adba7081",
+      "path": "skills/minimum-module-compile/agents/openai.yaml"
+    },
+    {
+      "content_hash": "blake2b:97a7103a81f9e08a6d50dfb417e55c8f0202fdd2",
+      "path": "skills/minimum-module-compile/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:86220799c0dc61aed286a99e7a7e3c20f622995d",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:a93f82628be15ef85ceaaad5e13e98363b256d8f",
+      "path": "skills/praxis-system-development/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:6f3e80bb8d3d7be002290b4046e0fea682fb6e24",
+      "path": "skills/praxis-system-development/references/node-routing.toml"
+    },
+    {
+      "content_hash": "blake2b:9e2c1f4964f7a99520a560b035a5983aac2c471d",
+      "path": "skills/praxis-system-development/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:3a412da144920d930f60b2f160c8c38d1f890e22",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:8fb4bc89e36beaaaf8d78101782c755d442093f5",
+      "path": "tests/test_adapters.py"
+    },
+    {
+      "content_hash": "blake2b:ea92175d78f744dfaff18696d307732742a09222",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:4eb36e801ea7cb6806adabc8a47227cb24fb37f4",
+      "path": "tests/test_skill_node_routing.py"
+    },
+    {
+      "content_hash": "blake2b:8abb7a47013be925663f3bc920997e8a850b7cfa",
+      "path": "tests/test_skills.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next"
+}

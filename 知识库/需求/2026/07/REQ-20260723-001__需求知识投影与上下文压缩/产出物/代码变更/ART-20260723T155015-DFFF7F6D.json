@@ -1,0 +1,19 @@
+{
+  "branch": "codex/praxis-v3-development",
+  "diff": {
+    "deletions": 2193,
+    "files": 64,
+    "insertions": 38
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:28c1f6e1b7131b4d7f790dbe13ddc824cd30f51b",
+      "path": "README.md"
+    },
+    {
+      "content_hash": "blake2b:02543ad6a2582d292de70ddbab781299d3dd2c00",
+      "path": "知识库/业务域/plugin-development.md"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next"
+}

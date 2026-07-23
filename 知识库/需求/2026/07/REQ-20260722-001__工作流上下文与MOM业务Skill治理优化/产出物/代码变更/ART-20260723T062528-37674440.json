@@ -1,0 +1,171 @@
+{
+  "branch": "praxis/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化",
+  "diff": {
+    "deletions": 66,
+    "files": 40,
+    "insertions": 2112
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:818c8e76192b9e1dc80e435ea8609e98eebfb6a1",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:b08b76f48812ee34409f7ca3f1cb8b23cf3f2581",
+      "path": "docs/superpowers/plans/2026-07-23-workflow-trust-and-mom-skills.md"
+    },
+    {
+      "content_hash": "blake2b:a604a1fe237e40883d9c97da993b5f465859356f",
+      "path": "skills/add-mom-magic-api/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:f017b63a2aef5eb6d747f61d8dd3abf04905748f",
+      "path": "skills/add-mom-magic-api/agents/openai.yaml"
+    },
+    {
+      "content_hash": "blake2b:0e9a8db4b789be4a8d2c3114becea27def3e0c25",
+      "path": "skills/add-mom-magic-api/assets/magic-api-migration.sql.template"
+    },
+    {
+      "content_hash": "blake2b:628de688bd2bc8c51d6783a3ba15423a112c8013",
+      "path": "skills/add-mom-magic-api/references/magic-script-conventions.md"
+    },
+    {
+      "content_hash": "blake2b:560db61e7b8f4052f47d7e4c162bce3616567e62",
+      "path": "skills/add-mom-magic-api/references/menu-permission-conventions.md"
+    },
+    {
+      "content_hash": "blake2b:3adc0a89513949ad0bb308cc8a9f66e5c60267f3",
+      "path": "skills/add-mom-magic-api/scripts/validate_magic_migration.py"
+    },
+    {
+      "content_hash": "blake2b:d184097241a1fc711428b3c665d69df80aed9bca",
+      "path": "skills/add-mom-magic-api/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:2bc2ba5ae9b089c5132593dc850cb017a8eaf3b7",
+      "path": "skills/api-permission-migration/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:71b0ab3315703a5c1bde229b446b51615300c5ba",
+      "path": "skills/api-permission-migration/agents/openai.yaml"
+    },
+    {
+      "content_hash": "blake2b:feba1a30773792d0f95490d08932b4b6ceade1bf",
+      "path": "skills/api-permission-migration/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:b988f1812e039901157c4390d0b53d00b71bae8b",
+      "path": "skills/build-mes-pda-readonly-overview/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:1c310a48137f50f1aca7c76409a22210bb83e736",
+      "path": "skills/build-mes-pda-readonly-overview/agents/openai.yaml"
+    },
+    {
+      "content_hash": "blake2b:b02f7a9162bafdcd9f2020ddca17d029525eaeb3",
+      "path": "skills/build-mes-pda-readonly-overview/assets/readonly-overview/api.ts.template"
+    },
+    {
+      "content_hash": "blake2b:e554f531608738990ce45f2f7020b7786e5e7b35",
+      "path": "skills/build-mes-pda-readonly-overview/assets/readonly-overview/page.vue.template"
+    },
+    {
+      "content_hash": "blake2b:f7fa774a7f4ba19cf7625dc4502d87c681e3370e",
+      "path": "skills/build-mes-pda-readonly-overview/references/page-behavior-contract.md"
+    },
+    {
+      "content_hash": "blake2b:be777ebadb78da6ec509e699d1fa86a8b5553fa0",
+      "path": "skills/build-mes-pda-readonly-overview/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:c12a7858fcf674f6a4e88d09548cbb6cfcb04036",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:41c45a2d6d5a08a2252a2da88cb244bca24a93cf",
+      "path": "skills/praxis-system-development/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:59599dfdbc9dbee16c01617aac21806e58faa21a",
+      "path": "skills/praxis-system-development/references/node-routing.toml"
+    },
+    {
+      "content_hash": "blake2b:608b3368e34e9e1a0640e334515e9424d709f5d0",
+      "path": "skills/praxis-system-development/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:cd36a23ef4ab1d09915024fc57b01eef3c153282",
+      "path": "skills/uniapp-api-generation/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:64c6620636cef0a354aba59d731f2d17505c4e83",
+      "path": "skills/uniapp-api-generation/agents/openai.yaml"
+    },
+    {
+      "content_hash": "blake2b:58633db9c6b36252cab9f413a535c7385e14f201",
+      "path": "skills/uniapp-api-generation/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:bffa1b4448bae59449a6c32097a8b9446b569fd7",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:4c652507a159131d85b195ec7002c077dcdd2511",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:e0ad12b040d2732ebc6bc5d6093284eb83daba00",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:a1884d0ff526161790b02094b9cf6da59e1d9c75",
+      "path": "src/praxis/documents/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:78244c6c11f1cda48bd9bfd6ac593b440aec245e",
+      "path": "src/praxis/domain/requirement.py"
+    },
+    {
+      "content_hash": "blake2b:0d140ffbedbc57e948b256faea76ec95d324cec4",
+      "path": "src/praxis/knowledge/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:4e7f0d3380719c35c00feecbb87bbd6d358de67b",
+      "path": "src/praxis/skills/routing.py"
+    },
+    {
+      "content_hash": "blake2b:cc750eebe7965514dc5d9a5d4960b771b445ac86",
+      "path": "src/praxis/storage/sqlite.py"
+    },
+    {
+      "content_hash": "blake2b:385419946cb4be56ac101684e9633a3d86d9d8dc",
+      "path": "src/praxis/worktree/service.py"
+    },
+    {
+      "content_hash": "blake2b:39f1d712e98a32710d6df5cac048136c307ddcce",
+      "path": "tests/test_application_dispatch.py"
+    },
+    {
+      "content_hash": "blake2b:009fef9e908175850c5d117a45e6f89d8b35e517",
+      "path": "tests/test_e2e_v3.py"
+    },
+    {
+      "content_hash": "blake2b:4f4575d699b621c0bc0d769f41909bb0ab0e29da",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:2fbbac897ff811da42ff68c0a97da3ae91495d07",
+      "path": "tests/test_magic_migration_validator.py"
+    },
+    {
+      "content_hash": "blake2b:0b844017296185f9bea940f43940c7c08f659e76",
+      "path": "tests/test_skill_node_routing.py"
+    },
+    {
+      "content_hash": "blake2b:a8eb45802082619239e06ccf510cf85276082f96",
+      "path": "tests/test_workspace_requirements.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next"
+}

@@ -1,0 +1,16 @@
+需求编号: REQ-20260723-001
+产出物:
+  - 产出物编号: ART-20260723T155015-DFFF7F6D
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/README.md
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260723-001__需求知识投影与上下文压缩/产出物/代码变更/ART-20260723T155015-DFFF7F6D.json
+    源内容哈希: blake2b:28c1f6e1b7131b4d7f790dbe13ddc824cd30f51b
+    归档内容哈希: blake2b:6b9fc76f39a094e71f80fa29dffa03e676562e93
+  - 产出物编号: ART-20260723T155030-C07288B0
+    类型: 测试报告
+    任务阶段: verify
+    源路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260723-001__需求知识投影与上下文压缩/产出物/测试报告/验证报告.md
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260723-001__需求知识投影与上下文压缩/产出物/测试报告/ART-20260723T155030-C07288B0__验证报告.md
+    源内容哈希: blake2b:cde8c6b057b190b73bc004328f5f7364cfe11758
+    归档内容哈希: blake2b:cde8c6b057b190b73bc004328f5f7364cfe11758

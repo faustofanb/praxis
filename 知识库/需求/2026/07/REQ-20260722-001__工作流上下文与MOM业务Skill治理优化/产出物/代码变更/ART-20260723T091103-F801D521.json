@@ -1,0 +1,39 @@
+{
+  "branch": "praxis/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化",
+  "diff": {
+    "deletions": 6,
+    "files": 7,
+    "insertions": 69
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:ec8fa21c81f7c820e6728a6d217d37d2ed75288d",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:5d4282d3e0010b641ab1537b484b5e4554dcbf7a",
+      "path": "skills/praxis-system-development/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:7c3c0a80f213c0632262e97f838c9ecebc9ac61d",
+      "path": "skills/praxis-system-development/references/node-routing.toml"
+    },
+    {
+      "content_hash": "blake2b:5659d33aed2fbf667691acffb4f6d00baca08d6a",
+      "path": "skills/praxis-system-development/skill.toml"
+    },
+    {
+      "content_hash": "blake2b:22095e3c1f951376e01c40a0d1ecef39984e18e9",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:ca389e4eb463ed2882d1d19259840e6f33eeac25",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:e6c5e00241388baae56627a035c61d0089124c71",
+      "path": "tests/test_skill_node_routing.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next"
+}

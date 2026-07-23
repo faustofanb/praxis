@@ -1,0 +1,51 @@
+需求编号: REQ-20260722-001
+产出物:
+  - 产出物编号: ART-20260723T015542-E32954A4
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/src/praxis/context/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T015542-E32954A4.json
+    源内容哈希: blake2b:0b08ee4c2f20f98c67be08a840a61f08d8b3a609
+    归档内容哈希: blake2b:b75bc3c7426c770f817b7e223de50e323d47c3d6
+  - 产出物编号: ART-20260723T062528-37674440
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/src/praxis/skills/routing.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T062528-37674440.json
+    源内容哈希: blake2b:4e7f0d3380719c35c00feecbb87bbd6d358de67b
+    归档内容哈希: blake2b:d704a3cce3f140b705f0534d352bec4c58181717
+  - 产出物编号: ART-20260723T084009-12540B39
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/src/praxis/database/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T084009-12540B39.json
+    源内容哈希: blake2b:c6fc521d1096c0e99e8a9ef6f52d307bb02ef835
+    归档内容哈希: blake2b:1b89c77e3f574a35940c70069a255a178102d261
+  - 产出物编号: ART-20260723T091103-F801D521
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/skills/praxis-system-development/references/node-routing.toml
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T091103-F801D521.json
+    源内容哈希: blake2b:7c3c0a80f213c0632262e97f838c9ecebc9ac61d
+    归档内容哈希: blake2b:52ac3e54432487c0120383c2f5422c162e7e10fb
+  - 产出物编号: ART-20260723T092221-D6969758
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/skills/minimum-module-compile/SKILL.md
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T092221-D6969758.json
+    源内容哈希: blake2b:fac26fce4de2809dddfff6d50fd571312f476862
+    归档内容哈希: blake2b:ffadc13a3369465ec8d3170dd69ea0827304d070
+  - 产出物编号: ART-20260723T114001-B9B956FC
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/src/praxis/codegraph/policy.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T114001-B9B956FC.json
+    源内容哈希: blake2b:c3169135da4eac7e52c0d8f7f23a726594ff0f3f
+    归档内容哈希: blake2b:d1cfe821c5a6c3ec1e48dc79ea2eba6bf94e6418
+  - 产出物编号: ART-20260723T114551-11F99A52
+    类型: 代码变更
+    任务阶段: delivery
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化__praxis-next/.codex-plugin/plugin.json
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260722-001__工作流上下文与MOM业务Skill治理优化/产出物/代码变更/ART-20260723T114551-11F99A52.json
+    源内容哈希: blake2b:a12eae1dc2ba8983c320729707b51ef4d3e9e41f
+    归档内容哈希: blake2b:509d5c35f9edaee0062f4a254fdb0832a744f601
