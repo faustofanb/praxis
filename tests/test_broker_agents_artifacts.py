@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
+from time import sleep
 
 from praxis.agents.lifecycle import AgentLifecycle
 from praxis.agents.service import AgentSessionService
@@ -398,3 +401,45 @@ def test_audit_events_can_be_listed_shown_and_chain_verified(tmp_path: Path) -> 
     assert event and event["event"] == "demo.event"
     assert any(item["audit_id"] == audit_id for item in store.audit_events())
     assert store.verify_audit_chain()
+
+
+def test_concurrent_audit_appends_preserve_single_hash_chain(
+    tmp_path: Path, monkeypatch
+) -> None:
+    _workspace(tmp_path)
+    original_hash = StateStore._event_hash
+    first_call = True
+    first_call_lock = Lock()
+
+    def delay_first_append(
+        previous_hash: str | None,
+        event: str,
+        code: str,
+        details: str,
+        created_at: str,
+    ) -> str:
+        nonlocal first_call
+        delay = False
+        if event == "concurrent.event":
+            with first_call_lock:
+                if first_call:
+                    first_call = False
+                    delay = True
+        if delay:
+            sleep(0.1)
+        return original_hash(previous_hash, event, code, details, created_at)
+
+    monkeypatch.setattr(StateStore, "_event_hash", staticmethod(delay_first_append))
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        audit_ids = list(
+            executor.map(
+                lambda value: StateStore(tmp_path).audit(
+                    "concurrent.event", "OK", {"value": value}
+                ),
+                range(2),
+            )
+        )
+
+    assert len(set(audit_ids)) == 2
+    assert StateStore(tmp_path).verify_audit_chain()

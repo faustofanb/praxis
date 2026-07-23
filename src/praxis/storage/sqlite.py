@@ -107,6 +107,7 @@ class StateStore:
 
     def audit(self, event: str, code: str, details: dict[str, Any]) -> str:
         with self._connect() as database:
+            database.execute("begin immediate")
             return self._audit(database, event, code, details)
 
     def create_requirement(
