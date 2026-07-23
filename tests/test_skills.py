@@ -23,7 +23,26 @@ def test_requirement_workflow_requires_documents_worktree_and_user_consent() -> 
     assert skill.type == "workflow"
     assert "新建需求时不要创建工作树" in content
     assert "第一次代码编辑前" in content
-    assert "不得执行 lint、format、typecheck、测试或覆盖率命令" in content
+    assert "默认执行 TDD" in content
+    assert "完整回归、lint、format、typecheck" in content
+    assert "独立验证授权" in content
+
+
+def test_minimum_module_compile_is_a_bundled_workflow_skill() -> None:
+    skill = SkillRegistry.bundled().inspect("minimum-module-compile")
+    content = skill.path.read_text()
+
+    assert skill.type == "workflow"
+    assert skill.source == "praxis"
+    assert skill.risk == "workspace-write"
+    assert "最小受影响模块" in content
+    assert "扩大为全仓" in content
+    assert "exit code" in content
+    assert "uv run --no-sync" in content
+    assert "所有外部命令" in content
+    assert "rtk proxy" in content
+    assert "RTK 自身执行失败" in content
+    assert "降级命令" in content
 
 
 def test_dbx_skill_metadata_and_resource_contract() -> None:
@@ -78,6 +97,7 @@ def test_structured_skill_routing_scores_business_facts_and_denied_risk(tmp_path
 
     matched = registry.route_context(
         SkillRoutingContext(
+            intent="生成报表",
             system_id="ifc-mom",
             project_id="backend",
             business_domains=("production",),

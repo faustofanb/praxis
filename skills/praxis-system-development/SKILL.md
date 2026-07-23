@@ -23,11 +23,15 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - 缺少能力：技能发现
 - 实现范围控制：Karpathy 开发准则
 - 缺陷或失败测试：系统化调试
+- 功能、缺陷修复、重构和行为变更：默认测试驱动开发
+- TDD GREEN 后：最小受影响模块编译
 - 新增或修改测试：测试编写规范
 - AOTU/MOM 接口权限迁移：`api-permission-migration`
 - AOTU/MOM UniApp OpenAPI/Alova 生成：`uniapp-api-generation`
 - 调查节点：头脑风暴、逐问式需求确认（`grilling`）、最小范围控制和文件检索
 - 计划节点：实施计划编写和复杂度约束
+- 开发节点：必需调用 `test-driven-development`，保留先 RED、后最小 GREEN 的真实凭证
+- 开发节点：必需调用内置 `minimum-module-compile`，记录模块、精确命令和 exit code
 - 验证、评审和交付节点：只有获得用户对当前范围的明确批准后才调用相应技能
 
 ## 四、不适用场景
@@ -72,6 +76,10 @@ Markdown 不直接执行行为，权限和门禁仍由 Praxis Python 服务裁�
 6. 使用 `praxis doctor` 核对 `policy_without_provider`、
    `installed_without_policy` 和 `delegate_without_policy`；未登记的安装项不会自动进入路由。
 7. `orca-cli`、`orca-per-workspace-env` 和 `obsidian-markdown` 明确排除，不参与 Provider 扫描。
+8. 所有外部命令必须先由 RTK 代理：专用适配优先，其余按输出类型使用 `rtk test`、
+   `rtk err` 或保留原始输出的 `rtk proxy`；机器 JSON 也走 `rtk proxy`。
+9. 只有 RTK 自身执行失败时才允许直接命令降级，并记录原 RTK 命令、错误和降级命令；
+   被代理命令自身失败不得伪装成 RTK 故障。普通文本搜索使用 `rtk rg`，不使用“rg-grep”。
 
 ## 十一、验证方法
 

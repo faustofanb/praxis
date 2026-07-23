@@ -266,6 +266,45 @@ def test_skilldock_skill_is_discovered(tmp_path: Path, monkeypatch) -> None:
     assert decision["installed_path"] == str(skill)
 
 
+def test_development_routes_tdd_and_minimum_compile_as_required_by_default(
+    tmp_path: Path,
+) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            intent="实现订单状态修复",
+            requirement_id="REQ-TDD",
+            project_id="backend",
+            available_skills=("test-driven-development",),
+            token_budget=5_000,
+        )
+    )
+
+    assert result.ok
+    decision = next(
+        item
+        for item in result.data["decisions"]
+        if item["id"] == "test-driven-development"
+    )
+    assert decision["mode"] == "required"
+    assert decision["status"] == "available"
+    assert decision["reasons"] == ["node:in_progress"]
+    compile_decision = next(
+        item
+        for item in result.data["decisions"]
+        if item["id"] == "minimum-module-compile"
+    )
+    assert compile_decision["mode"] == "required"
+    assert compile_decision["status"] == "available"
+    assert compile_decision["availability"] == "bundled"
+    assert compile_decision["reasons"] == ["node:in_progress"]
+    gate = SkillInvocationService(tmp_path).gate("REQ-TDD", "in_progress")
+    assert "test-driven-development" in gate.data["missing"]
+    assert "minimum-module-compile" in gate.data["missing"]
+
+
 def test_skill_invocation_gate_requires_completed_evidence(tmp_path: Path) -> None:
     _workspace(tmp_path)
     router = NodeSkillRouter(tmp_path)

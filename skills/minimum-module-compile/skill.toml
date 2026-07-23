@@ -1,0 +1,10 @@
+id = "minimum-module-compile"
+type = "workflow"
+version = "1.0.0"
+license = "MIT"
+source = "praxis"
+source_version = "3.0.0"
+risk = "workspace-write"
+context_budget = 650
+required_tools = []
+triggers = ["compile", "编译", "语法错误", "Java", "Vue", "UniApp"]

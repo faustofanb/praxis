@@ -1,0 +1,4 @@
+interface:
+  display_name: "Minimum Module Compile"
+  short_description: "Compile only the smallest affected module with RTK"
+  default_prompt: "Use $minimum-module-compile to select and run the smallest safe compile check for the changed module."

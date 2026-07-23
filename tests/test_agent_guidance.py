@@ -51,6 +51,18 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "select current_database()" in agents
     assert "database investigate" in agents
     assert "规划模式" in agents
+    assert "默认执行 TDD" in agents
+    assert "RED" in agents
+    assert "GREEN" in agents
+    assert "完整回归" in agents
+    assert "独立验证授权" in agents
+    assert "最小受影响模块" in agents
+    assert "minimum-module-compile" in agents
+    assert "禁止扩大为全仓构建" in agents
+    assert "所有外部命令" in agents
+    assert "rtk proxy" in agents
+    assert "RTK 自身执行失败" in agents
+    assert "降级命令" in agents
     assert "实施完成不等于验证通过" in agents
     assert claude.startswith("# Claude Code 项目规则")
 

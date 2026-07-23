@@ -45,6 +45,28 @@ priority = 90
 context_budget = 300
 
 [[providers]]
+id = "test-driven-development"
+source = "https://github.com/obra/superpowers"
+source_version = "installed"
+license = "MIT"
+nodes = ["in_progress"]
+mode = "required"
+availability = "external"
+priority = 89
+context_budget = 800
+
+[[providers]]
+id = "minimum-module-compile"
+source = "praxis"
+source_version = "3.0.0"
+license = "MIT"
+nodes = ["in_progress"]
+mode = "required"
+availability = "bundled"
+priority = 88
+context_budget = 650
+
+[[providers]]
 id = "file-search"
 source = "https://github.com/massgen/MassGen"
 source_version = "installed"
