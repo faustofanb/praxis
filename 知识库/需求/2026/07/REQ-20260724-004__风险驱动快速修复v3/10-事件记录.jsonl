@@ -1,0 +1,8 @@
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "captured", "time": "2026-07-24T13:56:50.042571+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "investigating", "time": "2026-07-24T13:59:50.969087+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "analyzed", "time": "2026-07-24T13:59:51.285575+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "planned", "time": "2026-07-24T14:00:17.662601+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "ready", "time": "2026-07-24T14:00:41.567540+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "in_progress", "time": "2026-07-24T14:02:58.147761+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "in_progress", "time": "2026-07-24T14:02:58.147761+00:00"}
+{"event": "requirement.projected", "requirement_id": "REQ-20260724-004", "status": "implemented", "time": "2026-07-24T14:22:11.033760+00:00"}

@@ -1,0 +1,55 @@
+{
+  "branch": "praxis/REQ-20260724-004__风险驱动快速修复v3",
+  "diff": {
+    "deletions": 5,
+    "files": 11,
+    "insertions": 1009
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:f85de0d07facb063aad248b08c62d356fa4df61f",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:c733b0236b234fbdf98bcf2af26fa6bd47f2ac7f",
+      "path": "README.md"
+    },
+    {
+      "content_hash": "blake2b:00e17be264fc4cf047cf9e1387130c38210944b7",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:3f3b1bfd55ec6ee109ed6e6e62dd1adb36bbb94d",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:16248b3342eea6578276206ae9ba1b8325df2c4c",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:d1507a232c806aa3e681c21968eba8e75f629719",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:5e1b8b4991346e965dd943083892d588907324b5",
+      "path": "src/praxis/fastlane/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:25b126aeaf90e8c92639712b962efad6db1f5831",
+      "path": "src/praxis/fastlane/fast_fix.py"
+    },
+    {
+      "content_hash": "blake2b:c12492bbe92307eda2dfa98955e089281744751f",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:540a287fbc6b3a341e59f04ec0947e40a9b51429",
+      "path": "tests/test_fast_fix.py"
+    },
+    {
+      "content_hash": "blake2b:36521b695016ab27b77c123ac6be0a58a641e8ce",
+      "path": "tests/test_interfaces.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260724-004__风险驱动快速修复v3/REQ-20260724-004__风险驱动快速修复v3__praxis-next"
+}
