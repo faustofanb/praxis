@@ -954,6 +954,95 @@ def test_worktree_creation_blocks_when_local_template_branch_is_dirty(
     assert not any(command[:2] == ["git", "merge"] for command in calls)
 
 
+def test_worktree_creation_from_fixed_revision_skips_dirty_template_sync(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "main", template_branches=("develop",))],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("固定模板", "原始需求", ["demo"], [])
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+    ):
+        store.transition_requirement(requirement["requirement_id"], status)
+    calls: list[list[str]] = []
+
+    def run(command, cwd, environment):
+        calls.append(command)
+        if command[:4] == ["git", "rev-parse", "--verify", "abc123^{commit}"]:
+            return subprocess.CompletedProcess(command, 0, "deadbeef\n", "")
+        if command[0] == "wt":
+            repository_path = Path(environment["WORKTRUNK_WORKTREE_PATH"])
+            repository_path.mkdir(parents=True)
+            return subprocess.CompletedProcess(command, 0, "{}", "")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    result = WorktreeService(
+        tmp_path,
+        run=run,
+        initialize_graph=lambda project_id, path: Result(True, "CODEGRAPH_QUEUED"),
+    ).create_for_requirement(
+        requirement["requirement_id"],
+        "app",
+        base_revision="abc123",
+    )
+
+    assert result.ok
+    assert result.data["base_revision"] == "deadbeef"
+    assert [
+        "wt",
+        "switch",
+        "--create",
+        result.data["branch"],
+        "--base",
+        "deadbeef",
+        "--no-cd",
+        "--format=json",
+        "--yes",
+    ] in calls
+    assert not any(command[:3] == ["git", "status", "--porcelain"] for command in calls)
+    assert not any(command[:2] == ["git", "merge"] for command in calls)
+
+
+def test_worktree_resolves_remote_template_to_fixed_revision(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示开发工作空间",
+        "知识库",
+        [Project("app", "python", "repo", "main", template_branches=("develop",))],
+    )
+    calls: list[list[str]] = []
+
+    def run(command, cwd, environment):
+        calls.append(command)
+        stdout = (
+            "deadbeef\n"
+            if command[:3] == ["git", "rev-parse", "--verify"]
+            else ""
+        )
+        return subprocess.CompletedProcess(command, 0, stdout, "")
+
+    result = WorktreeService(tmp_path, run=run).resolve_template_revision("app")
+
+    assert result.ok
+    assert result.data["revision"] == "deadbeef"
+    assert calls == [
+        ["git", "fetch", "origin", "develop"],
+        ["git", "rev-parse", "--verify", "origin/develop^{commit}"],
+    ]
+
+
 def test_codegraph_lifecycle_covers_worktrunk_and_verification_events() -> None:
     graph = FakeGraph()
     lifecycle = CodeGraphLifecycle(graph)  # type: ignore[arg-type]

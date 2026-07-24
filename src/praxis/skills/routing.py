@@ -128,7 +128,7 @@ class NodeSkillRouter:
         return source if source.is_file() else packaged
 
     def route(self, request: NodeSkillRoutingRequest) -> Result:
-        if request.profile not in {"standard", "fast-defect-v1"}:
+        if request.profile not in {"standard", "fast-defect-v1", "small-fix-v2"}:
             return Result(
                 False,
                 "SKILL_PROFILE_INVALID",
@@ -198,7 +198,7 @@ class NodeSkillRouter:
             for policy in sorted(self.policies(), key=lambda item: (-item.priority, item.id))
             if (reasons := self._matches(policy, request)) is not None
         ]
-        if request.profile == "fast-defect-v1":
+        if request.profile in {"fast-defect-v1", "small-fix-v2"}:
             core = {
                 "praxis-requirement-workflow",
                 "systematic-debugging",
@@ -219,7 +219,10 @@ class NodeSkillRouter:
                     and request.node in policy.nodes
                 ):
                     matched_policies.append(
-                        (replace(policy, mode="required"), ["profile:fast-defect-v1"])
+                        (
+                            replace(policy, mode="required"),
+                            [f"profile:{request.profile}"],
+                        )
                     )
         protected_ids = {
             policy.id
@@ -250,7 +253,7 @@ class NodeSkillRouter:
         business = tuple(
             skill for skill in business if skill.id not in matched_policy_ids
         )
-        if request.profile == "fast-defect-v1":
+        if request.profile in {"fast-defect-v1", "small-fix-v2"}:
             business = ()
         business_budget = sum(skill.context_budget for skill in business)
         optional_budget = max(
@@ -349,7 +352,7 @@ class NodeSkillRouter:
             "route_fingerprint": fingerprint,
             "cached": False,
         }
-        if request.profile == "fast-defect-v1":
+        if request.profile in {"fast-defect-v1", "small-fix-v2"}:
             data["execution_principles"] = [
                 "file-search",
                 "karpathy-guidelines",

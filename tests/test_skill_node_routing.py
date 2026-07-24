@@ -762,6 +762,46 @@ def test_fast_defect_profile_audits_only_core_method_skills(tmp_path: Path) -> N
     ]
 
 
+def test_small_fix_profile_audits_only_core_method_skills(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            profile="small-fix-v2",
+            intent="复用已有接口修复局部字段映射",
+            requirement_id="REQ-SMALL",
+            project_id="backend",
+            system_id="demo",
+            repository_kind="java-maven",
+            available_skills=(
+                "test-driven-development",
+                "systematic-debugging",
+                "file-search",
+                "karpathy-guidelines",
+            ),
+            token_budget=8_000,
+        )
+    )
+
+    assert result.ok
+    decisions = {item["id"]: item for item in result.data["decisions"]}
+    assert {
+        skill_id
+        for skill_id, item in decisions.items()
+        if item["mode"] in {"required", "conditional_required", "conditional"}
+    } == {
+        "praxis-requirement-workflow",
+        "systematic-debugging",
+        "test-driven-development",
+    }
+    assert result.data["execution_principles"] == [
+        "file-search",
+        "karpathy-guidelines",
+        "ponytail",
+    ]
+
+
 def test_orca_and_obsidian_providers_are_never_discovered(
     tmp_path: Path, monkeypatch
 ) -> None:

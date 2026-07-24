@@ -901,11 +901,50 @@ class WorktreeService:
             },
         )
 
+    def resolve_template_revision(self, repository_id: str) -> Result:
+        project = WorkspaceService(self.root).project(repository_id)
+        if not project.template_branches:
+            return Result(False, "WORKTREE_TEMPLATE_BRANCH_REQUIRED")
+        if len(project.template_branches) != 1:
+            return Result(
+                False,
+                "WORKTREE_TEMPLATE_BRANCH_AMBIGUOUS",
+                data={"template_branches": list(project.template_branches)},
+            )
+        upstream = project.template_branches[0]
+        repo = (self.root / project.path).resolve()
+        fetched = self._git(
+            ["fetch", "origin", upstream],
+            cwd=repo,
+            failure_code="WORKTREE_TEMPLATE_FETCH_FAILED",
+        )
+        if not fetched.ok:
+            return fetched
+        remote_branch = f"origin/{upstream}"
+        revision = self._git(
+            ["rev-parse", "--verify", f"{remote_branch}^{{commit}}"],
+            cwd=repo,
+            failure_code="WORKTREE_TEMPLATE_REVISION_FAILED",
+        )
+        if not revision.ok:
+            return revision
+        return Result(
+            True,
+            "WORKTREE_TEMPLATE_REVISION_RESOLVED",
+            data={
+                "repository_id": repository_id,
+                "upstream_branch": remote_branch,
+                "revision": revision.data["stdout"],
+            },
+        )
+
     def create_for_requirement(
         self,
         requirement_id: str,
         repository_id: str,
         stage: str | None = None,
+        *,
+        base_revision: str | None = None,
     ) -> Result:
         stage = stage or "development"
         if stage not in _STAGES:
@@ -930,6 +969,16 @@ class WorktreeService:
         display_names = self._validate_display_names(names, repository_id, repo)
         if not display_names.ok:
             return display_names
+        resolved_base_revision = ""
+        if base_revision:
+            revision = self._git(
+                ["rev-parse", "--verify", f"{base_revision}^{{commit}}"],
+                cwd=repo,
+                failure_code="WORKTREE_BASE_REVISION_INVALID",
+            )
+            if not revision.ok:
+                return revision
+            resolved_base_revision = str(revision.data["stdout"])
         branch = names.branch_name
         workspace_path = (
             self.root
@@ -951,6 +1000,19 @@ class WorktreeService:
                     False,
                     "WORKTREE_NAME_MIGRATION_IN_PROGRESS",
                     data={"binding_id": existing[0]},
+                )
+            if (
+                resolved_base_revision
+                and binding.get("base_revision") != resolved_base_revision
+            ):
+                return Result(
+                    False,
+                    "WORKTREE_BASE_REVISION_MISMATCH",
+                    data={
+                        "binding_id": existing[0],
+                        "current": binding.get("base_revision", ""),
+                        "expected": resolved_base_revision,
+                    },
                 )
             if not self._binding_matches_names(binding, names):
                 return Result(
@@ -980,7 +1042,22 @@ class WorktreeService:
             )
         if requirement["status"] not in {"ready", "in_progress"}:
             return Result(False, "REQUIREMENT_NOT_READY", data={"status": requirement["status"]})
-        synchronized = self._sync_default_branch(project, repository_id, repo)
+        if base_revision:
+            synchronized = Result(
+                True,
+                data={
+                    "local_branch": project.default_branch,
+                    "upstream_branch": (
+                        f"origin/{project.template_branches[0]}"
+                        if len(project.template_branches) == 1
+                        else ""
+                    ),
+                    "path": str(repo),
+                    "revision": resolved_base_revision,
+                },
+            )
+        else:
+            synchronized = self._sync_default_branch(project, repository_id, repo)
         if not synchronized.ok:
             store.audit(
                 "worktree.template_sync_failed",
@@ -1025,7 +1102,14 @@ class WorktreeService:
         }
         store.set("worktree", binding_id, binding)
         result = self._execute(
-            ["switch", "--create", branch, "--base", project.default_branch, "--no-cd"],
+            [
+                "switch",
+                "--create",
+                branch,
+                "--base",
+                synchronized.data["revision"] if base_revision else project.default_branch,
+                "--no-cd",
+            ],
             cwd=repo,
             environment={"WORKTRUNK_WORKTREE_PATH": str(repository_path)},
         )

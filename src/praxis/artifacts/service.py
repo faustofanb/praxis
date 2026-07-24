@@ -63,7 +63,16 @@ class ArtifactService:
             if missing:
                 return Result(False, "ARTIFACT_SQL_METADATA_REQUIRED", data={"missing": missing})
         if artifact_type == "code-change":
-            code_change = _code_change_facts(source)
+            included = facts.get("include_untracked", [])
+            include_untracked = (
+                [str(item) for item in included]
+                if isinstance(included, list)
+                else []
+            )
+            code_change = _code_change_facts(
+                source,
+                include_untracked=include_untracked,
+            )
             if code_change is None:
                 return Result(False, "ARTIFACT_CODE_CHANGE_GIT_REQUIRED")
             facts["code_change"] = code_change
@@ -342,7 +351,11 @@ def _hash(path: Path) -> str:
     return "blake2b:" + blake2b(path.read_bytes(), digest_size=20).hexdigest()
 
 
-def _code_change_facts(source: Path) -> dict[str, Any] | None:
+def _code_change_facts(
+    source: Path,
+    *,
+    include_untracked: list[str] | None = None,
+) -> dict[str, Any] | None:
     root_result = _git(source.parent, "rev-parse", "--show-toplevel")
     if root_result.returncode != 0:
         return None
@@ -356,7 +369,25 @@ def _code_change_facts(source: Path) -> dict[str, Any] | None:
     ):
         return None
 
-    files = [item for item in names_result.stdout.split("\0") if item]
+    tracked_files = [item for item in names_result.stdout.split("\0") if item]
+    untracked_files: list[str] = []
+    if include_untracked:
+        untracked_result = _git(
+            repository,
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        )
+        if untracked_result.returncode != 0:
+            return None
+        requested = set(include_untracked)
+        untracked_files = [
+            item
+            for item in untracked_result.stdout.split("\0")
+            if item and item in requested
+        ]
+    files = list(dict.fromkeys([*tracked_files, *untracked_files]))
     source_relative = source.relative_to(repository).as_posix()
     if source_relative not in files:
         files.append(source_relative)
@@ -378,6 +409,13 @@ def _code_change_facts(source: Path) -> dict[str, Any] | None:
             insertions += int(parts[0])
         if parts[1].isdigit():
             deletions += int(parts[1])
+    for relative in untracked_files:
+        path = repository / relative
+        if path.is_file():
+            changed += 1
+            insertions += len(
+                path.read_text(encoding="utf-8", errors="replace").splitlines()
+            )
     if changed == 0 and source_relative in files:
         changed = 1
         insertions = len(source.read_text(encoding="utf-8", errors="replace").splitlines())

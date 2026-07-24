@@ -617,6 +617,31 @@ def test_fast_lane_cli_commands_map_to_application_operations() -> None:
     ]
 
 
+def test_small_fix_cli_maps_start_and_finish() -> None:
+    start = _parser().parse_args(
+        ["fix", "start", "REQ-1", "--repository", "wms-pda", "--small"]
+    )
+    finish = _parser().parse_args(
+        ["fix", "finish", "REQ-1", "--test", "pnpm vitest run mapping.test.ts"]
+    )
+
+    assert _operation(start) == (
+        "fix.start",
+        {
+            "requirement_id": "REQ-1",
+            "repository_id": "wms-pda",
+            "small": True,
+        },
+    )
+    assert _operation(finish) == (
+        "fix.finish",
+        {
+            "requirement_id": "REQ-1",
+            "test_command": "pnpm vitest run mapping.test.ts",
+        },
+    )
+
+
 def test_mes_pad_pure_function_template_is_esm_and_focused() -> None:
     template = (
         Path(__file__).parents[1]

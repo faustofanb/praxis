@@ -17,6 +17,7 @@ from praxis.database.service import DatabaseService
 from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
 from praxis.fastlane.service import FastLaneService
+from praxis.fastlane.small_fix import SmallFixService
 from praxis.gates.commit_message import validate_commit_message
 from praxis.gates.engine import GateEngine, GateEvent
 from praxis.governance.service import ApprovalService, ExecutionBudgetService, VerificationService
@@ -75,7 +76,7 @@ class PraxisApplication:
             "agent.receipt",
         }
         is_timed_operation = operation in timed_operations or operation.startswith(
-            ("worktree.", "codegraph.", "approval.", "budget.", "fast.")
+            ("worktree.", "codegraph.", "approval.", "budget.", "fast.", "fix.")
         )
         if not is_timed_operation:
             return result
@@ -142,6 +143,17 @@ class PraxisApplication:
             return FastLaneService(self.root).status(values["requirement_id"])
         if operation == "fast.finish":
             return FastLaneService(self.root).finish(values["requirement_id"])
+        if operation == "fix.start":
+            return SmallFixService(self.root).start(
+                values["requirement_id"],
+                repository_id=values["repository_id"],
+                small=values.get("small", False),
+            )
+        if operation == "fix.finish":
+            return SmallFixService(self.root).finish(
+                values["requirement_id"],
+                test_command=values["test_command"],
+            )
         if operation in {"init", "workspace.init"}:
             return WorkspaceService(self.root).init(
                 values["workspace_id"],

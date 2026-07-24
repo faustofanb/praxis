@@ -198,6 +198,17 @@ def _parser() -> argparse.ArgumentParser:
         child.add_argument("id")
         _json_flag(child)
 
+    fix = commands.add_parser("fix").add_subparsers(dest="action", required=True)
+    fix_start = fix.add_parser("start")
+    fix_start.add_argument("id")
+    fix_start.add_argument("--repository", required=True)
+    fix_start.add_argument("--small", action="store_true")
+    _json_flag(fix_start)
+    fix_finish = fix.add_parser("finish")
+    fix_finish.add_argument("id")
+    fix_finish.add_argument("--test", required=True)
+    _json_flag(fix_finish)
+
     task = commands.add_parser("task").add_subparsers(dest="action", required=True)
     start = task.add_parser("start")
     start.add_argument("--id", required=True)
@@ -786,6 +797,17 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "authorized_by_user": args.authorized_by_user,
             }
         return f"fast.{args.action}", {"requirement_id": args.id}
+    if args.group == "fix":
+        if args.action == "start":
+            return "fix.start", {
+                "requirement_id": args.id,
+                "repository_id": args.repository,
+                "small": args.small,
+            }
+        return "fix.finish", {
+            "requirement_id": args.id,
+            "test_command": args.test,
+        }
     if args.group == "task":
         if args.action == "start":
             return "task.start", {
@@ -1308,21 +1330,28 @@ def _compact_payload(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
             )
                 if key in data
             }
-    elif operation.startswith("fast."):
+    elif operation.startswith(("fast.", "fix.")):
         compact = {
             key: data[key]
             for key in (
                 "requirement_id",
+                "repository_id",
                 "project_id",
+                "profile",
                 "status",
                 "preview_id",
+                "template_sha",
                 "deadlines",
                 "budgets",
                 "pending_confirmation",
                 "worktree_path",
+                "typecheck_mode",
                 "baseline",
                 "red",
                 "verification",
+                "business_files",
+                "changed_lines",
+                "diff",
                 "artifact_id",
                 "downgrade_reason",
                 "warnings",

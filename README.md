@@ -106,6 +106,41 @@ synthetic blocked state:
 praxis requirement reopen REQ-20260720-001 --reason "validation found missing behavior" --json
 ```
 
+### Small-fix lane
+
+An existing requirement can use the bounded small-fix profile without recreating the standard
+development workflow:
+
+```bash
+praxis fix start REQ-20260720-001 --repository wms-pda --small --json
+# edit only the bounded business files in the returned worktree
+praxis fix finish REQ-20260720-001 \
+  --test "pnpm vitest run src/views/example/mapping.test.ts" \
+  --json
+```
+
+`fix start` fetches and resolves the configured template branch to a commit, then creates the
+isolated worktree directly from that fixed revision. It does not switch, clean, or merge the root
+repository or a template worktree. A verifying requirement is reopened; a ready requirement enters
+development.
+
+`fix finish` remains eligible only for one repository, one to three tracked business files, at most
+80 added-plus-deleted lines, and no database, migration, API-contract, permission, generated-code,
+transaction, concurrency, lock, or shared-component changes. It runs exactly one focused test,
+`git diff --check`, and one configured type check. A type-check command containing the standalone
+`{files}` argument receives only the changed business files:
+
+```toml
+typecheck_commands = ["pnpm exec vue-tsc --noEmit {files}"]
+```
+
+Without `{files}`, Praxis caches diagnostics for the fixed template revision and blocks only newly
+introduced diagnostics. A missing baseline is reported as inconclusive, never as an incremental
+pass. Successful finish records one `code-change` artifact for the complete Git diff and records
+implementation; it does not commit, push, run a full build/test suite, invoke a reviewer, or mark
+the requirement completed. Governance time above two minutes or twice the coding window is returned
+as a warning.
+
 ## Worktrunk and CodeGraph
 
 Worktrunk is the only worktree implementation:
