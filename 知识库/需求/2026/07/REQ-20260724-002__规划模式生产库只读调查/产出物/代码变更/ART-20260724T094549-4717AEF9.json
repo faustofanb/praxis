@@ -1,0 +1,35 @@
+{
+  "branch": "praxis/REQ-20260724-002__规划模式生产库只读调查",
+  "diff": {
+    "deletions": 19,
+    "files": 6,
+    "insertions": 33
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:491bcf26f90d6bad026558a04d9d2e4fd2d3a8e9",
+      "path": "skills/dbx-database-investigation/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:78bf395e1c5c6cb8f45478ba89708ecb9a75524c",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:4975d015178642dc6e6788a636ea2f6cdb8dc0fe",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:fe82c935b36b709852e87868a4f642cd16535bdb",
+      "path": "src/praxis/database/service.py"
+    },
+    {
+      "content_hash": "blake2b:b53caeb44364d9e4c005573af73d60bed02fa561",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:51ca2f217ea11e34a278671a69fbf42f56fb5948",
+      "path": "tests/test_database.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260724-002__规划模式生产库只读调查/REQ-20260724-002__规划模式生产库只读调查__praxis-next"
+}
