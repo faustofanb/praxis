@@ -16,6 +16,7 @@ from praxis.context.service import ContextBuildRequest, ContextCompiler
 from praxis.database.service import DatabaseService
 from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
+from praxis.fastlane.service import FastLaneService
 from praxis.gates.commit_message import validate_commit_message
 from praxis.gates.engine import GateEngine, GateEvent
 from praxis.governance.service import ApprovalService, ExecutionBudgetService, VerificationService
@@ -74,7 +75,7 @@ class PraxisApplication:
             "agent.receipt",
         }
         is_timed_operation = operation in timed_operations or operation.startswith(
-            ("worktree.", "codegraph.", "approval.", "budget.")
+            ("worktree.", "codegraph.", "approval.", "budget.", "fast.")
         )
         if not is_timed_operation:
             return result
@@ -113,6 +114,34 @@ class PraxisApplication:
     def _execute(self, operation: str, values: dict[str, Any]) -> Result:
         if operation == "version":
             return Result(True, data={"version": __version__})
+        if operation == "fast.start":
+            return FastLaneService(self.root).start(
+                short_name=values["short_name"],
+                request=values["request"],
+                systems=values["systems"],
+                domains=values.get("domains", []),
+                project_id=values["project_id"],
+                reproduction=values["reproduction"],
+            )
+        if operation == "fast.confirm":
+            return FastLaneService(self.root).confirm(
+                values["requirement_id"],
+                preview_id=values["preview_id"],
+                business_files=values["business_files"],
+                root_cause=values["root_cause"],
+                evidence=values["evidence"],
+                test_command=values["test_command"],
+                expected_red=values["expected_red"],
+                risks=values.get("risks", []),
+                user_evidence=values["user_evidence"],
+                authorized_by_user=values.get("authorized_by_user", False),
+            )
+        if operation == "fast.red":
+            return FastLaneService(self.root).red(values["requirement_id"])
+        if operation == "fast.status":
+            return FastLaneService(self.root).status(values["requirement_id"])
+        if operation == "fast.finish":
+            return FastLaneService(self.root).finish(values["requirement_id"])
         if operation in {"init", "workspace.init"}:
             return WorkspaceService(self.root).init(
                 values["workspace_id"],

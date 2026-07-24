@@ -64,6 +64,7 @@ class NodeSkillRoutingRequest:
     available_skills: tuple[str, ...] = ()
     approved_skills: tuple[str, ...] = ()
     token_budget: int = 4_000
+    profile: str = "standard"
 
 
 class NodeSkillRouter:
@@ -127,6 +128,12 @@ class NodeSkillRouter:
         return source if source.is_file() else packaged
 
     def route(self, request: NodeSkillRoutingRequest) -> Result:
+        if request.profile not in {"standard", "fast-defect-v1"}:
+            return Result(
+                False,
+                "SKILL_PROFILE_INVALID",
+                data={"profile": request.profile},
+            )
         canonical_node = self.canonical_node(request.node)
         known_nodes = {node for policy in self.policies() for node in policy.nodes}
         if canonical_node not in known_nodes:
@@ -141,10 +148,13 @@ class NodeSkillRouter:
         registered = {skill.id: skill for skill in registry.all()}
         bundled = set(registered)
         installed = self._installed_skills()
+        request_payload = asdict(request)
+        if request.profile == "standard":
+            request_payload.pop("profile")
         fingerprint = hashlib.sha256(
             json_bytes(
                 {
-                    "request": asdict(request),
+                    "request": request_payload,
                     "policy_hash": hashlib.sha256(
                         self.policy_path().read_bytes()
                     ).hexdigest(),
@@ -159,6 +169,8 @@ class NodeSkillRouter:
             )
         ).hexdigest()
         key = f"{request.requirement_id}:{request.node}"
+        if request.profile != "standard":
+            key = f"{key}:{request.profile}"
         if request.requirement_id:
             cached = self.store.get("skill_route", key)
             if cached and cached.get("route_fingerprint") == fingerprint:
@@ -186,6 +198,29 @@ class NodeSkillRouter:
             for policy in sorted(self.policies(), key=lambda item: (-item.priority, item.id))
             if (reasons := self._matches(policy, request)) is not None
         ]
+        if request.profile == "fast-defect-v1":
+            core = {
+                "praxis-requirement-workflow",
+                "systematic-debugging",
+                "test-driven-development",
+            }
+            already_matched = {policy.id for policy, _ in matched_policies}
+            matched_policies = [
+                (policy, reasons)
+                for policy, reasons in matched_policies
+                if policy.id in core or policy.mode == "approval_required"
+            ]
+            for policy in sorted(
+                self.policies(), key=lambda item: (-item.priority, item.id)
+            ):
+                if (
+                    policy.id in core
+                    and policy.id not in already_matched
+                    and request.node in policy.nodes
+                ):
+                    matched_policies.append(
+                        (replace(policy, mode="required"), ["profile:fast-defect-v1"])
+                    )
         protected_ids = {
             policy.id
             for policy, _ in matched_policies
@@ -215,6 +250,8 @@ class NodeSkillRouter:
         business = tuple(
             skill for skill in business if skill.id not in matched_policy_ids
         )
+        if request.profile == "fast-defect-v1":
+            business = ()
         business_budget = sum(skill.context_budget for skill in business)
         optional_budget = max(
             0,
@@ -301,6 +338,7 @@ class NodeSkillRouter:
             "requirement_id": request.requirement_id,
             "project_id": request.project_id,
             "node": request.node,
+            "profile": request.profile,
             "intent": request.intent,
             "decisions": decisions,
             "context_budget": request.token_budget,
@@ -311,6 +349,12 @@ class NodeSkillRouter:
             "route_fingerprint": fingerprint,
             "cached": False,
         }
+        if request.profile == "fast-defect-v1":
+            data["execution_principles"] = [
+                "file-search",
+                "karpathy-guidelines",
+                "ponytail",
+            ]
         if request.requirement_id:
             self.store.set("skill_route", key, data)
             data["audit_id"] = self.store.audit(

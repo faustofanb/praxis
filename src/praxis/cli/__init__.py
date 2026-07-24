@@ -172,6 +172,32 @@ def _parser() -> argparse.ArgumentParser:
     decline_verification.add_argument("--authorized-by-user", action="store_true")
     _json_flag(decline_verification)
 
+    fast = commands.add_parser("fast").add_subparsers(dest="action", required=True)
+    fast_start = fast.add_parser("start")
+    fast_start.add_argument("--name", required=True)
+    fast_start.add_argument("--request", required=True)
+    fast_start.add_argument("--system", action="append", required=True)
+    fast_start.add_argument("--domain", action="append", default=[])
+    fast_start.add_argument("--project", required=True)
+    fast_start.add_argument("--reproduction", required=True)
+    _json_flag(fast_start)
+    fast_confirm = fast.add_parser("confirm")
+    fast_confirm.add_argument("id")
+    fast_confirm.add_argument("--confirm", required=True)
+    fast_confirm.add_argument("--business-file", action="append", required=True)
+    fast_confirm.add_argument("--root-cause", required=True)
+    fast_confirm.add_argument("--evidence", required=True)
+    fast_confirm.add_argument("--test-command", required=True)
+    fast_confirm.add_argument("--expected-red", required=True)
+    fast_confirm.add_argument("--risk", action="append", default=[])
+    fast_confirm.add_argument("--user-evidence", required=True)
+    fast_confirm.add_argument("--authorized-by-user", action="store_true")
+    _json_flag(fast_confirm)
+    for action in ("red", "status", "finish"):
+        child = fast.add_parser(action)
+        child.add_argument("id")
+        _json_flag(child)
+
     task = commands.add_parser("task").add_subparsers(dest="action", required=True)
     start = task.add_parser("start")
     start.add_argument("--id", required=True)
@@ -736,6 +762,30 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             "user_evidence": args.user_evidence,
             "authorized_by_user": args.authorized_by_user,
         }
+    if args.group == "fast":
+        if args.action == "start":
+            return "fast.start", {
+                "short_name": args.name,
+                "request": args.request,
+                "systems": args.system,
+                "domains": args.domain,
+                "project_id": args.project,
+                "reproduction": args.reproduction,
+            }
+        if args.action == "confirm":
+            return "fast.confirm", {
+                "requirement_id": args.id,
+                "preview_id": args.confirm,
+                "business_files": args.business_file,
+                "root_cause": args.root_cause,
+                "evidence": args.evidence,
+                "test_command": args.test_command,
+                "expected_red": args.expected_red,
+                "risks": args.risk,
+                "user_evidence": args.user_evidence,
+                "authorized_by_user": args.authorized_by_user,
+            }
+        return f"fast.{args.action}", {"requirement_id": args.id}
     if args.group == "task":
         if args.action == "start":
             return "task.start", {
@@ -1255,6 +1305,28 @@ def _compact_payload(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
                 "token_budget",
                 "estimated_tokens",
                 "path",
+            )
+                if key in data
+            }
+    elif operation.startswith("fast."):
+        compact = {
+            key: data[key]
+            for key in (
+                "requirement_id",
+                "project_id",
+                "status",
+                "preview_id",
+                "deadlines",
+                "budgets",
+                "pending_confirmation",
+                "worktree_path",
+                "baseline",
+                "red",
+                "verification",
+                "artifact_id",
+                "downgrade_reason",
+                "warnings",
+                "audit_id",
             )
             if key in data
         }

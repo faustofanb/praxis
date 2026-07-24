@@ -1,0 +1,14 @@
+import { describe, expect, it } from 'vitest';
+
+import { mapMesPadValue } from './map-mes-pad-value';
+
+describe('mapMesPadValue', () => {
+  it('maps the API field to the value displayed by MES PAD', () => {
+    const result = mapMesPadValue({ sourceField: 'expected value' });
+
+    expect(result).toBe('expected value');
+  });
+});
+
+// Focused RED/GREEN:
+// pnpm vitest run path/to/map-mes-pad-value.test.ts

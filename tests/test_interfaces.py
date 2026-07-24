@@ -565,6 +565,72 @@ def test_fast_path_cli_commands_map_to_application_operations() -> None:
     ]
 
 
+def test_fast_lane_cli_commands_map_to_application_operations() -> None:
+    commands = [
+        [
+            "fast",
+            "start",
+            "--name",
+            "字段映射修复",
+            "--request",
+            "修复字段",
+            "--system",
+            "demo",
+            "--project",
+            "web",
+            "--reproduction",
+            "打开列表",
+        ],
+        [
+            "fast",
+            "confirm",
+            "REQ-1",
+            "--confirm",
+            "WTP-1",
+            "--business-file",
+            "src/mapping.ts",
+            "--root-cause",
+            "读取旧字段",
+            "--evidence",
+            "mapping.ts",
+            "--test-command",
+            "pnpm vitest run mapping.test.ts",
+            "--expected-red",
+            "expected newField",
+            "--user-evidence",
+            "用户确认",
+            "--authorized-by-user",
+        ],
+        ["fast", "red", "REQ-1"],
+        ["fast", "status", "REQ-1"],
+        ["fast", "finish", "REQ-1"],
+    ]
+
+    operations = [_operation(_parser().parse_args(command))[0] for command in commands]
+
+    assert operations == [
+        "fast.start",
+        "fast.confirm",
+        "fast.red",
+        "fast.status",
+        "fast.finish",
+    ]
+
+
+def test_mes_pad_pure_function_template_is_esm_and_focused() -> None:
+    template = (
+        Path(__file__).parents[1]
+        / "skills"
+        / "praxis-requirement-workflow"
+        / "assets"
+        / "mes-pad-pure-function.test.ts.template"
+    ).read_text(encoding="utf-8")
+
+    assert "import { describe, expect, it } from 'vitest'" in template
+    assert "expect(result).toBe(" in template
+    assert "pnpm vitest run path/to/map-mes-pad-value.test.ts" in template
+
+
 def test_agent_install_and_launch_cli_preserve_explicit_execution() -> None:
     install = _parser().parse_args(["agent", "install", "--agent", "codex"])
     launch = _parser().parse_args(["agent", "launch", "SES-TEST", "--execute"])

@@ -723,6 +723,45 @@ def test_provider_diagnostics_separates_installation_policy_and_delegation(
     assert "uniapp-api-generation" not in diagnostics["delegate_without_policy"]
 
 
+def test_fast_defect_profile_audits_only_core_method_skills(tmp_path: Path) -> None:
+    _workspace(tmp_path)
+
+    result = NodeSkillRouter(tmp_path).route(
+        NodeSkillRoutingRequest(
+            node="in_progress",
+            profile="fast-defect-v1",
+            intent="修复低风险字段映射缺陷",
+            requirement_id="REQ-FAST",
+            project_id="backend",
+            system_id="demo",
+            repository_kind="java-maven",
+            available_skills=(
+                "test-driven-development",
+                "systematic-debugging",
+                "file-search",
+                "karpathy-guidelines",
+            ),
+            token_budget=8_000,
+        )
+    )
+
+    decisions = {item["id"]: item for item in result.data["decisions"]}
+    assert {
+        skill_id
+        for skill_id, item in decisions.items()
+        if item["mode"] in {"required", "conditional_required", "conditional"}
+    } == {
+        "praxis-requirement-workflow",
+        "systematic-debugging",
+        "test-driven-development",
+    }
+    assert result.data["execution_principles"] == [
+        "file-search",
+        "karpathy-guidelines",
+        "ponytail",
+    ]
+
+
 def test_orca_and_obsidian_providers_are_never_discovered(
     tmp_path: Path, monkeypatch
 ) -> None:
