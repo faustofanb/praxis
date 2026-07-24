@@ -333,15 +333,26 @@ class SmallFixService(FastLaneService):
             shlex.join(["rtk", "git", "diff", "--check"]),
             shlex.join(["rtk", "proxy", *typecheck_argv]),
         ]
-        receipt = ApprovalService(self.root).grant(
-            requirement_id,
-            "small_fix_verification",
-            entries,
-            user_evidence="用户执行 praxis fix finish 并提供精确测试命令",
-            authorized_by_user=True,
-        )
-        if not receipt.ok:
-            return receipt
+        approvals = ApprovalService(self.root)
+        missing_entries = [
+            entry
+            for entry in entries
+            if not approvals.check(
+                requirement_id,
+                "small_fix_verification",
+                entry,
+            ).ok
+        ]
+        if missing_entries:
+            receipt = approvals.grant(
+                requirement_id,
+                "small_fix_verification",
+                missing_entries,
+                user_evidence="用户执行 praxis fix finish 并提供精确测试命令",
+                authorized_by_user=True,
+            )
+            if not receipt.ok:
+                return receipt
 
         runner = ProcessRunner(worktree, audit_root=self.root)
         green = runner.run(["rtk", "test", *test_argv], machine_output=True)
@@ -365,12 +376,6 @@ class SmallFixService(FastLaneService):
             machine_output=True,
         )
         comparison = self._typecheck_result(record, worktree, checked)
-        if comparison["status"] == "failed_new_diagnostics":
-            return Result(
-                False,
-                "SMALL_FIX_NEW_TYPE_DIAGNOSTICS",
-                data=comparison,
-            )
         if record["typecheck_mode"] == "scoped" and not checked.ok:
             return Result(
                 False,
@@ -379,6 +384,12 @@ class SmallFixService(FastLaneService):
                     **comparison,
                     "raw_log": checked.data.get("raw_log", ""),
                 },
+            )
+        if comparison["status"] == "failed_new_diagnostics":
+            return Result(
+                False,
+                "SMALL_FIX_NEW_TYPE_DIAGNOSTICS",
+                data=comparison,
             )
 
         artifact = ArtifactService(self.root).add(

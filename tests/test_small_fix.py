@@ -294,3 +294,55 @@ def test_small_fix_time_gate_warns_for_budget_and_ratio(
         "SMALL_FIX_GOVERNANCE_BUDGET_EXCEEDED",
         "SMALL_FIX_GOVERNANCE_RATIO_EXCEEDED",
     }
+
+
+def test_small_fix_finish_retry_reuses_exact_approval_receipt(
+    small_fix: tuple[SmallFixService, str, Path],
+) -> None:
+    service, requirement_id, repository = small_fix
+    assert service.start(requirement_id, repository_id="web", small=True).ok
+    (repository / "src" / "mapping.ts").write_text("export const value = 2;\n")
+    FakeRunner.results = [Result(False, data={"raw_log": "red-green.log"})]
+
+    failed = service.finish(
+        requirement_id,
+        test_command="pnpm vitest run mapping.test.ts",
+    )
+
+    assert not failed.ok
+    assert failed.code == "SMALL_FIX_GREEN_FAILED"
+    assert len(StateStore(service.root).list_scope("approval_receipt")) == 1
+    FakeRunner.results = [
+        Result(True, data={"raw_log": "green.log"}),
+        Result(True, data={"raw_log": "diff.log"}),
+        Result(True, data={"raw_log": "type.log"}),
+    ]
+
+    retried = service.finish(
+        requirement_id,
+        test_command="pnpm vitest run mapping.test.ts",
+    )
+
+    assert retried.ok
+    assert len(StateStore(service.root).list_scope("approval_receipt")) == 1
+
+
+def test_small_fix_scoped_typecheck_failure_has_specific_result_code(
+    small_fix: tuple[SmallFixService, str, Path],
+) -> None:
+    service, requirement_id, repository = small_fix
+    assert service.start(requirement_id, repository_id="web", small=True).ok
+    (repository / "src" / "mapping.ts").write_text("export const value = 2;\n")
+    FakeRunner.results = [
+        Result(True, data={"raw_log": "green.log"}),
+        Result(True, data={"raw_log": "diff.log"}),
+        Result(False, data={"raw_log": "type.log"}),
+    ]
+
+    finished = service.finish(
+        requirement_id,
+        test_command="pnpm vitest run mapping.test.ts",
+    )
+
+    assert not finished.ok
+    assert finished.code == "SMALL_FIX_SCOPED_TYPECHECK_FAILED"

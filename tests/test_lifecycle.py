@@ -1011,6 +1011,12 @@ def test_worktree_creation_from_fixed_revision_skips_dirty_template_sync(
     ] in calls
     assert not any(command[:3] == ["git", "status", "--porcelain"] for command in calls)
     assert not any(command[:2] == ["git", "merge"] for command in calls)
+    events = store.audit_events()
+    assert any(
+        item["event"] == "worktree.template_revision_selected"
+        for item in events
+    )
+    assert not any(item["event"] == "worktree.template_synced" for item in events)
 
 
 def test_worktree_resolves_remote_template_to_fixed_revision(tmp_path: Path) -> None:

@@ -1070,7 +1070,11 @@ class WorktreeService:
             )
             return synchronized
         store.audit(
-            "worktree.template_synced",
+            (
+                "worktree.template_revision_selected"
+                if base_revision
+                else "worktree.template_synced"
+            ),
             "OK",
             {
                 "requirement_id": requirement_id,
