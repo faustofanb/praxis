@@ -1,0 +1,39 @@
+{
+  "branch": "praxis/REQ-20260724-001__轻量缺陷快车道v1",
+  "diff": {
+    "deletions": 3,
+    "files": 6,
+    "insertions": 253
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:5f5785152887864dbbc9ca3f8be3fc4e6c1eaf54",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:12659fa6ee3165ed1bede24d05a7eb6b557d30a8",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:bc31b210d2aa27fd9221c98365ff7f5e45ae534c",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:20f05ae3c785d34cc1ca4b7726c76784ebe54568",
+      "path": "src/praxis/fastlane/service.py"
+    },
+    {
+      "content_hash": "blake2b:583b143df743d2334ffc112afca4e729b6c4a437",
+      "path": "src/praxis/skills/routing.py"
+    },
+    {
+      "content_hash": "blake2b:4d23320741240b419cd27220bda6c9e7e1de83eb",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:cd3c689e67cd81b8ee4cfd9e4f697701472f3af4",
+      "path": "tests/test_skill_node_routing.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260724-001__轻量缺陷快车道v1/REQ-20260724-001__轻量缺陷快车道v1__praxis-next"
+}
