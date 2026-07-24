@@ -164,13 +164,6 @@ class DatabaseService:
                 "DATABASE_CONNECTION_NOT_REGISTERED",
                 data={"connection_ref": connection_ref},
             )
-        if connection_ref in project.production_database_connections:
-            return Result(
-                False,
-                "DATABASE_PRODUCTION_INVESTIGATION_BLOCKED",
-                data={"connection_ref": connection_ref},
-            )
-
         decision = inspect_sql(sql)
         if not decision.ok or decision.data["kind"] != "read":
             return Result(

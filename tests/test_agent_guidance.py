@@ -51,6 +51,9 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "select current_database()" in agents
     assert "database investigate" in agents
     assert "规划模式" in agents
+    assert "已登记的生产连接" in agents
+    assert "只读 SQL" in agents
+    assert "生产写入" in agents
     assert "默认执行 TDD" in agents
     assert "RED" in agents
     assert "GREEN" in agents

@@ -170,7 +170,9 @@ def test_plan_investigation_prechecks_database_and_does_not_persist_audit(
     assert len(StateStore(tmp_path).audit_events()) == before
 
 
-def test_plan_investigation_blocks_production_and_write_sql(tmp_path: Path) -> None:
+def test_plan_investigation_allows_registered_production_reads_and_blocks_unsafe_sql(
+    tmp_path: Path,
+) -> None:
     _workspace(tmp_path)
     dbx = FakeDbx()
     database = DatabaseService(tmp_path, dbx=dbx)
@@ -187,6 +189,12 @@ def test_plan_investigation_blocks_production_and_write_sql(tmp_path: Path) -> N
         "update orders set status = 'done' where id = 1",
         purpose="调查更新逻辑",
     )
+    locking_read = database.investigate(
+        "backend",
+        "dbx://mom-prod",
+        "select * from orders for update",
+        purpose="调查生产锁行为",
+    )
     missing_purpose = database.investigate(
         "backend",
         "dbx://mom-dev",
@@ -194,10 +202,17 @@ def test_plan_investigation_blocks_production_and_write_sql(tmp_path: Path) -> N
         purpose="",
     )
 
-    assert production.code == "DATABASE_PRODUCTION_INVESTIGATION_BLOCKED"
+    assert production.ok
+    assert production.data["scope"]["persisted"] is False
+    assert production.data["scope"]["connection_ref"] == "dbx://mom-prod"
     assert write.code == "DATABASE_INVESTIGATION_READ_ONLY"
+    assert locking_read.code == "DATABASE_INVESTIGATION_READ_ONLY"
+    assert locking_read.data["policy_code"] == "SQL_LOCKING_READ_BLOCKED"
     assert missing_purpose.code == "DATABASE_INVESTIGATION_PURPOSE_REQUIRED"
-    assert dbx.executed == []
+    assert dbx.executed == [
+        ("mom-prod", "select current_database()"),
+        ("mom-prod", "select 1"),
+    ]
 
 
 def test_plan_investigation_blocks_explicit_database_mismatch(tmp_path: Path) -> None:

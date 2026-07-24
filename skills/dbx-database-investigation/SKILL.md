@@ -31,7 +31,8 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 
 规划模式优先调用
 `praxis database investigate --project <项目> --connection <引用> --purpose <目的> --sql <SQL>`；
-它会校验项目登记、阻断生产连接和非只读 SQL、自动执行 `select current_database()`，并返回
+它会校验项目登记、允许已登记生产连接的只读调查、阻断非只读 SQL、自动执行
+`select current_database()`，并返回
 `persisted: false` 的临时收据。正式需求内再使用 DBX CLI 的 JSON 契约（`connections`、
 `schema`、`query`、`context`），只读取任务涉及的表；必要时执行一个有界 `SELECT`、
 `WITH … SELECT` 或 `EXPLAIN`。仅当连接引用显式指定数据库而 CLI 无法选择该数据库，或
@@ -47,8 +48,9 @@ CLI 不可用时，回退 DBX MCP。
 `production` 中的连接必须明确标记为生产环境。禁止依赖 DBX 默认连接或默认 `postgres` 库。
 选定连接后，任何 Schema、表结构或数据判断之前都先执行 `select current_database()`，并核对
 返回库名与任务目标一致。未找到匹配连接时返回：`未找到匹配 connection；请先在 Praxis 项目配置中登记 DBX 连接。`
-规划模式入口禁止生产连接、写 SQL、连接管理和状态持久化；返回的临时结论不能冒充正式需求
-证据，需求登记后必须重新确认有效性并纳入对应需求。
+规划模式入口允许已登记生产连接的只读调查；禁止生产写入、其他写 SQL、锁定读取、连接管理、
+默认库猜测和状态持久化。返回的临时结论不能冒充正式需求证据，需求登记后必须重新确认有效性
+并纳入对应需求。
 
 ## 九、数据约束
 
