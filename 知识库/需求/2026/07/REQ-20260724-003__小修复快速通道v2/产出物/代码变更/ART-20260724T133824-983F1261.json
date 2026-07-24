@@ -1,0 +1,103 @@
+{
+  "branch": "praxis/REQ-20260724-003__小修复快速通道v2",
+  "diff": {
+    "deletions": 13,
+    "files": 23,
+    "insertions": 1480
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:71221721a2662bceb330c1c1097ea7526d285bd9",
+      "path": "README.md"
+    },
+    {
+      "content_hash": "blake2b:6a8a3b2a01c169d07cd140ea37f4463a7d2f8623",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:655535e296a6a3af7cb1343e54ca0927f5355ee1",
+      "path": "src/praxis/artifacts/service.py"
+    },
+    {
+      "content_hash": "blake2b:381f1d2d8472ae49e37087d8b94773e0f12b8544",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:997dc77ce633058110c50383d3a5513d97dcb773",
+      "path": "src/praxis/fastlane/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:31b524e72fe8dcddca8ca26ad2c7325856b31bc7",
+      "path": "src/praxis/fastlane/small_fix.py"
+    },
+    {
+      "content_hash": "blake2b:b50dfd7d2681590b9430f94999969419af56db38",
+      "path": "src/praxis/skills/routing.py"
+    },
+    {
+      "content_hash": "blake2b:ea48802e3217911e05e6265a15808f265e25c79a",
+      "path": "src/praxis/worktree/service.py"
+    },
+    {
+      "content_hash": "blake2b:f8af138d30bdfcddafd684d89c902b5f602a93a6",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:44357263e347a8ab8c4a46c07cd817167a4d694e",
+      "path": "tests/test_lifecycle.py"
+    },
+    {
+      "content_hash": "blake2b:eefc89f0cc2e675feea04f909b49c940ceabbb24",
+      "path": "tests/test_skill_node_routing.py"
+    },
+    {
+      "content_hash": "blake2b:13d607f50f53f47c996276fec1efa64c40c93fad",
+      "path": "tests/test_small_fix.py"
+    },
+    {
+      "content_hash": "blake2b:209381e845cf1573ea423b469878ebf9d0c34cf9",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/00-需求总览.md"
+    },
+    {
+      "content_hash": "blake2b:ad41460b2d2581c02af2b63dd459cc3fc428dbaf",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/01-原始需求.md"
+    },
+    {
+      "content_hash": "blake2b:9168575ce3d66d0373a15814fb24d63e55a7694c",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/02-调查分析.md"
+    },
+    {
+      "content_hash": "blake2b:a03d12c7442ef216682798691ece38099372ee09",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/03-实施计划.md"
+    },
+    {
+      "content_hash": "blake2b:60bb740df348a720b7aba38b8783c4c731f09f41",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/04-执行进度.md"
+    },
+    {
+      "content_hash": "blake2b:fdd21b27185071a11a971b8e8348e349c5f4c230",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/05-决策记录.md"
+    },
+    {
+      "content_hash": "blake2b:6b0a3204eb6e9db3aaf0e03d150b42905b7a543e",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/06-验收结论.md"
+    },
+    {
+      "content_hash": "blake2b:92150f5eaeada2486963d1531163940ab9192941",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/07-变更记录.md"
+    },
+    {
+      "content_hash": "blake2b:31c5c303f453de098cfb3dcfc2221270471fba69",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/08-关联关系.yaml"
+    },
+    {
+      "content_hash": "blake2b:93fb1c94714132a26cf3f7a328ff1fc1fc5fd8b8",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/09-产出物清单.yaml"
+    },
+    {
+      "content_hash": "blake2b:22336a79c3acc8511e10ba2aae02ccc53b6084c2",
+      "path": "知识库/需求/2026/07/REQ-20260724-003__小修复快速通道v2/10-事件记录.jsonl"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260724-003__小修复快速通道v2/REQ-20260724-003__小修复快速通道v2__praxis-next"
+}
