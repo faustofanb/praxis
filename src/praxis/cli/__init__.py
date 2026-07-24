@@ -208,6 +208,26 @@ def _parser() -> argparse.ArgumentParser:
     fix_finish.add_argument("id")
     fix_finish.add_argument("--test", required=True)
     _json_flag(fix_finish)
+    fix_record = fix.add_parser("record")
+    fix_record.add_argument("id")
+    fix_record.add_argument("--file", required=True)
+    fix_record.add_argument(
+        "--verification",
+        choices=("declined", "direct"),
+        required=True,
+    )
+    fix_record.add_argument("--reason", required=True)
+    fix_record.add_argument(
+        "--change-kind",
+        choices=("annotation", "null_guard", "condition", "parameter"),
+        default="",
+    )
+    fix_record.add_argument("--risk", default="")
+    fix_record.add_argument("--evidence", default="")
+    fix_record.add_argument("--command-count", type=int, default=0)
+    fix_record.add_argument("--elapsed-seconds", type=float, default=0.0)
+    fix_record.add_argument("--new-risk-justification", default="")
+    _json_flag(fix_record)
 
     task = commands.add_parser("task").add_subparsers(dest="action", required=True)
     start = task.add_parser("start")
@@ -804,9 +824,22 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "repository_id": args.repository,
                 "small": args.small,
             }
-        return "fix.finish", {
+        if args.action == "finish":
+            return "fix.finish", {
+                "requirement_id": args.id,
+                "test_command": args.test,
+            }
+        return "fix.record", {
             "requirement_id": args.id,
-            "test_command": args.test,
+            "file": args.file,
+            "verification": args.verification,
+            "reason": args.reason,
+            "change_kind": args.change_kind,
+            "risk": args.risk,
+            "evidence": args.evidence,
+            "command_count": args.command_count,
+            "elapsed_seconds": args.elapsed_seconds,
+            "new_risk_justification": args.new_risk_justification,
         }
     if args.group == "task":
         if args.action == "start":

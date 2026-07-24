@@ -642,6 +642,42 @@ def test_small_fix_cli_maps_start_and_finish() -> None:
     )
 
 
+def test_fast_fix_record_cli_maps_risk_driven_governance() -> None:
+    record = _parser().parse_args(
+        [
+            "fix",
+            "record",
+            "REQ-1",
+            "--file",
+            "WmsStocktakingDiffRecordMapper.java",
+            "--verification",
+            "declined",
+            "--reason",
+            "用户要求单注解快速修复",
+            "--command-count",
+            "2",
+            "--elapsed-seconds",
+            "90",
+        ]
+    )
+
+    assert _operation(record) == (
+        "fix.record",
+        {
+            "requirement_id": "REQ-1",
+            "file": "WmsStocktakingDiffRecordMapper.java",
+            "verification": "declined",
+            "reason": "用户要求单注解快速修复",
+            "change_kind": "",
+            "risk": "",
+            "evidence": "",
+            "command_count": 2,
+            "elapsed_seconds": 90.0,
+            "new_risk_justification": "",
+        },
+    )
+
+
 def test_mes_pad_pure_function_template_is_esm_and_focused() -> None:
     template = (
         Path(__file__).parents[1]

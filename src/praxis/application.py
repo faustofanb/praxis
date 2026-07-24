@@ -16,6 +16,7 @@ from praxis.context.service import ContextBuildRequest, ContextCompiler
 from praxis.database.service import DatabaseService
 from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
+from praxis.fastlane.fast_fix import FastFixService
 from praxis.fastlane.service import FastLaneService
 from praxis.fastlane.small_fix import SmallFixService
 from praxis.gates.commit_message import validate_commit_message
@@ -153,6 +154,21 @@ class PraxisApplication:
             return SmallFixService(self.root).finish(
                 values["requirement_id"],
                 test_command=values["test_command"],
+            )
+        if operation == "fix.record":
+            return FastFixService(self.root).record(
+                values["requirement_id"],
+                file=values["file"],
+                verification=values["verification"],
+                reason=values["reason"],
+                change_kind=values.get("change_kind", ""),
+                risk=values.get("risk", ""),
+                evidence=values.get("evidence", ""),
+                command_count=values.get("command_count", 0),
+                elapsed_seconds=values.get("elapsed_seconds", 0.0),
+                new_risk_justification=values.get(
+                    "new_risk_justification", ""
+                ),
             )
         if operation in {"init", "workspace.init"}:
             return WorkspaceService(self.root).init(

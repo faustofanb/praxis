@@ -71,6 +71,17 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "调用路径和 Blast Radius" in agents
     assert "连续错误后才刷新" in agents
     assert "实施完成不等于验证通过" in agents
+    assert "### 禁止机械执行命令" in agents
+    assert "成功和失败分别导致什么行动" in agents
+    assert "注解存在" in agents
+    assert "正则匹配源码" in agents
+    assert "fast_fix 默认不运行测试、编译、全量类型检查和质量复核" in agents
+    assert "工作树、HEAD 和目标文件指纹" in agents
+    assert "超过 5 条命令或 3 分钟" in agents
+    assert "mode=fast_fix" in agents
+    assert "tests=declined_by_user" in agents
+    assert "compile=not_requested" in agents
+    assert "scope=target_file_only" in agents
     assert claude.startswith("# Claude Code 项目规则")
 
 

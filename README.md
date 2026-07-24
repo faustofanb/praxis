@@ -141,6 +141,40 @@ implementation; it does not commit, push, run a full build/test suite, invoke a 
 the requirement completed. Governance time above two minutes or twice the coding window is returned
 as a warning.
 
+### Risk-driven fast fix
+
+When the root cause is already known and the change is limited to one tracked business file with an
+annotation, null guard, condition, or parameter adjustment, finish the work without expanding the
+standard verification workflow:
+
+```bash
+praxis fix record REQ-20260720-001 \
+  --file WmsStocktakingDiffRecordMapper.java \
+  --verification declined \
+  --reason "用户要求单注解快速修复" \
+  --command-count 2 \
+  --elapsed-seconds 90 \
+  --json
+```
+
+`fix record` does not run tests, compilation, full type checking, review, commit, or push. It checks
+that exactly one non-risk business file changed, derives or accepts one of
+`annotation|null_guard|condition|parameter`, records the omitted verification, creates one
+`code-change` artifact, and records implementation in a single application operation. A direct
+check can be recorded with `--verification direct --risk ... --evidence ...` without claiming that
+tests passed.
+
+Evidence is keyed by the active worktree binding, HEAD, repository-relative target path, and file
+fingerprint, so an exact retry reuses the existing receipt and artifact. Micro fixes allow up to two
+commands and target two minutes; the fast-fix hard stop is five commands or three minutes. A soft
+budget overrun requires `--new-risk-justification`; the hard stop cannot be overridden.
+
+The generated `AGENTS.md` and `CLAUDE.md` managed block requires every command to name the risk it
+reduces and the decision changed by success or failure. It also forbids reflection tests for
+annotations, source-reading or source-regex pseudo-tests, and tests that only assert one helper
+calls another. If the real check requires Spring, MyBatis, or a database and the user chooses
+`fast_fix`, record the omitted integration verification instead of creating a substitute test.
+
 ## Worktrunk and CodeGraph
 
 Worktrunk is the only worktree implementation:
