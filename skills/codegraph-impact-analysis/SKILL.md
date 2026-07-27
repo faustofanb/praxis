@@ -8,6 +8,21 @@ description: Require fresh CodeGraph call-path and blast-radius evidence before 
 对高风险改动在编辑前执行语义调用链复核。索引初始化成功不等于已经查询过 CodeGraph，
 `rg` 命中列表也不能替代调用路径和 Blast Radius 证据。
 
+## Plan Mode 只读调查
+
+investigating 节点遇到跨模块、公共接口、共享服务、高扇出或影响范围问题时应路由本 Skill。
+尚未登记需求且没有 worktree binding 时，使用项目画像中已登记仓库的现有索引：
+
+```bash
+rtk proxy praxis codegraph investigate <target> \
+  --project <project-id> --purpose <明确调查目的> --json
+```
+
+该入口不初始化或同步索引，只接受初始化完成、无 pending refs、无 pending changes、路径匹配
+的现有索引，返回 HEAD、dirty fingerprint、索引 fingerprint 和 `persisted: false` 临时
+scope。临时结果只能支持诊断；进入实施后必须重新在需求工作树 binding 上执行下述正式审计，
+不得把 Plan Mode scope 冒充编辑前凭证。
+
 ## 编辑前
 
 1. 从 Praxis binding 解析实际仓库工作树，禁止查询主仓库代替需求工作树。

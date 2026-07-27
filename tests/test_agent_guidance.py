@@ -70,6 +70,10 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "codegraph-impact-analysis" in agents
     assert "调用路径和 Blast Radius" in agents
     assert "连续错误后才刷新" in agents
+    assert "investigating" in agents
+    assert "codegraph investigate" in agents
+    assert "persisted: false" in agents
+    assert "需求工作树 binding" in agents
     assert "实施完成不等于验证通过" in agents
     assert "### 禁止机械执行命令" in agents
     assert "成功和失败分别导致什么行动" in agents

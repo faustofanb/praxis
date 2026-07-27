@@ -341,6 +341,11 @@ def _parser() -> argparse.ArgumentParser:
     _codegraph_selector(wait_graph, required=True)
     wait_graph.add_argument("--timeout", type=float, default=0)
     _json_flag(wait_graph)
+    investigate_graph = codegraph.add_parser("investigate")
+    investigate_graph.add_argument("target")
+    investigate_graph.add_argument("--project", required=True)
+    investigate_graph.add_argument("--purpose", required=True)
+    _json_flag(investigate_graph)
     for action in ("query", "explore", "node"):
         child = codegraph.add_parser(action)
         child.add_argument("target")
@@ -946,6 +951,8 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             payload["initialize"] = args.initialize
         if hasattr(args, "timeout"):
             payload["timeout"] = args.timeout
+        if hasattr(args, "purpose"):
+            payload["purpose"] = args.purpose
         return f"codegraph.{args.action}", payload
     if args.group == "worktree":
         if args.action == "install-hooks":

@@ -758,6 +758,8 @@ class PraxisApplication:
         project_id = str(values.get("project_id") or "")
         repository_path = values.get("worktree")
         binding_id = str(values.get("binding_id") or "")
+        if action == "investigate" and (binding_id or repository_path):
+            return Result(False, "CODEGRAPH_INVESTIGATION_PROJECT_REQUIRED")
         binding = None
         if binding_id:
             resolved = resolve_worktree_binding(StateStore(self.root), binding_id)
@@ -784,6 +786,8 @@ class PraxisApplication:
             project_id,
             repo=repository_path,
         )
+        if action == "investigate":
+            return graph.investigate(values["target"], purpose=values["purpose"])
         if action == "status":
             result = graph.status()
             if binding:

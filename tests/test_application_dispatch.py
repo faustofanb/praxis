@@ -40,6 +40,12 @@ class FakeGraph:
     def explore(self, target: str) -> Result:
         return Result(True, data={"action": "explore", "target": target})
 
+    def investigate(self, target: str, *, purpose: str) -> Result:
+        return Result(
+            True,
+            data={"action": "investigate", "target": target, "purpose": purpose},
+        )
+
     def node(self, target: str) -> Result:
         return Result(True, data={"action": "node", "target": target})
 
@@ -425,6 +431,24 @@ def test_worktree_create_requires_current_ready_skill_gate(
 )
 def test_codegraph_dispatch(application, operation, arguments, key) -> None:
     assert application.execute(operation, arguments).data["action"] == key
+
+
+def test_codegraph_investigate_dispatches_read_only_plan_scope(
+    application: PraxisApplication,
+) -> None:
+    result = application.execute(
+        "codegraph.investigate",
+        {
+            "project_id": "app",
+            "target": "OrderService",
+            "purpose": "追踪跨模块保存调用链",
+        },
+    )
+
+    assert result.ok
+    assert result.data["action"] == "investigate"
+    assert result.data["target"] == "OrderService"
+    assert result.data["purpose"] == "追踪跨模块保存调用链"
 
 
 def test_codegraph_status_resolves_bound_repository_worktree(

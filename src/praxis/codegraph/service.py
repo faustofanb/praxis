@@ -667,6 +667,130 @@ class CodeGraphService:
             )
             raise
 
+    def investigate(self, target: str, *, purpose: str) -> Result:
+        normalized_target = target.strip()
+        normalized_purpose = purpose.strip()
+        if not normalized_target:
+            return Result(False, "CODEGRAPH_INVESTIGATION_TARGET_REQUIRED")
+        if not normalized_purpose:
+            return Result(False, "CODEGRAPH_INVESTIGATION_PURPOSE_REQUIRED")
+
+        status_command = ["codegraph", "status", str(self.repo), "--json"]
+        try:
+            status_process = self.run(status_command, self.repo)
+        except FileNotFoundError:
+            return Result(False, "CODEGRAPH_NOT_AVAILABLE")
+        if status_process.returncode:
+            return Result(
+                False,
+                "CODEGRAPH_STATUS_FAILED",
+                data={"stderr": status_process.stderr.strip()},
+            )
+        try:
+            status = json.loads(status_process.stdout)
+            project_path = Path(str(status["projectPath"])).resolve()
+            pending = status["pendingChanges"]
+            index = status["index"]
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            return Result(False, "CODEGRAPH_STATUS_INVALID")
+        if not isinstance(pending, dict) or not isinstance(index, dict):
+            return Result(False, "CODEGRAPH_STATUS_INVALID")
+        if project_path != self.repo:
+            return Result(
+                False,
+                "CODEGRAPH_INVESTIGATION_PROJECT_MISMATCH",
+                data={"expected": str(self.repo), "actual": str(project_path)},
+            )
+        try:
+            index_ready = (
+                status.get("initialized") is True
+                and index.get("state") == "complete"
+                and int(index.get("pendingRefs", -1)) == 0
+                and status.get("worktreeMismatch") is None
+                and all(
+                    int(pending.get(name, -1)) == 0
+                    for name in ("added", "modified", "removed")
+                )
+            )
+        except (TypeError, ValueError):
+            index_ready = False
+        if not index_ready:
+            return Result(
+                False,
+                "CODEGRAPH_INVESTIGATION_INDEX_STALE",
+                data={
+                    "project_path": str(self.repo),
+                    "pending_changes": pending,
+                    "index": index,
+                    "worktree_mismatch": status.get("worktreeMismatch"),
+                },
+            )
+
+        snapshot = GitSnapshot.capture(self.repo)
+        explore_command = [
+            "codegraph",
+            "explore",
+            normalized_target,
+            "-p",
+            str(self.repo),
+            "--json",
+        ]
+        try:
+            explore_process = self.run(explore_command, self.repo)
+        except FileNotFoundError:
+            return Result(False, "CODEGRAPH_NOT_AVAILABLE")
+        if explore_process.returncode:
+            return Result(
+                False,
+                "CODEGRAPH_QUERY_FAILED",
+                data={"stderr": explore_process.stderr.strip()},
+            )
+        try:
+            exploration = json.loads(explore_process.stdout)
+        except json.JSONDecodeError:
+            exploration = {"output": explore_process.stdout}
+
+        index_identity = json.dumps(
+            {
+                "project_path": str(self.repo),
+                "head": snapshot.head,
+                "dirty_fingerprint": snapshot.dirty_fingerprint,
+                "last_indexed": status.get("lastIndexed", ""),
+                "version": status.get("version", ""),
+                "index": index,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        index_fingerprint = hashlib.sha256(index_identity.encode()).hexdigest()
+        receipt_source = "\0".join(
+            (
+                self.project_id,
+                str(self.repo),
+                normalized_target,
+                normalized_purpose,
+                index_fingerprint,
+            )
+        )
+        scope = {
+            "investigation_id": (
+                f"INV-{hashlib.blake2b(receipt_source.encode(), digest_size=8).hexdigest().upper()}"
+            ),
+            "mode": "planning_read_only",
+            "project_id": self.project_id,
+            "project_path": str(self.repo),
+            "target": normalized_target,
+            "purpose": normalized_purpose,
+            "head": snapshot.head,
+            "dirty_fingerprint": snapshot.dirty_fingerprint,
+            "index_fingerprint": index_fingerprint,
+            "indexed_at": str(status.get("lastIndexed", "")),
+            "codegraph_version": str(status.get("version", self.codegraph_version)),
+            "persisted": False,
+        }
+        return Result(True, data={"exploration": exploration, "scope": scope})
+
     def _query(self, arguments: list[str]) -> Result:
         background = self.store.get("codegraph_background", self.key)
         if background and background.get("status") in {"queued", "running"}:

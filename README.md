@@ -268,6 +268,16 @@ praxis codegraph query OrderService --project backend --json
 praxis codegraph affected --project backend --json
 ```
 
+Plan Mode can inspect an already valid project index without a requirement or binding:
+
+```bash
+praxis codegraph investigate OrderService --project backend \
+  --purpose "trace the cross-module save flow" --json
+```
+
+This command never initializes or synchronizes the index and returns a `persisted: false` scope.
+It does not replace the binding-scoped impact audit required before high-risk edits.
+
 ## Portraits, runtime, and DBX
 
 Static portraits never execute deployment or database commands. Runtime inspection is opt-in and

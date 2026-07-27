@@ -44,6 +44,10 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
   `investigation_scope`，并通过 `praxis database investigate` 对项目画像已登记的 DBX
   连接（包括已登记的生产连接）做有目的的只读调查。该入口不写需求、文档、产出物或审计状态，返回
   `persisted: false`；进入实施模式后再登记需求并把仍有效的证据正式纳入需求。
+- 规划模式的跨模块、公共接口或影响范围调查可通过
+  `praxis codegraph investigate <target> --project <项目> --purpose <目的>` 查询项目画像中
+  已有且无 pending 的有效索引。该入口不得初始化、同步或持久化索引，返回
+  `persisted: false`；进入实施后仍须在需求工作树 binding 上完成正式影响分析。
 
 ## 2. 调查和规划
 
@@ -55,6 +59,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 调查节点必须先路由并完成 `brainstorming`、`grilling` 与 `ponytail`；`grill-me`
   只是用户入口，只有实际执行逐问确认的 `grilling` 才能作为完成凭证。涉及代码定位时条件路由
   `file-search`，缺陷或失败时条件路由 `systematic-debugging`，数据库问题路由 DBX 技能。
+- 调查涉及跨模块、公共接口、共享服务、高扇出或影响范围时条件路由
+  `codegraph-impact-analysis`；Plan Mode 使用不持久化入口，正式修改使用 binding 审计。
 - 节点路由只产生计划。Skill 开始和结束必须分别记录 `skill.invoked` 与 `skill.completed`；
   `skill.routed`、上下文注入或命令历史都不能作为真实调用凭证。
 - 只有文档具有有效内容后，才推进需求到 `ready`。

@@ -32,6 +32,8 @@ description: 将系统开发任务路由到最小的已安装方法技能，适�
 - MES PDA 只读统计、库存和报表总览页：`build-mes-pda-readonly-overview`
 - AOTU/MOM UniApp OpenAPI/Alova 生成：`uniapp-api-generation`
 - 调查节点：头脑风暴、逐问式需求确认（`grilling`）、最小范围控制和文件检索
+- 调查节点的跨模块、公共接口或影响范围问题：使用 `codegraph investigate` 获取
+  `persisted: false` 的现有索引证据；不得要求先伪造需求 binding
 - 计划节点：实施计划编写和复杂度约束
 - 开发节点：必需调用 `test-driven-development`，保留先 RED、后最小 GREEN 的真实凭证
 - 开发节点：必需调用内置 `minimum-module-compile`，记录模块、精确命令和 exit code

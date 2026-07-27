@@ -245,6 +245,29 @@ def test_codegraph_cli_maps_worktree_scoped_selectors() -> None:
     )
 
 
+def test_codegraph_investigate_cli_requires_project_and_maps_purpose() -> None:
+    args = _parser().parse_args(
+        [
+            "codegraph",
+            "investigate",
+            "OrderService",
+            "--project",
+            "backend",
+            "--purpose",
+            "追踪跨模块保存调用链",
+        ]
+    )
+
+    assert _operation(args) == (
+        "codegraph.investigate",
+        {
+            "project_id": "backend",
+            "target": "OrderService",
+            "purpose": "追踪跨模块保存调用链",
+        },
+    )
+
+
 def test_context_cli_build_maps_traceability_inputs() -> None:
     args = _parser().parse_args(
         [

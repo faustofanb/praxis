@@ -95,6 +95,77 @@ def test_query_never_uses_stale_index_after_sync_failure(tmp_path: Path) -> None
     assert service.status().data["operation"]["status"] == "failed"
 
 
+def test_plan_mode_investigation_uses_existing_index_without_persisting_state(
+    tmp_path: Path,
+) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+    calls: list[list[str]] = []
+
+    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1] == "status":
+            payload = {
+                "initialized": True,
+                "projectPath": str(repo),
+                "pendingChanges": {"added": 0, "modified": 0, "removed": 0},
+                "worktreeMismatch": None,
+                "index": {"state": "complete", "pendingRefs": 0},
+                "lastIndexed": "2026-07-27T00:00:00Z",
+                "version": "1.3.0",
+            }
+        else:
+            payload = {"symbol": "OrderService", "callPaths": []}
+        return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+    service = CodeGraphService(tmp_path, "app", run=run)
+    audits_before = service.store.audit_events()
+
+    result = service.investigate("OrderService", purpose="追踪跨模块保存调用链")
+
+    assert result.ok
+    assert result.data["exploration"]["symbol"] == "OrderService"
+    assert result.data["scope"]["mode"] == "planning_read_only"
+    assert result.data["scope"]["persisted"] is False
+    assert result.data["scope"]["project_path"] == str(repo)
+    assert result.data["scope"]["head"]
+    assert result.data["scope"]["dirty_fingerprint"]
+    assert calls == [
+        ["codegraph", "status", str(repo), "--json"],
+        ["codegraph", "explore", "OrderService", "-p", str(repo), "--json"],
+    ]
+    assert service.store.get("codegraph", service.key) is None
+    assert service.store.get("codegraph_operation", service.key) is None
+    assert service.store.audit_events() == audits_before
+
+
+def test_plan_mode_investigation_rejects_index_with_pending_changes(
+    tmp_path: Path,
+) -> None:
+    repo = _workspace(tmp_path)
+    (repo / ".codegraph").mkdir()
+    calls: list[list[str]] = []
+
+    def run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        payload = {
+            "initialized": True,
+            "projectPath": str(repo),
+            "pendingChanges": {"added": 0, "modified": 1, "removed": 0},
+            "worktreeMismatch": None,
+            "index": {"state": "complete", "pendingRefs": 0},
+        }
+        return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+    service = CodeGraphService(tmp_path, "app", run=run)
+
+    result = service.investigate("OrderService", purpose="追踪跨模块保存调用链")
+
+    assert not result.ok
+    assert result.code == "CODEGRAPH_INVESTIGATION_INDEX_STALE"
+    assert calls == [["codegraph", "status", str(repo), "--json"]]
+
+
 def test_changed_worktree_syncs_before_affected_query(tmp_path: Path) -> None:
     repo = _workspace(tmp_path)
     (repo / ".codegraph").mkdir()
