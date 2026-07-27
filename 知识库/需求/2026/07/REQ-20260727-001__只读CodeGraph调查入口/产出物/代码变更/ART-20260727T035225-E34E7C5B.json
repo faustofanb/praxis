@@ -1,0 +1,63 @@
+{
+  "branch": "praxis/REQ-20260727-001__只读CodeGraph调查入口",
+  "diff": {
+    "deletions": 1,
+    "files": 13,
+    "insertions": 296
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:fd09e4f1b5f8486c9a3105c4999eb1a898c5c145",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:cbdb3c12ef570219d7d6aca7b80b2a9d9b2adc1d",
+      "path": "README.md"
+    },
+    {
+      "content_hash": "blake2b:4d89f81243fc3e6f7f6d2ae6892c811a3a658557",
+      "path": "skills/codegraph-impact-analysis/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:388a826ada66484c24227184eb0f6f6f3f3972d6",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:eb07780197f88dc9f76054aaa9d15139bf20e132",
+      "path": "skills/praxis-system-development/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:3b1b31d28bb9493850edbe2bf2ce65651b964a0c",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:dbcf515066402f51dff2de050064c339f0302e4c",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:8914e7fb71b562cab8f00eea174ddac809d00f68",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:cb08f52e2fc3ac4e40dd7d658e2e507cd6b286d1",
+      "path": "src/praxis/codegraph/service.py"
+    },
+    {
+      "content_hash": "blake2b:a0a985ac895f8fffdf6166d5e978556251e87f58",
+      "path": "tests/test_agent_guidance.py"
+    },
+    {
+      "content_hash": "blake2b:0ec37e738d6bbdbcbfe0981bf6233a1d704b73d1",
+      "path": "tests/test_application_dispatch.py"
+    },
+    {
+      "content_hash": "blake2b:fc714190b24ac751c6f27d42f44200a81fe30a03",
+      "path": "tests/test_codegraph.py"
+    },
+    {
+      "content_hash": "blake2b:bb8f68d6b08b88c30af5a1f7736bcfda0c847c43",
+      "path": "tests/test_interfaces.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260727-001__只读CodeGraph调查入口/REQ-20260727-001__只读CodeGraph调查入口__praxis-next"
+}

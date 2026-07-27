@@ -1,0 +1,9 @@
+需求编号: REQ-20260727-001
+产出物:
+  - 产出物编号: ART-20260727T035225-E34E7C5B
+    类型: 代码变更
+    任务阶段: delivery
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260727-001__只读CodeGraph调查入口/REQ-20260727-001__只读CodeGraph调查入口__praxis-next/src/praxis/codegraph/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/07/REQ-20260727-001__只读CodeGraph调查入口/产出物/代码变更/ART-20260727T035225-E34E7C5B.json
+    源内容哈希: blake2b:cb08f52e2fc3ac4e40dd7d658e2e507cd6b286d1
+    归档内容哈希: blake2b:67f168322662c7473ce6783a7be25342e9480fd8
