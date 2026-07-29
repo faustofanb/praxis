@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 from collections.abc import Callable
@@ -11,7 +10,6 @@ import anyio
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from praxis.integrations.process import ProcessRunner, Runner
 from praxis.result import Result
 
 _SECRET_KEYS = {"password", "password_ref", "secret", "token", "access_token", "api_key"}
@@ -23,43 +21,30 @@ _CallTool = Callable[[str, dict[str, Any]], Any]
 
 
 class DbxAdapter:
-    """DBX CLI first, with MCP for database-scoped targets and fallback."""
+    """Controlled DBX access through MCP."""
 
     def __init__(
         self,
         root: Path | str,
         *,
-        run: Runner | None = None,
         call_tool: _CallTool | None = None,
     ):
         self.root = Path(root)
-        self.runner = ProcessRunner(root, run=run)
         self.call_tool = call_tool or self._call_tool
 
     def list_connections(self) -> Result:
-        cli = self.runner.run(["dbx", "connections", "list", "--json"], machine_output=True)
-        if cli.ok:
-            try:
-                payload = json.loads(cli.data["stdout"])
-                connections = (
-                    payload.get("connections", payload) if isinstance(payload, dict) else payload
-                )
-                return Result(
-                    True, data={"connections": _redact(connections), "transport": "cli"}
-                )
-            except (json.JSONDecodeError, TypeError):
-                pass
         try:
             payload = self.call_tool("dbx_list_connections", {})
             connections = _payload(payload)
             if isinstance(connections, str):
                 connections = _markdown_rows(connections)
+            elif isinstance(connections, dict) and "connections" in connections:
+                connections = connections["connections"]
             return Result(
                 True,
                 data={
                     "connections": _redact(connections),
                     "transport": "mcp",
-                    "cli_code": cli.code,
                 },
             )
         except FileNotFoundError:
@@ -96,18 +81,6 @@ class DbxAdapter:
         )
 
     def execute(self, connection: str, sql: str, *, database: str | None = None) -> Result:
-        if database is None:
-            cli = self.runner.run(
-                ["dbx", "query", connection, sql, "--json"], machine_output=True
-            )
-            if cli.ok:
-                try:
-                    payload = json.loads(cli.data["stdout"])
-                    if not isinstance(payload, dict):
-                        payload = {"result": payload}
-                    return Result(True, data={**_redact(payload), "transport": "cli"})
-                except (json.JSONDecodeError, TypeError):
-                    pass
         arguments: dict[str, Any] = {"sql": sql}
         key = "connection_id" if _UUID.fullmatch(connection) else "connection_name"
         arguments[key] = connection

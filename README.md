@@ -294,8 +294,9 @@ praxis portrait verify --project backend --json
 ```
 
 Projects store DBX references such as `dbx://ifc-mom-dev`, never credentials. Connection listing and
-read queries use the documented DBX JSON CLI. Writes require `--approve-write`; Praxis still blocks
-DDL, multiple statements, locking reads, unconditional updates/deletes, and every production write:
+queries use DBX MCP directly; Praxis does not invoke the DBX CLI. Writes require `--approve-write`;
+Praxis still blocks DDL, multiple statements, locking reads, unconditional updates/deletes, and
+every production write:
 
 ```bash
 praxis database connections --project backend --json

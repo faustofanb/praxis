@@ -97,3 +97,19 @@ def test_agent_guidance_stops_on_broken_managed_markers(tmp_path: Path) -> None:
 
     assert result.code == "AGENT_GUIDANCE_MARKERS_INVALID"
     assert not (tmp_path / "CLAUDE.md").exists()
+
+
+def test_agent_guidance_requires_canonical_praxis_entry_resolution(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+
+    result = AgentGuidanceService(tmp_path).render()
+
+    assert result.ok
+    agents = (tmp_path / "AGENTS.md").read_text()
+    assert "优先使用已提供的 Praxis MCP" in agents
+    assert "MCP 不可用时才检查可解析的 `praxis` CLI" in agents
+    assert "当前工作区明确声明且文件存在" in agents
+    assert "禁止凭历史上下文推断 `scripts/codex/task.py`" in agents
+    assert "DBX 调查只使用已提供的 DBX MCP 工具" in agents

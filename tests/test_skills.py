@@ -77,9 +77,17 @@ def test_dbx_skill_metadata_and_resource_contract() -> None:
         "dbx_execute_query",
     )
     resource = registry.resource("praxis://skills/system/dbx-database-investigation")
+    assert "DBX MCP" in resource
+    assert "DBX CLI" not in resource
+    assert "@dbx-app/cli" not in resource
     assert "未找到匹配 connection" in resource
     assert "dbx_add_connection" in resource
     assert "禁止" in resource
+    workflow = registry.resource("praxis://skills/workflow/praxis-requirement-workflow")
+    assert "Praxis MCP" in workflow
+    assert "MCP 不可用时" in workflow
+    assert "scripts/codex/task.py" in workflow
+    assert "明确声明且文件存在" in workflow
 
 
 def test_skill_hash_changes_with_content(tmp_path: Path) -> None:

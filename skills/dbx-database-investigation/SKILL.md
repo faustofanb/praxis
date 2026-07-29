@@ -1,6 +1,6 @@
 ---
 name: dbx-database-investigation
-description: 通过 DBX CLI（必要时回退 MCP）调查数据库结构。适用于表结构、DTO、迁移、报表口径、SQL 错误和执行计划调查。
+description: 通过 DBX MCP 调查数据库结构。适用于表结构、DTO、迁移、报表口径、SQL 错误和执行计划调查。
 ---
 
 # DBX 数据库调查
@@ -33,14 +33,15 @@ Schema 调查、API/DTO 对照、迁移设计、报表口径、SQL 错误和执�
 `praxis database investigate --project <项目> --connection <引用> --purpose <目的> --sql <SQL>`；
 它会校验项目登记、允许已登记生产连接的只读调查、阻断非只读 SQL、自动执行
 `select current_database()`，并返回
-`persisted: false` 的临时收据。正式需求内再使用 DBX CLI 的 JSON 契约（`connections`、
-`schema`、`query`、`context`），只读取任务涉及的表；必要时执行一个有界 `SELECT`、
-`WITH … SELECT` 或 `EXPLAIN`。仅当连接引用显式指定数据库而 CLI 无法选择该数据库，或
-CLI 不可用时，回退 DBX MCP。
+`persisted: false` 的临时收据。正式需求内直接使用 DBX MCP 工具
+（`dbx_list_connections`、`dbx_list_tables`、`dbx_describe_table`、
+`dbx_get_schema_context`、`dbx_execute_query`），只读取任务涉及的表；必要时执行一个有界
+`SELECT`、`WITH … SELECT` 或 `EXPLAIN`。
 
 ## 七、依赖工具
 
-先检查 `dbx` CLI；CLI 不可用时再检查 `skill.toml` 中的 MCP `required_tools`。两者都不可用时停止并说明如何安装 `@dbx-app/cli` 或配置外部 DBX MCP。
+检查 `skill.toml` 中的 MCP `required_tools`。DBX MCP 不可用时停止并说明如何配置外部
+DBX MCP，不得回退到本地命令行调用。
 
 ## 八、业务约束
 
