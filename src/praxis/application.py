@@ -754,6 +754,16 @@ class PraxisApplication:
         node = requirement["status"]
         return SkillInvocationService(self.root).gate(requirement_id, node)
 
+    def _gate_worktree_creation_skill_route(self, requirement_id: str) -> Result:
+        requirement = StateStore(self.root).requirement(requirement_id)
+        if not requirement:
+            return Result(False, "REQUIREMENT_NOT_FOUND")
+        if requirement["status"] == RequirementStatus.IN_PROGRESS:
+            return SkillInvocationService(self.root).gate(
+                requirement_id, RequirementStatus.READY
+            )
+        return self._gate_current_skill_route(requirement_id)
+
     def _codegraph(self, action: str, values: dict[str, Any]) -> Result:
         project_id = str(values.get("project_id") or "")
         repository_path = values.get("worktree")
@@ -821,7 +831,9 @@ class PraxisApplication:
     def _worktree(self, action: str, values: dict[str, Any]) -> Result:
         worktree = WorktreeService(self.root)
         if action == "create":
-            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            skill_gate = self._gate_worktree_creation_skill_route(
+                values["requirement_id"]
+            )
             if not skill_gate.ok:
                 return skill_gate
             return worktree.create_for_requirement(
@@ -832,7 +844,9 @@ class PraxisApplication:
                 values["requirement_id"], values["repository_ids"]
             )
         if action == "ensure":
-            skill_gate = self._gate_current_skill_route(values["requirement_id"])
+            skill_gate = self._gate_worktree_creation_skill_route(
+                values["requirement_id"]
+            )
             if not skill_gate.ok:
                 return skill_gate
             ensured = worktree.ensure_for_requirement(

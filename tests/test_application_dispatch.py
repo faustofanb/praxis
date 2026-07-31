@@ -417,6 +417,75 @@ def test_worktree_create_requires_current_ready_skill_gate(
 
 
 @pytest.mark.parametrize(
+    ("operation", "arguments"),
+    [
+        ("worktree.create", {"repository_id": "app"}),
+        (
+            "worktree.ensure",
+            {"repository_ids": ["app"], "preview_id": "WTP-READY-GATE"},
+        ),
+    ],
+)
+def test_worktree_creation_uses_completed_ready_gate_after_ready_node_advances(
+    application: PraxisApplication,
+    operation: str,
+    arguments: dict[str, object],
+) -> None:
+    assert application.execute(
+        "workspace.init", {"workspace_id": "demo", "name": "演示开发工作空间"}
+    ).ok
+    created = application.execute(
+        "requirement.new",
+        {
+            "short_name": "工作树循环门禁",
+            "request": "ready 完成后应能创建工作树",
+            "systems": [],
+            "domains": [],
+        },
+    )
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(application.root)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    route = NodeSkillRouter(application.root).route(
+        NodeSkillRoutingRequest(
+            node="ready",
+            requirement_id=requirement_id,
+            token_budget=5_000,
+        )
+    )
+    results = {
+        item["id"]: {"result": "passed", "details": "ready 门禁已完成"}
+        for item in route.data["decisions"]
+        if item["mode"] == "required"
+    }
+    completed = application.execute(
+        "lifecycle.complete-node",
+        {
+            "requirement_id": requirement_id,
+            "node": "ready",
+            "results": results,
+        },
+    )
+
+    assert completed.ok
+    assert completed.data["target_status"] == "in_progress"
+
+    created_worktree = application.execute(
+        operation,
+        {"requirement_id": requirement_id, **arguments},
+    )
+
+    assert created_worktree.ok
+
+
+@pytest.mark.parametrize(
     ("operation", "arguments", "key"),
     [
         ("codegraph.status", {"project_id": "app"}, "status"),
