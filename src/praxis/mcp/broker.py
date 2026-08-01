@@ -271,6 +271,16 @@ class McpBrokerService:
         assert grant is not None
         operation, _ = _CAPABILITIES[capability]
         values = dict(arguments)
+        if capability == "artifact.register":
+            resolved_binding = resolve_worktree_binding(
+                self.store, grant.get("worktree", "")
+            )
+            values.setdefault(
+                "binding_id",
+                resolved_binding[0] if resolved_binding else grant.get("worktree", ""),
+            )
+        if capability in {"context.build", "worktree.ensure"}:
+            values.setdefault("entrypoint", "mcp")
         if capability == "database.write":
             values["approved"] = True
             resolved = resolve_worktree_binding(self.store, grant["worktree"])

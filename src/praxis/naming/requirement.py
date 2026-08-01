@@ -47,7 +47,9 @@ class RequirementPathPolicy:
     def validate_short_name(self, value: str) -> str:
         name = unicodedata.normalize("NFC", value.strip())
         if not 4 <= len(name) <= 24:
-            raise ValueError("中文需求简称长度必须在4到24个字符之间")
+            raise ValueError(
+                f"中文需求简称长度必须在4到24个字符之间，当前为{len(name)}个字符"
+            )
         if any(character in _INVALID_PATH_CHARACTERS for character in name):
             raise ValueError("中文需求简称包含非法路径字符")
         if name.endswith((".", " ")):

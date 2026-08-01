@@ -295,7 +295,12 @@ def _parser() -> argparse.ArgumentParser:
     complete_node.add_argument("--risk", action="append", default=[])
     complete_node.add_argument("--available-skill", action="append", default=[])
     complete_node.add_argument("--approved-skill", action="append", default=[])
-    complete_node.add_argument("--used-skill", action="append", required=True)
+    complete_node.add_argument(
+        "--used-skill",
+        action="append",
+        required=True,
+        help="格式：--used-skill 'skill-id=passed:结果说明'（单引号包裹，值内冒号使用半角 :）",
+    )
     complete_node.add_argument("--session")
     complete_node.add_argument("--budget", type=int, default=4000, help="context token budget")
     _json_flag(complete_node)
@@ -426,7 +431,12 @@ def _parser() -> argparse.ArgumentParser:
     lifecycle_complete = lifecycle.add_parser("complete-node")
     lifecycle_complete.add_argument("--requirement", required=True)
     lifecycle_complete.add_argument("--node", required=True)
-    lifecycle_complete.add_argument("--used-skill", action="append", required=True)
+    lifecycle_complete.add_argument(
+        "--used-skill",
+        action="append",
+        required=True,
+        help="格式：--used-skill 'skill-id=passed:结果说明'（单引号包裹，值内冒号使用半角 :）",
+    )
     lifecycle_complete.add_argument("--approved-skill", action="append", default=[])
     lifecycle_complete.add_argument("--session")
     _json_flag(lifecycle_complete)
@@ -609,6 +619,7 @@ def _parser() -> argparse.ArgumentParser:
     add_artifact.add_argument("--source", type=Path, required=True)
     add_artifact.add_argument("--stage", required=True)
     add_artifact.add_argument("--metadata-json", default="{}")
+    add_artifact.add_argument("--binding", default="")
     _json_flag(add_artifact)
     list_artifact = artifact.add_parser("list")
     list_artifact.add_argument("--requirement")
@@ -675,7 +686,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             "knowledge_root": args.knowledge_root,
         }
     if args.group == "doctor":
-        return "doctor", {}
+        return "doctor", {"entrypoint": "cli"}
     if args.group == "version":
         return "version", {}
     if args.group == "workspace":
@@ -973,6 +984,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "requirement_id": args.requirement_id,
                 "repository_ids": args.repository,
                 "preview_id": args.confirm,
+                "entrypoint": "cli",
             }
         if args.action == "prepare":
             return "worktree.prepare", {
@@ -1091,6 +1103,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "risks": args.risk,
                 "available_skills": args.available_skill,
                 "approved_skills": args.approved_skill,
+                "entrypoint": "cli",
             }
         if args.action == "show":
             return "context.show", {"context_id": args.id}
@@ -1187,6 +1200,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "source_path": args.source,
                 "stage": args.stage,
                 "metadata": json.loads(args.metadata_json),
+                "binding_id": args.binding,
             }
         if args.action == "list":
             return "artifact.list", {"requirement_id": args.requirement}

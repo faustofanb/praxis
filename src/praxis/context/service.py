@@ -6,9 +6,11 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from hashlib import blake2b
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from praxis.documents.atomic_writer import atomic_write_text
+from praxis.entrypoints import diagnose as diagnose_entrypoints
 from praxis.naming.requirement import RequirementPathPolicy, requirement_document
 from praxis.portraits.service import PortraitService
 from praxis.result import Result
@@ -75,6 +77,7 @@ class ContextBuildRequest:
     risks: tuple[str, ...] = ()
     available_skills: tuple[str, ...] = ()
     approved_skills: tuple[str, ...] = ()
+    entrypoint: str = "auto"
 
 
 class ContextCompiler:
@@ -101,6 +104,7 @@ class ContextCompiler:
             "workflow_node": request.workflow_node,
             "agent_role": request.agent_role,
             "intent": request.intent.strip(),
+            "entrypoint": request.entrypoint,
         }
         identity_json = json.dumps(identity, ensure_ascii=False, sort_keys=True)
         fingerprint = _content_hash(
@@ -121,6 +125,7 @@ class ContextCompiler:
             "workflow_node": request.workflow_node,
             "agent_role": request.agent_role,
             "intent": request.intent.strip(),
+            "entrypoint": request.entrypoint,
             "identity": identity,
             "critical_facts": critical_facts,
             "token_budget": request.token_budget,
@@ -209,6 +214,14 @@ class ContextCompiler:
                 0,
             ),
             ContextFragment.create(
+                "praxis-entrypoint",
+                "entrypoint",
+                "当前 Praxis 入口与回退路径",
+                _render_entrypoint(diagnose_entrypoints(request.entrypoint)),
+                0,
+                evidence_level="Praxis入口诊断",
+            ),
+            ContextFragment.create(
                 "scope-and-gates",
                 "gate",
                 "修改范围与门禁",
@@ -217,6 +230,7 @@ class ContextCompiler:
                 + "\n禁止路径："
                 + (", ".join(request.forbidden_paths) or ".git, .praxis, .env")
                 + "\n自动安全门禁：修改范围、秘密和工作树绑定"
+                + "\n主仓库无 binding 且检测到业务代码改动时，pre-commit 阻断并提示‘请走 praxis 工作树’"
                 + "\n需用户明确批准：质量复核、类型检查和测试",
                 0,
             ),
@@ -331,6 +345,12 @@ class ContextCompiler:
         ]
         return {
             "requirement_id": request.requirement_id,
+            "entrypoints": diagnose_entrypoints(request.entrypoint),
+            "edit_boundary": {
+                "binding_required": True,
+                "root_worktree_edits_blocked": True,
+                "pre_commit_guard": "lifecycle pre-commit",
+            },
             "project": {
                 "id": project.id,
                 "system_id": project.system_id,
@@ -532,3 +552,19 @@ def _approval_active(receipt: dict[str, object]) -> bool:
         return datetime.fromisoformat(expires_at) >= datetime.now(UTC)
     except ValueError:
         return False
+
+
+def _render_entrypoint(data: dict[str, Any]) -> str:
+    current = data["current"]
+    kind = str(current["kind"])
+    path = str(current.get("path") or "不可解析")
+    lines = [f"当前 Praxis 入口：{kind}（{path}）"]
+    cli = data["cli"]
+    mcp = data["mcp"]
+    lines.append(
+        f"CLI fallback：{'可用' if cli['available'] else '不可用'}"
+        + (f"（{cli['path']}）" if cli["path"] else "")
+    )
+    lines.append(f"MCP server capability：{'可用' if mcp['available'] else '不可用'}")
+    lines.append(str(data["fallback"]["message"]))
+    return "\n".join(lines)

@@ -14,6 +14,9 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 
 - 优先使用当前会话已提供的 Praxis MCP。
 - MCP 不可用时才检查可解析的 `praxis` CLI。
+- 会话启动或 coder context 必须注入当前入口诊断；MCP 缺失时先运行
+  `praxis doctor --json`，从 `entrypoints.fallback.path` 取得 CLI 回退路径，不要把
+  “MCP 会话缺失”误判为“Praxis 不可用”。
 - 项目包装脚本只有在当前工作区明确声明且文件存在时才允许调用；禁止凭历史上下文推断
   `scripts/codex/task.py` 或其他仓库相对入口。
 - DBX 调查只使用已提供的 DBX MCP 工具，不调用或回退到 DBX CLI。
@@ -73,6 +76,9 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 节点路由只产生计划。Skill 开始和结束必须分别记录 `skill.invoked` 与 `skill.completed`；
   `skill.routed`、上下文注入或命令历史都不能作为真实调用凭证。
 - 只有文档具有有效内容后，才推进需求到 `ready`。
+- `03-实施计划.md` 必须在计划阶段填写“验证矩阵（计划阶段确认）”，逐项区分可自动化命令与
+  需环境验证、环境依赖、授权状态和证据；空白模板不能绕过 ready 门禁，verifying 阶段只执行
+  已确认的矩阵，不临时扩大验证范围。
 - 使用 `requirement advance` 一次只推进一个合法状态，并先查看来源状态、目标状态和缺失门禁；
   不再通过重复执行某个阶段命令猜测状态迁移。
 - 纯调查、纯文档或无需代码变更的需求不得创建工作树。
@@ -118,6 +124,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
   保存调用路径和 Blast Radius；不得等出现遗漏或返工后才刷新。
 - 查询 CodeGraph 状态时优先使用 binding ID 或仓库工作树路径，不得拿根仓库状态代替需求工作树状态。
 - 第一次代码编辑前再次检查当前目录位于已绑定工作树。禁止在根工作区或未绑定目录修改业务代码。
+- `pre-commit`/`pre-merge` 在主仓库发现业务代码改动且没有 binding 时必须 fail-closed，并提示
+  “请走 praxis 工作树”；不得用普通 `rg` 或手工声明替代该守卫。
 - 除上述 fast_fix 例外外，功能、缺陷修复、重构和行为变更默认执行 TDD：先编写一个描述期望行为的聚焦测试并观察它
   因缺少目标行为而失败（RED），再写使其通过的最小实现（GREEN），通过后才能重构。测试立即
   通过、因拼写或环境错误失败、先写实现后补测试，都不能登记为 TDD 完成凭证。
@@ -153,6 +161,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 持续更新 `执行进度.md` 和产出物清单，不以聊天记录代替知识库。
 - 代码稳定后再登记产出物；`artifact add` 按“需求+路径” upsert 并刷新哈希。
 - 代码改动使用 `code-change` 类型登记，保留仓库、分支、diff 统计和变更文件哈希。
+- 工作树内新文件可用 `artifact add --binding <binding_id>` 登记；源路径按 binding 的仓库子目录
+  解析，未绑定或跨 binding 的路径继续阻断，提交分支仍是最终交付来源。
 - 实施完成后用 `requirement record-implementation` 记录实施维度；多个项目使用重复
   `--project <project>=<artifact-id,...>` 一次原子合并，避免并行登记互相覆盖。验证维度和人工
   验收维度独立。
@@ -163,6 +173,8 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
   <id>=<passed|not_applicable|approval_missing|failed>:<outcome>` 原子写入真实结果、检查门禁并按需
   推进一个状态。未列出的 Skill 不得自动补写为已使用；`approval_missing` 必须显示“实施完成、
   验证待批准”，不得伪装为普通 completed。
+- CLI 帮助中的多值参数示例固定为 `--used-skill 'skill-id=passed:结果说明'`：外层单引号包裹，
+  值内冒号使用半角 `:`，避免全角标点和 shell 拆词。
 - 生命周期为 `in_progress → implemented → verifying → completed`。`implemented` 表示代码实施
   已登记，不代表测试通过或人工验收完成。
 - 节点路由统一保存为需求状态名；`investigation`、`analysis`、`planning`、`development`、

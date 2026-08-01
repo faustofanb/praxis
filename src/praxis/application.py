@@ -16,6 +16,7 @@ from praxis.context.service import ContextBuildRequest, ContextCompiler
 from praxis.database.service import DatabaseService
 from praxis.domain.requirement import RequirementStatus
 from praxis.domains.service import DomainService
+from praxis.entrypoints import diagnose as diagnose_entrypoints
 from praxis.fastlane.fast_fix import FastFixService
 from praxis.fastlane.service import FastLaneService
 from praxis.fastlane.small_fix import SmallFixService
@@ -180,6 +181,7 @@ class PraxisApplication:
             workspace = WorkspaceService(self.root).load()
             audit_valid = StateStore(self.root).verify_audit_chain()
             skill_providers = NodeSkillRouter(self.root).provider_diagnostics()
+            entrypoints = diagnose_entrypoints(values.get("entrypoint", "internal"))
             return Result(
                 audit_valid,
                 "OK" if audit_valid else "AUDIT_CHAIN_INVALID",
@@ -187,6 +189,7 @@ class PraxisApplication:
                     "schema_version": workspace["schema_version"],
                     "audit_chain": audit_valid,
                     "skill_providers": skill_providers,
+                    "entrypoints": entrypoints,
                 },
             )
         if operation in {"workspace.inspect", "workspace.show"}:
@@ -591,6 +594,7 @@ class PraxisApplication:
                     risks=tuple(values.get("risks", [])),
                     available_skills=tuple(values.get("available_skills", [])),
                     approved_skills=tuple(values.get("approved_skills", [])),
+                    entrypoint=values.get("entrypoint", "internal"),
                 )
             )
         if operation == "context.show":
@@ -666,6 +670,7 @@ class PraxisApplication:
                 values["source_path"],
                 stage=values["stage"],
                 metadata=values.get("metadata", {}),
+                binding_id=values.get("binding_id", ""),
             )
         if operation == "artifact.list":
             return ArtifactService(self.root).list(values.get("requirement_id"))
@@ -875,6 +880,7 @@ class PraxisApplication:
                             allowed_paths=tuple(worktree_data.get("allowed_paths", [])),
                             forbidden_paths=tuple(worktree_data.get("forbidden_paths", [])),
                             workflow_node="in_progress",
+                            entrypoint=values.get("entrypoint", "internal"),
                         )
                     )
                 except (KeyError, FileNotFoundError, ValueError) as error:

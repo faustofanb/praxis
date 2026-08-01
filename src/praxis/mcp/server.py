@@ -17,6 +17,7 @@ from praxis.workspace.service import WorkspaceService
 
 _UNSCOPED_READS = {
     "version",
+    "doctor",
     "workspace.inspect",
     "skill.inspect",
     "skill.list",
@@ -44,7 +45,10 @@ def execute(
             "data": {"operation": operation},
             "diagnostics": [],
         }
-    return PraxisApplication(root).execute(operation, arguments).to_dict()
+    values = dict(arguments or {})
+    if operation == "doctor":
+        values.setdefault("entrypoint", "mcp")
+    return PraxisApplication(root).execute(operation, values).to_dict()
 
 
 def create_server(root: Path | str) -> FastMCP:

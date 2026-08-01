@@ -49,6 +49,27 @@ rtk mvn -pl <相对模块路径> -am -DskipTests test-compile
 - 默认禁止 `package`、`install`、`deploy`、全仓 `clean`。只有聚焦编译无法覆盖明确风险且
   获得独立授权时才扩大范围。
 
+### 父 POM 强制跳过测试排查
+
+运行聚焦 Maven 测试前，先检查 effective POM 和父 POM 的自定义跳过属性。MOM/AOTU 仓库可能
+默认设置 `ifc.surefire.skip=true` 与 `ifc.surefire.skipTests=true`；这种配置下仅传
+`-DskipTests=false` 仍可能只编译测试而不执行测试。用户已授权且目标正是 MOM TPM 聚焦测试时，
+使用以下覆盖命令：
+
+```bash
+rtk mvn -pl lamp-tpm/lamp-tpm-biz -am \
+  -Difc.surefire.skip=false \
+  -Difc.surefire.skipTests=false \
+  -Dtest=TpmEquipmentRushRepairMessageServiceTest,TpmEquipmentRushRepairUnfinishedMessageJobTest \
+  -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+原因是两个父 POM 属性同时关闭 Surefire 跳过开关，`-Dtest` 将执行范围限制为原定的两个
+聚焦用例，`-Dsurefire.failIfNoSpecifiedTests=false` 避免某个聚合模块不持有指定用例时产生
+误报。必须记录完整命令、实际执行模块和 exit code；如果输出显示没有测试被执行，不得把结果
+写成测试通过。Web 管理端获批的最小类型检查仍使用
+`rtk err pnpm --filter @vben/web-antd run typecheck`，并单独记录其环境依赖。
+
 ## Vue / pnpm 前端
 
 读取根 `package.json#packageManager`、最近 package 的 `name` 和 scripts。优先执行 package

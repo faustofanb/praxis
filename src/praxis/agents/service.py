@@ -117,6 +117,7 @@ class AgentSessionService:
                     allowed_paths=tuple(binding.get("allowed_paths", [])),
                     forbidden_paths=tuple(binding.get("forbidden_paths", [])),
                     workflow_node="in_progress",
+                    entrypoint="internal",
                 )
             )
             if not built.ok:

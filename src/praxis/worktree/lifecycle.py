@@ -11,6 +11,38 @@ from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
 from praxis.worktree.service import resolve_worktree_binding
 
+_BUSINESS_CODE_SUFFIXES = frozenset(
+    {
+        ".c",
+        ".cc",
+        ".cpp",
+        ".cs",
+        ".go",
+        ".groovy",
+        ".h",
+        ".java",
+        ".js",
+        ".jsx",
+        ".json",
+        ".kt",
+        ".kts",
+        ".php",
+        ".py",
+        ".pyi",
+        ".rb",
+        ".rs",
+        ".scala",
+        ".sql",
+        ".svelte",
+        ".ts",
+        ".tsx",
+        ".vue",
+        ".xml",
+        ".yaml",
+        ".yml",
+    }
+)
+
 
 class WorktreeLifecycle:
     def __init__(self, root: Path | str):
@@ -19,6 +51,9 @@ class WorktreeLifecycle:
 
     def run(self, event: str, context: dict[str, Any]) -> Result:
         branch = str(context.get("branch", ""))
+        root_guard = self._root_business_change_guard(event, context, branch)
+        if root_guard is not None:
+            return root_guard
         resolved = resolve_worktree_binding(
             self.store,
             branch,
@@ -88,6 +123,55 @@ class WorktreeLifecycle:
         if result.ok and event == "post-remove":
             self.store.delete("worktree", binding_key)
         return result
+
+    def _root_business_change_guard(
+        self, event: str, context: dict[str, Any], branch: str
+    ) -> Result | None:
+        if event not in {"pre-commit", "pre-merge"}:
+            return None
+        candidate_value = context.get("worktree_path") or context.get("repo_path")
+        if not candidate_value:
+            return None
+        candidate = Path(str(candidate_value)).resolve()
+        try:
+            workspace = WorkspaceService(self.root).load()
+        except (KeyError, OSError, ValueError):
+            return None
+        project_roots = {
+            (self.root / str(project.get("path", ""))).resolve()
+            for project in workspace.get("projects", [])
+            if project.get("path")
+        }
+        if candidate not in project_roots:
+            return None
+        if resolve_worktree_binding(self.store, branch, worktree_path=candidate):
+            return None
+        runner = ProcessRunner(candidate, audit_root=self.root)
+        changed: set[str] = set()
+        for command in (
+            ["git", "diff", "--name-only", "HEAD"],
+            ["git", "ls-files", "--others", "--exclude-standard"],
+        ):
+            result = runner.run(command, machine_output=True)
+            if not result.ok:
+                return Result(False, "CHANGED_FILES_UNAVAILABLE", data=result.data)
+            changed.update(str(result.data.get("stdout", "")).splitlines())
+        blocked = sorted(
+            path
+            for path in changed
+            if Path(path).suffix.lower() in _BUSINESS_CODE_SUFFIXES
+        )
+        if not blocked:
+            return None
+        return Result(
+            False,
+            "WORKTREE_BINDING_REQUIRED",
+            data={
+                "message": "主仓库检测到业务代码改动，请走 praxis 工作树",
+                "blocked_paths": blocked,
+                "worktree_path": str(candidate),
+            },
+        )
 
     def _pre_start(self, binding: dict[str, Any], context: dict[str, Any]) -> Result:
         requirement = self.store.requirement(binding["requirement_id"])

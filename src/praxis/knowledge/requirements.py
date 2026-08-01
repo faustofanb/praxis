@@ -196,7 +196,11 @@ class RequirementService:
                 requirement_document("analysis"),
                 requirement_document("plan"),
             )
-            if not _has_meaningful_content(requirement_root / name)
+            if not (
+                _has_meaningful_plan(requirement_root / name)
+                if name == requirement_document("plan")
+                else _has_meaningful_content(requirement_root / name)
+            )
         ]
         ok = not unknown_domains and not missing_documents
         return Result(
@@ -520,5 +524,30 @@ def _has_meaningful_content(path: Path) -> bool:
         line.strip()
         and not line.lstrip().startswith(("#", "---"))
         and line.strip() not in {"暂无。", "待调查。"}
+        for line in path.read_text(encoding="utf-8").splitlines()
+    )
+
+
+def _has_meaningful_plan(path: Path) -> bool:
+    if not _has_meaningful_content(path):
+        return False
+    placeholders = (
+        "填写已批准的最小测试命令",
+        "填写 `minimum-module-compile` 精确命令",
+        "填写环境操作或明确不执行",
+        "本地依赖/配置",
+        "模块工具链",
+        "测试环境/服务",
+        "额外工具链",
+        "待确认",
+        "待执行",
+        "未授权",
+        "不执行",
+    )
+    return any(
+        line.strip()
+        and not line.lstrip().startswith(("#", "---", "|---"))
+        and "项目 | 分类 |" not in line
+        and not any(marker in line for marker in placeholders)
         for line in path.read_text(encoding="utf-8").splitlines()
     )

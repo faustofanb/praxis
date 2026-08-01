@@ -302,6 +302,7 @@ def test_context_cli_build_maps_traceability_inputs() -> None:
             "risks": [],
             "available_skills": [],
             "approved_skills": [],
+            "entrypoint": "cli",
         },
     )
 

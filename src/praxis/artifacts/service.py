@@ -48,6 +48,7 @@ class ArtifactService:
         *,
         stage: str,
         metadata: dict[str, Any] | None = None,
+        binding_id: str = "",
     ) -> Result:
         requirement = self.store.requirement(requirement_id)
         if not requirement:
@@ -55,9 +56,40 @@ class ArtifactService:
         if artifact_type not in _ARTIFACT_TYPES:
             return Result(False, "ARTIFACT_TYPE_INVALID")
         source = Path(source_path).resolve()
-        if not source.is_file() or not source.is_relative_to(self.root.resolve()):
+        source_allowed = source.is_relative_to(self.root.resolve())
+        binding: dict[str, Any] | None = None
+        if binding_id:
+            from praxis.worktree.service import resolve_worktree_binding
+
+            resolved = resolve_worktree_binding(self.store, binding_id)
+            if not resolved:
+                return Result(
+                    False,
+                    "ARTIFACT_SOURCE_INVALID",
+                    data={"message": "binding 不存在或与 source 不匹配", "binding_id": binding_id},
+                )
+            _, binding = resolved
+            if binding.get("requirement_id") != requirement_id:
+                return Result(
+                    False,
+                    "ARTIFACT_SOURCE_INVALID",
+                    data={"message": "binding 不属于当前需求", "binding_id": binding_id},
+                )
+            if binding.get("status") not in {"active", "bound_active"}:
+                return Result(
+                    False,
+                    "ARTIFACT_SOURCE_INVALID",
+                    data={"message": "binding 未处于 active 状态", "binding_id": binding_id},
+                )
+            repository_path = Path(
+                str(binding.get("repository_path") or binding.get("path", ""))
+            ).resolve()
+            source_allowed = source.is_relative_to(repository_path)
+        if not source.is_file() or not source_allowed:
             return Result(False, "ARTIFACT_SOURCE_INVALID")
         facts = dict(metadata or {})
+        if binding_id:
+            facts["binding_id"] = binding_id
         if artifact_type == "sql":
             missing = sorted(_SQL_METADATA - facts.keys())
             if missing:
@@ -111,6 +143,7 @@ class ArtifactService:
             "archived_hash": _hash(archived),
             "size": source.stat().st_size,
             "metadata": facts,
+            **({"binding_id": binding_id} if binding_id else {}),
             "created_at": (
                 existing.get("created_at", timestamp.isoformat())
                 if existing
