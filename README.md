@@ -438,6 +438,13 @@ pi install /absolute/path/to/praxis-next
 
 Its package manifest exposes the shared Skills and a thin `/praxis` CLI command; business behavior stays in Python.
 
+Kimi Code CLI picks up the project-level gateway and workflow guidance directly:
+`.kimi-code/mcp.json` declares the same `praxis` MCP server for new Kimi sessions, and the
+bootstrap-generated root `AGENTS.md` supplies the Praxis workflow rules Kimi reads as workspace
+instructions. `--type kimi` / `--agent kimi` is accepted by `agent install`, `agent start`
+and `agent launch`; `agent render` writes `kimi.json` with `PostToolUse`/`Stop` hooks that
+audit tool completion and close the session through `praxis lifecycle`.
+
 Requirement artifacts and the append-only audit chain are independently verifiable:
 
 ```bash

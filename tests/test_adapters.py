@@ -30,7 +30,7 @@ def test_codex_manifest_exposes_single_skill_source_and_mcp() -> None:
 
 
 def test_platform_adapters_are_thin_and_no_legacy_platform_exists() -> None:
-    for platform in ("codex", "claude-code", "omp"):
+    for platform in ("codex", "claude-code", "omp", "kimi"):
         source = (ROOT / "adapters" / platform / "index.mjs").read_text()
         assert "PRAXIS_BIN" in source
     assert not (ROOT / "adapters" / "orca").exists()
@@ -55,3 +55,11 @@ def test_mcp_companion_starts_only_praxis_gateway() -> None:
             "praxis": {"command": "./scripts/praxis-mcp", "args": []},
         }
     }
+
+
+def test_kimi_project_config_reuses_the_same_mcp_gateway() -> None:
+    kimi_config = json.loads((ROOT / ".kimi-code" / "mcp.json").read_text())
+    assert kimi_config == json.loads((ROOT / ".mcp.json").read_text())
+    guidance = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "<!-- praxis:managed:start -->" in guidance
+    assert "Praxis 工作流" in guidance

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "praxis": {
+      "command": "./scripts/praxis-mcp",
+      "args": []
+    }
+  }
+}

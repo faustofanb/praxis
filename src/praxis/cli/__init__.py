@@ -424,6 +424,9 @@ def _parser() -> argparse.ArgumentParser:
         "pre-merge",
         "post-merge",
         "post-remove",
+        "before-tool",
+        "after-tool",
+        "session-stop",
     ):
         child = lifecycle.add_parser(action)
         child.add_argument("--stdin-json", action="store_true", required=True)
@@ -575,13 +578,12 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(render_mcp)
 
     agent = commands.add_parser("agent").add_subparsers(dest="action", required=True)
+    _agent_choices = ("codex", "claude-code", "oh-my-pi", "kimi")
     install_agent = agent.add_parser("install")
-    install_agent.add_argument(
-        "--agent", choices=("codex", "claude-code", "oh-my-pi"), required=True
-    )
+    install_agent.add_argument("--agent", choices=_agent_choices, required=True)
     _json_flag(install_agent)
     start_agent = agent.add_parser("start")
-    start_agent.add_argument("--type", choices=("codex", "claude-code", "oh-my-pi"), required=True)
+    start_agent.add_argument("--type", choices=_agent_choices, required=True)
     start_agent.add_argument("--role", required=True)
     start_agent.add_argument("--requirement", required=True)
     start_agent.add_argument("--context", default="")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -154,7 +155,7 @@ def test_agent_configs_are_thin_and_share_session_grant(tmp_path: Path) -> None:
     )
     sessions = AgentSessionService(tmp_path)
 
-    for agent_type in ("codex", "claude-code", "oh-my-pi"):
+    for agent_type in ("codex", "claude-code", "oh-my-pi", "kimi"):
         started = sessions.start(
             agent_type,
             "coder",
@@ -332,6 +333,45 @@ def test_agent_lifecycle_delegates_authorization_and_records_completion(tmp_path
     assert blocked.code == "GATE_PATH_OUT_OF_SCOPE"
     assert completed.data["audit_id"].startswith("AUD-")
     assert stopped.data["status"] == "completed"
+
+
+def test_kimi_render_registers_observation_and_stop_hooks(tmp_path: Path) -> None:
+    requirement_id = _workspace(tmp_path)
+    store = StateStore(tmp_path)
+    store.set("context", "CTX-TEST", {"context_id": "CTX-TEST", "path": "context.md"})
+    store.set(
+        "worktree",
+        "req/example",
+        {
+            "requirement_id": requirement_id,
+            "branch": "req/example",
+            "path": str(tmp_path / "worktree"),
+        },
+    )
+    sessions = AgentSessionService(tmp_path)
+    started = sessions.start(
+        "kimi",
+        "coder",
+        requirement_id,
+        "CTX-TEST",
+        "req/example",
+        ["requirement.read"],
+    )
+    assert started.ok
+
+    rendered = sessions.render(started.data["session_id"])
+    path = Path(rendered.data["files"][0])
+    content = json.loads(path.read_text())
+
+    assert path.name == "kimi.json"
+    assert content["praxis"]["session_id"] == started.data["session_id"]
+    assert set(content["hooks"]) == {"PostToolUse", "Stop"}
+    assert "before-tool" not in content["hooks"]
+    for hooks in content["hooks"].values():
+        command = hooks[0]["command"]
+        assert command.startswith("praxis --root ")
+        assert "--stdin-json --session " + started.data["session_id"] in command
+    assert "lifecycle session-stop" in content["hooks"]["Stop"][0]["command"]
 
 
 def test_artifact_registration_indexes_and_verifies_content(tmp_path: Path) -> None:

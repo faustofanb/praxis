@@ -727,6 +727,37 @@ def test_agent_install_and_launch_cli_preserve_explicit_execution() -> None:
     )
 
 
+def test_agent_cli_accepts_kimi_and_registers_agent_lifecycle_hooks() -> None:
+    install = _parser().parse_args(["agent", "install", "--agent", "kimi"])
+    start = _parser().parse_args(
+        [
+            "agent",
+            "start",
+            "--type",
+            "kimi",
+            "--role",
+            "coder",
+            "--requirement",
+            "REQ-1",
+            "--worktree",
+            "WT-REQ-1--backend",
+            "--capability",
+            "requirement.read",
+        ]
+    )
+    assert _operation(install) == ("agent.install", {"agent_type": "kimi"})
+    assert _operation(start)[0] == "agent.start"
+    assert _operation(start)[1]["context_id"] == ""
+
+    for action in ("before-tool", "after-tool", "session-stop"):
+        hook = _parser().parse_args(
+            ["lifecycle", action, "--stdin-json", "--session", "SES-HOOK"]
+        )
+        assert hook.action == action
+        assert hook.session == "SES-HOOK"
+        assert hook.stdin_json is True
+
+
 def test_agent_start_cli_allows_automatic_context() -> None:
     args = _parser().parse_args(
         [

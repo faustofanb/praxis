@@ -17,8 +17,8 @@ from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService, _array, _quote
 from praxis.worktree.service import resolve_worktree_binding
 
-_AGENT_TYPES = {"codex", "claude-code", "oh-my-pi"}
-_AGENT_COMMANDS = {"codex": "codex", "claude-code": "claude", "oh-my-pi": "pi"}
+_AGENT_TYPES = {"codex", "claude-code", "oh-my-pi", "kimi"}
+_AGENT_COMMANDS = {"codex": "codex", "claude-code": "claude", "oh-my-pi": "pi", "kimi": "kimi"}
 
 
 class AgentSessionService:
@@ -173,6 +173,9 @@ class AgentSessionService:
         elif agent_type == "claude-code":
             path = target / "claude-code.json"
             content = self._json_config(session)
+        elif agent_type == "kimi":
+            path = target / "kimi.json"
+            content = self._json_config(session)
         else:
             path = target / "oh-my-pi.json"
             content = self._json_config(session)
@@ -325,29 +328,37 @@ class AgentSessionService:
                 },
             }
         }
-        if session["agent_type"] == "claude-code":
+        if session["agent_type"] in {"claude-code", "kimi"}:
             base = [
                 "praxis",
                 "--root",
                 str(self.root.resolve()),
                 "lifecycle",
             ]
+            # Kimi 的 PreToolUse stdin 不携带 capability/arguments，before-tool 授权无意义，
+            # 因此只注册观察与收尾事件；claude-code 保留完整三事件生命周期。
+            hook_events = (
+                ("PreToolUse", "PostToolUse", "Stop")
+                if session["agent_type"] == "claude-code"
+                else ("PostToolUse", "Stop")
+            )
+            action_by_event = {
+                "PreToolUse": "before-tool",
+                "PostToolUse": "after-tool",
+                "Stop": "session-stop",
+            }
 
             def hook(event: str) -> dict[str, str]:
                 command = [
                     *base,
-                    event,
+                    action_by_event[event],
                     "--stdin-json",
                     "--session",
                     session["session_id"],
                 ]
                 return {"command": " ".join(command)}
 
-            payload["hooks"] = {
-                "PreToolUse": [hook("before-tool")],
-                "PostToolUse": [hook("after-tool")],
-                "Stop": [hook("session-stop")],
-            }
+            payload["hooks"] = {event: [hook(event)] for event in hook_events}
         return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
     def _handoff(self, session: dict[str, Any]) -> dict[str, Any]:
