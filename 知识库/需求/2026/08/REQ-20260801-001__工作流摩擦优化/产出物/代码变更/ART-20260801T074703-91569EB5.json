@@ -1,0 +1,83 @@
+{
+  "branch": "praxis/REQ-20260801-001__工作流摩擦优化",
+  "diff": {
+    "deletions": 8,
+    "files": 18,
+    "insertions": 577
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:a19f3733171ac572e72382e68b2aada4d2a404bb",
+      "path": ".codex-plugin/plugin.json"
+    },
+    {
+      "content_hash": "blake2b:e039ca953cfa323043f077a242a192f56044e08b",
+      "path": "skills/minimum-module-compile/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:16de6c08cab8533f5e560c3eb50d87d47badc3e1",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:608bbdb6e4884a459cce83d3502184e3ed0d55e0",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:f042a21415c8b1e3d9d444a12bddd2318d028cd8",
+      "path": "src/praxis/agents/service.py"
+    },
+    {
+      "content_hash": "blake2b:e4cc1366f6304167fe7da9481bd782ddddabe8fa",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:a11507635444c1fac97bbe45f4b290ea10401f61",
+      "path": "src/praxis/artifacts/service.py"
+    },
+    {
+      "content_hash": "blake2b:a5f567a96d28073c6afc83b044fc737419dacf48",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:d7c3023bc5ad35db48ee0319b19a5aacbebe5121",
+      "path": "src/praxis/context/service.py"
+    },
+    {
+      "content_hash": "blake2b:fda7c66ce60c72381856c4bc8caab6662e523a19",
+      "path": "src/praxis/documents/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:e74c4eabf3075783620173b0a140fbbe3229cfac",
+      "path": "src/praxis/entrypoints.py"
+    },
+    {
+      "content_hash": "blake2b:b7d028c6e71ce05d1f42101fb183917724c49e40",
+      "path": "src/praxis/knowledge/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:9fa5b40a692c527576533e9fac1b9e5183a63330",
+      "path": "src/praxis/mcp/broker.py"
+    },
+    {
+      "content_hash": "blake2b:4c70d9c2f261119676442f4375a7ae12dc37351d",
+      "path": "src/praxis/mcp/server.py"
+    },
+    {
+      "content_hash": "blake2b:9af7f610d967226f4d68a32f855aca019e36a89b",
+      "path": "src/praxis/naming/requirement.py"
+    },
+    {
+      "content_hash": "blake2b:206765e37a9a2324bc9c175adad750fb60ebd0bf",
+      "path": "src/praxis/worktree/lifecycle.py"
+    },
+    {
+      "content_hash": "blake2b:8a0268e9cf1080c1ede3ae67841bb78cae740f09",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:d2837dc74afce9eff5aa9a1410e3243cf3a9c6b8",
+      "path": "tests/test_workflow_optimization.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260801-001__工作流摩擦优化/REQ-20260801-001__工作流摩擦优化__praxis-next"
+}
