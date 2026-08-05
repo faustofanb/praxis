@@ -1,0 +1,16 @@
+{
+  "agent_type": "kimi",
+  "command": [
+    "kimi"
+  ],
+  "thin_adapter": true,
+  "mcp": {
+    "command": "praxis",
+    "args": [
+      "--root",
+      "/Users/fausto/plugins/praxis-next",
+      "mcp",
+      "serve"
+    ]
+  }
+}

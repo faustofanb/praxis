@@ -1,0 +1,16 @@
+{
+  "agent_type": "oh-my-pi",
+  "command": [
+    "pi"
+  ],
+  "thin_adapter": true,
+  "mcp": {
+    "command": "praxis",
+    "args": [
+      "--root",
+      "/Users/fausto/plugins/praxis-next",
+      "mcp",
+      "serve"
+    ]
+  }
+}
