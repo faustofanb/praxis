@@ -39,6 +39,7 @@ from praxis.skills.routing import (
 )
 from praxis.storage.sqlite import StateStore
 from praxis.tasks.service import TaskService
+from praxis.workspace.claude_integration import ClaudeIntegrationService
 from praxis.workspace.service import Project, WorkspaceService
 from praxis.worktree.lifecycle import WorktreeLifecycle
 from praxis.worktree.service import WorktreeService, resolve_worktree_binding
@@ -199,6 +200,8 @@ class PraxisApplication:
             return Result(True, data={"schema_version": workspace["schema_version"]})
         if operation == "workspace.guidance":
             return AgentGuidanceService(self.root).render()
+        if operation == "workspace.install-claude":
+            return ClaudeIntegrationService(self.root).install()
         if operation == "workspace.add":
             return WorkspaceService(self.root).add_project(
                 values["system_id"],

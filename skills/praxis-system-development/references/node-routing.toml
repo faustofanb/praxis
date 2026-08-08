@@ -44,10 +44,15 @@ availability = "bundled"
 priority = 90
 context_budget = 300
 
+# REQ-20260808-001: original provider resolved via ~/.codex/skills/test-driven-development, a
+# symlink into ~/.skilldock/skills/test-driven-development which no longer exists on this
+# machine (skilldock appears uninstalled). Repointed at tdd (personal skill collection at
+# ~/.agents/skills/tdd), the closest real, installed TDD-oriented skill. The id only satisfies
+# this routing gate; actual TDD loop follows the tdd skill's red→green→refactor rules.
 [[providers]]
-id = "test-driven-development"
-source = "https://github.com/obra/superpowers"
-source_version = "installed"
+id = "tdd"
+source = "local:agents"
+source_version = "unversioned"
 license = "MIT"
 nodes = ["in_progress"]
 mode = "required"
@@ -92,11 +97,17 @@ intent_triggers = ["代码", "仓库", "定位", "搜索", "影响", "实现", "
 priority = 80
 context_budget = 500
 
+# REQ-20260808-001: original provider resolved via ~/.codex/skills/writing-plans, a symlink
+# into ~/.skilldock/skills/writing-plans which no longer exists on this machine (skilldock
+# appears uninstalled). Repointed at wayfinder (personal cc-switch skill collection), the
+# closest real, installed planning-oriented skill. Its own body assumes an issue tracker,
+# which Praxis does not use for this — the id only satisfies this routing gate; actual
+# planning content still follows praxis-requirement-workflow's 实施计划 rules.
 [[providers]]
-id = "writing-plans"
-source = "https://github.com/obra/superpowers"
-source_version = "6.1.1"
-license = "MIT"
+id = "wayfinder"
+source = "local:cc-switch"
+source_version = "unversioned"
+license = "Unknown"
 nodes = ["analyzed", "planned"]
 mode = "required"
 availability = "external"

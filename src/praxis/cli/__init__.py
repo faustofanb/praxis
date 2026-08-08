@@ -45,7 +45,7 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(version)
 
     workspace = commands.add_parser("workspace").add_subparsers(dest="action", required=True)
-    for action in ("inspect", "show", "validate", "guidance"):
+    for action in ("inspect", "show", "validate", "guidance", "install-claude"):
         _json_flag(workspace.add_parser(action))
     bootstrap = workspace.add_parser("bootstrap")
     bootstrap.add_argument("--approve-skills", action="store_true")
