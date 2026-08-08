@@ -1,0 +1,15 @@
+{
+  "branch": "praxis/REQ-20260808-003__清理命令支持merged状态",
+  "diff": {
+    "deletions": 0,
+    "files": 1,
+    "insertions": 2141
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:89707c06a9f9043a6019f0a04e1ae88c956b4e82",
+      "path": "src/praxis/worktree/service.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-003__清理命令支持merged状态/REQ-20260808-003__清理命令支持merged状态__praxis-next"
+}

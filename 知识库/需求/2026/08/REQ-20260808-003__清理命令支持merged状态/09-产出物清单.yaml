@@ -1,2 +1,9 @@
 需求编号: REQ-20260808-003
-产出物: []
+产出物:
+  - 产出物编号: ART-20260808T142138-488AF522
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-003__清理命令支持merged状态/REQ-20260808-003__清理命令支持merged状态__praxis-next/src/praxis/worktree/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-003__清理命令支持merged状态/产出物/代码变更/ART-20260808T142138-488AF522.json
+    源内容哈希: blake2b:89707c06a9f9043a6019f0a04e1ae88c956b4e82
+    归档内容哈希: blake2b:68b517b2a7dc43c46a26f764bc759d004254870c
