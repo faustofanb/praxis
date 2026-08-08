@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from datetime import UTC, datetime
 from hashlib import blake2b
@@ -43,11 +44,16 @@ class PortraitService:
             runtime = redact_runtime_data(runtime_result.data)
 
         technology_stack, evidence = self._technology(files, repo)
-        build_commands, test_commands = self._commands(project, files)
+        build_commands, test_commands, lint_commands, typecheck_commands = (
+            self._commands(project, repo, files)
+        )
         branches = self._branches(repo)
         entrypoints = self._entrypoints(files)
         interface_surfaces = self._interface_surfaces(files)
         data_and_config_assets = self._data_and_config_assets(files)
+        module_structure = self._module_structure(project, repo, files)
+        rule_summary = self._rule_summary(repo)
+        subrepo_skills = self._discover_subrepo_skills(project.id, repo)
         deployment_commands = list(project.deployment_commands)
         if "Dockerfile" in files:
             deployment_commands.append("docker build .")
@@ -73,9 +79,12 @@ class PortraitService:
             "entrypoints": entrypoints,
             "interface_surfaces": interface_surfaces,
             "data_and_config_assets": data_and_config_assets,
+            "module_structure": module_structure,
+            "rule_summary": rule_summary,
+            "subrepo_skills": subrepo_skills,
             "build_commands": build_commands,
-            "lint_commands": list(project.lint_commands),
-            "typecheck_commands": list(project.typecheck_commands),
+            "lint_commands": list(dict.fromkeys([*project.lint_commands, *lint_commands])),
+            "typecheck_commands": list(dict.fromkeys([*project.typecheck_commands, *typecheck_commands])),
             "test_commands": test_commands,
             "deployment_commands": list(dict.fromkeys(deployment_commands)),
             "database_connections": list(project.database_connections),
@@ -249,9 +258,13 @@ class PortraitService:
         ]
 
     @staticmethod
-    def _commands(project: Project, files: set[str]) -> tuple[list[str], list[str]]:
+    def _commands(
+        project: Project, repo: Path, files: set[str]
+    ) -> tuple[list[str], list[str]]:
         build: list[str] = []
         tests = list(project.test_commands)
+        lint = list(project.lint_commands)
+        typecheck = list(project.typecheck_commands)
         if "pom.xml" in files:
             build.append("mvn package")
             tests = tests or ["mvn test"]
@@ -259,9 +272,164 @@ class PortraitService:
             build.append("uv build")
             tests = tests or ["uv run pytest"]
         if "package.json" in files:
-            build.append("npm run build")
-            tests = tests or ["npm test"]
-        return build, tests
+            package_path = repo / "package.json"
+            if package_path.is_file():
+                try:
+                    package = json.loads(
+                        package_path.read_text(encoding="utf-8", errors="ignore")
+                    )
+                    manager = str(package.get("packageManager", "")).split("@")[0]
+                    prefix = "pnpm" if manager == "pnpm" else "npm"
+                    scripts = package.get("scripts", {})
+                    build.extend(PortraitService._semantic_scripts(prefix, scripts, "build"))
+                    if not tests:
+                        tests = PortraitService._semantic_scripts(prefix, scripts, "test")
+                    if not lint:
+                        lint = PortraitService._semantic_scripts(prefix, scripts, "lint")
+                    if not typecheck:
+                        typecheck = PortraitService._semantic_scripts(prefix, scripts, "type")
+                except json.JSONDecodeError:
+                    build.append("npm run build")
+                    tests = tests or ["npm test"]
+            else:
+                build.append("npm run build")
+                tests = tests or ["npm test"]
+        # CLAUDE.md/AGENTS.md 常用命令段补充
+        rule_commands = PortraitService._rule_commands(repo)
+        for command in rule_commands:
+            if command not in build:
+                build.append(command)
+            if command not in tests:
+                tests.append(command)
+        return (
+            list(dict.fromkeys(build)),
+            list(dict.fromkeys(tests)),
+            list(dict.fromkeys(lint)),
+            list(dict.fromkeys(typecheck)),
+        )
+
+    @staticmethod
+    def _semantic_scripts(prefix: str, scripts: dict[str, Any], kind: str) -> list[str]:
+        exact = {"build": "build", "test": "test", "lint": "lint", "type": "check:type"}
+        targets = [exact[kind]]
+        if kind in {"build", "test", "lint"}:
+            targets.append(f"{kind}:")
+        matches = [
+            name
+            for name in sorted(scripts)
+            if name == exact[kind] or name.startswith(f"{exact[kind]}:")
+        ]
+        return [f"{prefix} {name}" for name in matches][:3]
+
+    @staticmethod
+    def _rule_commands(repo: Path) -> list[str]:
+        found: list[str] = []
+        for rule_file in ("CLAUDE.md", "AGENTS.md"):
+            path = repo / rule_file
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for block in re.findall(r"```(?:bash|sh)?\n(.*?)```", text, re.DOTALL):
+                for line in block.splitlines():
+                    stripped = line.strip()
+                    if re.match(r"^(mvn|pnpm|npm|uv)\s", stripped):
+                        found.append(stripped)
+        return found[:5]
+
+    @staticmethod
+    def _module_structure(project: Project, repo: Path, files: set[str]) -> list[str]:
+        modules: list[str] = []
+        if "pom.xml" in files:
+            pom = repo / "pom.xml"
+            if pom.is_file():
+                text = pom.read_text(encoding="utf-8", errors="ignore")
+                modules = [
+                    name.strip()
+                    for name in re.findall(r"<module>(.*?)</module>", text)
+                    if not name.strip().startswith("<!--")
+                ]
+        return modules
+
+    @staticmethod
+    def _rule_summary(repo: Path) -> str:
+        for rule_file in ("CLAUDE.md", "AGENTS.md"):
+            path = repo / rule_file
+            if not path.is_file():
+                continue
+            lines = [
+                line.strip()
+                for line in path.read_text(encoding="utf-8", errors="ignore").splitlines()
+                if line.strip() and not line.startswith("```")
+            ]
+            return "\n".join(lines[:5])[:300]
+        return ""
+
+    def _discover_subrepo_skills(self, project_id: str, repo: Path) -> list[str]:
+        """Discover SKILL.md files inside a sub-repository and register them into the
+        workspace knowledge/skills/business catalog so the skill router can route to them."""
+        from praxis.skills.importer import SkillImportService
+
+        workspace = WorkspaceService(self.root).load()
+        catalog = (
+            self.root / workspace["knowledge_root"] / "skills" / "business"
+        )
+        discovered: list[str] = []
+        for skills_root in ("skills", "docs/skills", ".cursor/skills"):
+            root = repo / skills_root
+            if not root.is_dir():
+                continue
+            for skill_md in sorted(root.glob("*/SKILL.md")):
+                try:
+                    content = skill_md.read_bytes()
+                except OSError:
+                    continue
+                import hashlib
+
+                skill_toml = skill_md.parent / "skill.toml"
+                toml_id = ""
+                if skill_toml.is_file():
+                    try:
+                        import tomllib
+
+                        toml_id = tomllib.loads(
+                            skill_toml.read_text(encoding="utf-8", errors="ignore")
+                        ).get("id", "")
+                    except (ValueError, OSError):
+                        toml_id = ""
+                skill_id = toml_id or f"business.{project_id}.{skill_md.parent.name}"
+                target_dir = catalog / skill_id
+                if target_dir.is_dir() and (target_dir / "SKILL.md").is_file():
+                    existing = (target_dir / "SKILL.md").read_bytes()
+                    if existing == content:
+                        discovered.append(skill_id)
+                        continue
+                target_dir.mkdir(parents=True, exist_ok=True)
+                (target_dir / "SKILL.md").write_bytes(content)
+                if skill_toml.is_file():
+                    (target_dir / "skill.toml").write_bytes(
+                        skill_toml.read_bytes()
+                    )
+                else:
+                    # 子仓库只带标准 SKILL.md（无 skill.toml）时，补最小注册清单，
+                    # 否则 SkillRegistry 无法解析该技能。
+                    (target_dir / "skill.toml").write_text(
+                        f'id = "{skill_id}"\n'
+                        'type = "business"\n'
+                        'version = "1.0.0"\n'
+                        'license = "Proprietary"\n'
+                        f'source = "subrepo:{project_id}"\n'
+                        'source_version = "1"\n'
+                        'risk = "none"\n'
+                        "context_budget = 500\n"
+                        "required_tools = []\n"
+                        "triggers = []\n"
+                        "systems = []\n"
+                        "projects = []\n"
+                        "repository_roles = []\n",
+                        encoding="utf-8",
+                    )
+                discovered.append(skill_id)
+        return sorted(discovered)
 
     @staticmethod
     def _entrypoints(files: set[str]) -> list[str]:
@@ -345,6 +513,18 @@ class PortraitService:
             "## 技术栈",
             "",
             *(f"- {item}" for item in data["technology_stack"]),
+            "",
+            "## 模块结构与关键目录",
+            "",
+            *(f"- 模块：`{item}`" for item in data["module_structure"]),
+            "",
+            "## 仓库规则摘要",
+            "",
+            *([data["rule_summary"]] if data["rule_summary"] else ["（无规则文件）"]),
+            "",
+            "## 子仓库技能",
+            "",
+            *(f"- `{item}`" for item in data["subrepo_skills"]),
             "",
             "## 工程入口与接口面",
             "",
