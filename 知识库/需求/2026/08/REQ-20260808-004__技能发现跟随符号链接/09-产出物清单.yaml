@@ -1,2 +1,16 @@
 需求编号: REQ-20260808-004
-产出物: []
+产出物:
+  - 产出物编号: ART-20260808T144846-6E4F12EC
+    类型: 测试报告
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-004__技能发现跟随符号链接/REQ-20260808-004__技能发现跟随符号链接__praxis-next/tests/test_skill_discovery.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-004__技能发现跟随符号链接/产出物/测试报告/ART-20260808T144846-6E4F12EC__test_skill_discovery.py
+    源内容哈希: blake2b:797c6c7265857cabc07f514e067ea7d1d683e5fc
+    归档内容哈希: blake2b:797c6c7265857cabc07f514e067ea7d1d683e5fc
+  - 产出物编号: ART-20260808T144846-C75B91D3
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-004__技能发现跟随符号链接/REQ-20260808-004__技能发现跟随符号链接__praxis-next/src/praxis/skills/routing.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-004__技能发现跟随符号链接/产出物/代码变更/ART-20260808T144846-C75B91D3.json
+    源内容哈希: blake2b:20c0938422447162494aa717617a04a3443c6efe
+    归档内容哈希: blake2b:e52d98eb2f687673a675eb2ebc10983353392e4d

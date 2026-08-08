@@ -1,0 +1,15 @@
+{
+  "branch": "praxis/REQ-20260808-004__技能发现跟随符号链接",
+  "diff": {
+    "deletions": 0,
+    "files": 1,
+    "insertions": 904
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:20c0938422447162494aa717617a04a3443c6efe",
+      "path": "src/praxis/skills/routing.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-004__技能发现跟随符号链接/REQ-20260808-004__技能发现跟随符号链接__praxis-next"
+}
