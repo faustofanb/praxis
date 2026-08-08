@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import tomllib
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
@@ -379,21 +380,33 @@ class NodeSkillRouter:
         for root in roots:
             if not root.is_dir():
                 continue
-            for path in sorted(root.rglob("SKILL.md")):
-                try:
-                    content = path.read_bytes()
-                except OSError:
+            # rglob does not follow directory symlinks; walk with followlinks so
+            # cc-switch-style symlinked skill collections are discovered. A seen
+            # set of resolved real paths guards against symlink cycles.
+            seen: set[str] = set()
+            for current, _, files in os.walk(root, followlinks=True):
+                real = os.path.realpath(current)
+                if real in seen:
                     continue
-                skill_id = NodeSkillRouter._skill_name(content) or path.parent.name
-                if skill_id in _EXCLUDED_PROVIDER_IDS:
-                    continue
-                installed.setdefault(
-                    skill_id,
-                    {
-                        "path": str(path),
-                        "content_hash": hashlib.sha256(content).hexdigest(),
-                    },
-                )
+                seen.add(real)
+                for name in sorted(files):
+                    if name != "SKILL.md":
+                        continue
+                    path = Path(current) / name
+                    try:
+                        content = path.read_bytes()
+                    except OSError:
+                        continue
+                    skill_id = NodeSkillRouter._skill_name(content) or path.parent.name
+                    if skill_id in _EXCLUDED_PROVIDER_IDS:
+                        continue
+                    installed.setdefault(
+                        skill_id,
+                        {
+                            "path": str(path),
+                            "content_hash": hashlib.sha256(content).hexdigest(),
+                        },
+                    )
         return installed
 
     def provider_diagnostics(self) -> dict[str, Any]:
