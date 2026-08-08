@@ -16,10 +16,10 @@ from praxis.fastlane.diagnostics import (
     normalize_diagnostics,
 )
 from praxis.fastlane.service import (
-    FastLaneService,
     _BASELINE_SCOPE,
     _RISK_CODE,
     _TEST_PATH,
+    FastLaneService,
 )
 from praxis.governance.service import ApprovalService
 from praxis.integrations.process import ProcessRunner

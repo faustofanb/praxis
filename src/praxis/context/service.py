@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from hashlib import blake2b
@@ -230,7 +231,8 @@ class ContextCompiler:
                 + "\n禁止路径："
                 + (", ".join(request.forbidden_paths) or ".git, .praxis, .env")
                 + "\n自动安全门禁：修改范围、秘密和工作树绑定"
-                + "\n主仓库无 binding 且检测到业务代码改动时，pre-commit 阻断并提示‘请走 praxis 工作树’"
+                + "\n主仓库无 binding 且检测到业务代码改动时，pre-commit 阻断"
+                + "  并提示‘请走 praxis 工作树’"
                 + "\n需用户明确批准：质量复核、类型检查和测试",
                 0,
             ),
@@ -433,6 +435,72 @@ class ContextCompiler:
     def show(self, context_id: str) -> Result:
         data = self.store.get("context", context_id)
         return Result(bool(data), "OK" if data else "CONTEXT_NOT_FOUND", data=data or {})
+
+    def cleanup_for_requirement(
+        self,
+        requirement_id: str,
+        *,
+        dry_run: bool = True,
+    ) -> Result:
+        """Remove context packages and records belonging to a requirement.
+
+        Deletes matching CTX-* files under the generated context root plus the
+        ``context``/``context_current``/``context_previous`` state rows. In dry-run
+        mode only the plan is returned; nothing is deleted.
+        """
+        matching: dict[str, dict[str, Any]] = {}
+        for scope in ("context", "context_current", "context_previous"):
+            for key, record in self.store.list_scope_keys(scope):
+                if record.get("requirement_id") == requirement_id:
+                    matching[key] = record
+        by_context: dict[str, dict[str, Any]] = {}
+        for key, record in sorted(matching.items()):
+            context_id = str(record.get("context_id") or key)
+            path = self._path(context_id)
+            by_context.setdefault(
+                context_id,
+                {
+                    "key": key,
+                    "context_id": context_id,
+                    "path": str(path),
+                    "exists": path.is_file(),
+                },
+            )
+        entries = list(by_context.values())
+        if dry_run:
+            return Result(
+                True,
+                data={"dry_run": True, "requirement_id": requirement_id, "contexts": entries},
+            )
+        removed: list[dict[str, Any]] = []
+        for key, record in matching.items():
+            context_id = str(record.get("context_id") or key)
+            path = self._path(context_id)
+            with suppress(OSError):
+                if path.is_file():
+                    path.unlink()
+            for scope in ("context", "context_current", "context_previous"):
+                self.store.delete(scope, key)
+            removed.append({"key": key, "context_id": context_id, "path": str(path)})
+            self.store.audit(
+                "context.cleaned",
+                "OK",
+                {"requirement_id": requirement_id, "context_id": context_id},
+            )
+        if not removed:
+            self.store.audit(
+                "context.cleaned",
+                "OK",
+                {"requirement_id": requirement_id, "contexts": 0},
+            )
+        return Result(
+            True,
+            data={
+                "dry_run": False,
+                "requirement_id": requirement_id,
+                "contexts": removed,
+            },
+        )
 
     def diff(self, context_id: str, previous_context_id: str) -> Result:
         current = self.store.get("context", context_id)

@@ -83,7 +83,30 @@ class RequirementService:
                 return complete
         record = self.store.transition_requirement(requirement_id, target)
         self.repair_projections()
-        return Result(True, data={"requirement_id": requirement_id, "status": record["status"]})
+        data = {"requirement_id": requirement_id, "status": record["status"]}
+        if target in {RequirementStatus.ARCHIVED, RequirementStatus.CANCELLED}:
+            cleanup = self._cleanup_derived_resources(requirement_id)
+            data["cleanup"] = cleanup.data if cleanup.ok else {"error": cleanup.code}
+        return Result(True, data=data)
+
+    def _cleanup_derived_resources(self, requirement_id: str) -> Result:
+        from praxis.context.service import ContextCompiler
+        from praxis.worktree.service import WorktreeService
+
+        worktrees = WorktreeService(self.root).cleanup_for_requirement(
+            requirement_id, dry_run=False
+        )
+        contexts = ContextCompiler(self.root).cleanup_for_requirement(
+            requirement_id, dry_run=False
+        )
+        if not worktrees.ok:
+            return worktrees
+        if not contexts.ok:
+            return contexts
+        return Result(
+            True,
+            data={"worktrees": worktrees.data, "contexts": contexts.data},
+        )
 
     def advance(self, requirement_id: str) -> Result:
         preview = self.preview_advance(requirement_id)

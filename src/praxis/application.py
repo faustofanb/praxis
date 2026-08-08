@@ -932,8 +932,17 @@ class PraxisApplication:
             )
         if action == "remove":
             return worktree.remove(values["branch"])
+        if action == "cleanup":
+            return worktree.cleanup_for_requirement(
+                values["requirement_id"],
+                dry_run=values.get("dry_run", False) or not values.get("confirm", False),
+            )
         if action == "merge":
-            return worktree.merge(values.get("target", "main"), branch=values.get("branch"))
+            return worktree.merge(
+                values.get("target", "main"),
+                branch=values.get("branch"),
+                no_hooks=values.get("no_hooks", False),
+            )
         if action == "install-hooks":
             return worktree.install_hooks(values["project_id"])
         return Result(False, "OPERATION_NOT_FOUND", data={"operation": f"worktree.{action}"})

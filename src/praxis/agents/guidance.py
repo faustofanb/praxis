@@ -43,8 +43,10 @@ class AgentGuidanceService:
             "",
             f"- 工作空间：`{facts['id']}`（{facts['name']}）",
             f"- 权威知识库：`{facts['knowledge_root']}`；聊天记录不能替代需求文档。",
-            "- Praxis 操作优先使用已提供的 Praxis MCP；MCP 不可用时才检查可解析的 `praxis` CLI。",
-            "- 当前入口由 context 注入；MCP 不可用时先执行 `praxis doctor --json` 查看 CLI fallback.path，"
+            "- Praxis 操作优先使用已提供的 Praxis MCP；"
+            "MCP 不可用时才检查可解析的 `praxis` CLI。",
+            "- 当前入口由 context 注入；MCP 不可用时先执行 "
+            "`praxis doctor --json` 查看 CLI fallback.path，"
             "CLI 可解析但 MCP 会话缺失时使用该路径。",
             "- 项目包装脚本只有在当前工作区明确声明且文件存在时才允许调用；",
             "  禁止凭历史上下文推断 `scripts/codex/task.py` 或其他仓库相对入口。",
@@ -68,7 +70,8 @@ class AgentGuidanceService:
             "- 首次生成的简称快照保持稳定；后续标题变化不自动迁移路径或分支，旧 binding 必须",
             "  使用正式迁移命令。阶段名称不得进入目录或分支。",
             "- 禁止在工作空间根目录或未绑定目录修改业务代码。",
-            "- pre-commit 在主仓库无 binding 且检测到业务代码改动时阻断，并提示‘请走 praxis 工作树’。",
+            "- pre-commit 在主仓库无 binding 且检测到业务代码改动时阻断，"
+            "  并提示‘请走 praxis 工作树’。",
             "- Git 工作树与 binding active 后即可编码；CodeGraph 后台排队，普通文本搜索默认",
             "  使用 `rg`（不是 `grep` 或“rg-grep”）；RTK 可用时使用 `rtk rg`，",
             "  低风险局部任务才允许回退。",
@@ -133,12 +136,15 @@ class AgentGuidanceService:
             "  “别写测试脚本”时，单文件且无数据库结构、API 契约或公共接口变更的修改进入 fast_fix，",
             "  并在执行扩展前记录 `mode=fast_fix`、`tests=declined_by_user`、",
             "  `compile=not_requested`、`scope=target_file_only`。",
-            "- fast_fix 默认不运行测试、编译、全量类型检查和质量复核；只查看目标代码及一个相似写法、",
+            "- fast_fix 默认不运行测试、编译、全量类型检查和质量复核；"
+            "  只查看目标代码及一个相似写法、",
             "  修改目标文件、做一次与风险直接相关的检查，并如实汇报未执行的验证。",
-            "- 证据按工作树、HEAD 和目标文件指纹缓存；指纹未变化时必须复用 CodeGraph、模块编译、",
+            "- 证据按工作树、HEAD 和目标文件指纹缓存；指纹未变化时必须复用 "
+            "  CodeGraph、模块编译、",
             "  类型错误基线、接口签名、SQL 结构和调用路径证据，不得重复查询或机械重跑。",
             "- 极小修改预算为 0–2 条命令、1–2 分钟；单页面或单方法小修复为 3–5 条命令、",
-            "  3–5 分钟。超过软预算必须先说明新增命令消除什么新风险；fast_fix 超过 5 条命令或 3 分钟",
+            "  3–5 分钟。超过软预算必须先说明新增命令消除什么新风险；"
+            "  fast_fix 超过 5 条命令或 3 分钟",
             "  时停止并说明原因。",
             "- fast_fix 收尾使用一次 `praxis fix record <需求ID> --file <文件> "
             "--verification <declined|direct> --reason <原因>`；该命令一次登记验证省略、证据、",

@@ -4,10 +4,11 @@ import re
 import shlex
 import shutil
 import subprocess
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator
+from typing import Any
 
 from praxis.artifacts.service import ArtifactService
 from praxis.documents.atomic_writer import atomic_write_text
@@ -863,7 +864,8 @@ class FastLaneService:
             yield
             return
         status = self._git_output(
-            repository, ["status", "--porcelain", "--untracked-files=all", "--", relative.as_posix()]
+            repository,
+            ["status", "--porcelain", "--untracked-files=all", "--", relative.as_posix()],
         )
         if not status or any(not line.startswith("?? ") for line in status.splitlines()):
             yield

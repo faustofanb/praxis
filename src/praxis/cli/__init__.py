@@ -388,9 +388,15 @@ def _parser() -> argparse.ArgumentParser:
     remove_worktree = worktree.add_parser("remove")
     remove_worktree.add_argument("branch")
     _json_flag(remove_worktree)
+    cleanup_worktree = worktree.add_parser("cleanup")
+    cleanup_worktree.add_argument("requirement_id")
+    cleanup_worktree.add_argument("--dry-run", action="store_true")
+    cleanup_worktree.add_argument("--confirm", action="store_true")
+    _json_flag(cleanup_worktree)
     merge = worktree.add_parser("merge")
     merge.add_argument("target", nargs="?", default="main")
     merge.add_argument("--branch")
+    merge.add_argument("--no-hooks", action="store_true")
     _json_flag(merge)
     hooks = worktree.add_parser("install-hooks")
     hooks.add_argument("--project", required=True)
@@ -1002,6 +1008,18 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             return "worktree.status", {
                 "binding_id": args.binding,
                 "worktree": args.worktree,
+            }
+        if args.action == "cleanup":
+            return "worktree.cleanup", {
+                "requirement_id": args.requirement_id,
+                "dry_run": args.dry_run,
+                "confirm": args.confirm,
+            }
+        if args.action == "merge":
+            return "worktree.merge", {
+                "target": args.target,
+                "branch": args.branch,
+                "no_hooks": args.no_hooks,
             }
         keys = ("branch", "target")
         return f"worktree.{args.action}", {key: values[key] for key in keys if key in values}

@@ -1958,7 +1958,111 @@ class WorktreeService:
             )
         return result
 
-    def merge(self, target: str, *, branch: str | None = None) -> Result:
+    def cleanup_for_requirement(
+        self,
+        requirement_id: str,
+        *,
+        dry_run: bool = True,
+    ) -> Result:
+        """Remove all derived worktree resources belonging to a requirement.
+
+        Enumerates bindings by ``requirement_id`` (including legacy branch-keyed
+        orphans), applies fail-closed safety checks (binding status, merged branch,
+        clean worktree), then removes worktree, branch, and binding per entry.
+        In dry-run mode only the plan is returned; nothing is deleted.
+        """
+        store = StateStore(self.root)
+        workspace = WorkspaceService(self.root)
+        from praxis.context.service import ContextCompiler
+
+        context_result = ContextCompiler(self.root).cleanup_for_requirement(
+            requirement_id, dry_run=dry_run
+        )
+        contexts = context_result.data["contexts"] if context_result.ok else []
+        bindings = [
+            (key, record)
+            for key, record in store.list_scope_keys("worktree")
+            if record.get("requirement_id") == requirement_id
+        ]
+        worktrees: list[dict[str, Any]] = []
+        for key, binding in bindings:
+            branch = str(binding.get("branch") or key)
+            project = workspace.project(str(binding.get("repository_id", "")))
+            repo = (self.root / project.path).resolve() if project else self.root
+            entry: dict[str, Any] = {
+                "binding_id": key,
+                "branch": branch,
+                "path": binding.get("repository_path", binding.get("path", "")),
+                "action": "remove",
+            }
+            if binding.get("status") != "active":
+                entry.update(action="blocked", reason="binding_status_not_active")
+                worktrees.append(entry)
+                continue
+            merged = self._git(
+                ["branch", "--merged", project.default_branch],
+                cwd=repo,
+                failure_code="WORKTREE_MERGED_CHECK_FAILED",
+            )
+            if not merged.ok:
+                entry.update(action="blocked", reason="merged_check_failed")
+                worktrees.append(entry)
+                continue
+            if branch not in merged.data.get("stdout", ""):
+                entry.update(action="blocked", reason="unmerged")
+                worktrees.append(entry)
+                continue
+            worktrees.append(entry)
+        if dry_run:
+            return Result(
+                True,
+                data={
+                    "dry_run": True,
+                    "requirement_id": requirement_id,
+                    "worktrees": worktrees,
+                    "contexts": contexts,
+                },
+            )
+        removed: list[dict[str, Any]] = []
+        blocked: list[dict[str, Any]] = []
+        for entry in worktrees:
+            if entry["action"] != "remove":
+                blocked.append(entry)
+                continue
+            result = self.remove(entry["branch"])
+            if result.ok:
+                entry.update(removed=True)
+                removed.append(entry)
+            else:
+                entry.update(removed=False, error=result.code)
+                blocked.append(entry)
+        store.audit(
+            "worktree.cleaned",
+            "OK" if not blocked else "PARTIAL",
+            {
+                "requirement_id": requirement_id,
+                "removed": removed,
+                "blocked": blocked,
+                "contexts": contexts,
+            },
+        )
+        return Result(
+            True,
+            data={
+                "dry_run": False,
+                "requirement_id": requirement_id,
+                "worktrees": [*removed, *blocked],
+                "contexts": contexts,
+            },
+        )
+
+    def merge(
+        self,
+        target: str,
+        *,
+        branch: str | None = None,
+        no_hooks: bool = False,
+    ) -> Result:
         store = StateStore(self.root)
         resolved = resolve_worktree_binding(store, branch) if branch else None
         binding = resolved[1] if resolved else None
@@ -1968,6 +2072,8 @@ class WorktreeService:
             # Worktrunk 0.68.0 can panic while its merge command backgrounds cleanup
             # for a Unicode worktree name. Its explicit remove command is Unicode-safe.
             arguments.append("--no-remove")
+        if no_hooks:
+            arguments.append("--no-hooks")
         result = self._execute(arguments, cwd=cwd)
         if result.ok and resolved is not None:
             binding = resolved[1]

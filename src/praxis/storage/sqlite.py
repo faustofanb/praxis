@@ -272,6 +272,13 @@ class StateStore:
             ).fetchall()
         return [json.loads(row[0]) for row in rows]
 
+    def list_scope_keys(self, scope: str) -> list[tuple[str, dict[str, Any]]]:
+        with self._connect() as database:
+            rows = database.execute(
+                "select key, value from runtime_state where scope=? order by key", (scope,)
+            ).fetchall()
+        return [(row[0], json.loads(row[1])) for row in rows]
+
     def audit(self, event: str, code: str, details: dict[str, Any]) -> str:
         with self._connect() as database:
             database.execute("begin immediate")
