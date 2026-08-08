@@ -1,0 +1,15 @@
+{
+  "branch": "praxis/REQ-20260808-002__需求工作树与上下文包清理",
+  "diff": {
+    "deletions": 0,
+    "files": 1,
+    "insertions": 2133
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:1c6cb210297d6804a4ea46cf1752b644626de19b",
+      "path": "src/praxis/worktree/service.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-002__需求工作树与上下文包清理/REQ-20260808-002__需求工作树与上下文包清理__praxis-next"
+}

@@ -1,2 +1,23 @@
 需求编号: REQ-20260808-002
-产出物: []
+产出物:
+  - 产出物编号: ART-20260808T141215-C387732E
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-002__需求工作树与上下文包清理/REQ-20260808-002__需求工作树与上下文包清理__praxis-next/src/praxis/worktree/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-002__需求工作树与上下文包清理/产出物/代码变更/ART-20260808T141215-C387732E.json
+    源内容哈希: blake2b:1c6cb210297d6804a4ea46cf1752b644626de19b
+    归档内容哈希: blake2b:74c1ea2b349fc170ffacd12a0a74dbe4ccbecae9
+  - 产出物编号: ART-20260808T141218-5DD1AAE7
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-002__需求工作树与上下文包清理/REQ-20260808-002__需求工作树与上下文包清理__praxis-next/src/praxis/context/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-002__需求工作树与上下文包清理/产出物/代码变更/ART-20260808T141218-5DD1AAE7.json
+    源内容哈希: blake2b:0189828c071695dd2eb1d228fab6b1bbbb78c9e6
+    归档内容哈希: blake2b:17096abf1449d75fce582836a6235cb6e0ba5a46
+  - 产出物编号: ART-20260808T141218-F26DDE17
+    类型: 测试报告
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-002__需求工作树与上下文包清理/REQ-20260808-002__需求工作树与上下文包清理__praxis-next/tests/test_worktree_cleanup.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-002__需求工作树与上下文包清理/产出物/测试报告/ART-20260808T141218-F26DDE17__test_worktree_cleanup.py
+    源内容哈希: blake2b:3ac36a33717300419c73d282939499d53d7745d4
+    归档内容哈希: blake2b:3ac36a33717300419c73d282939499d53d7745d4
