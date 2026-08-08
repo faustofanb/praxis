@@ -10,3 +10,8 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+/.claude/skills/
+/.claude/hooks/praxis-binding-guard.sh
+
+# 生成内容（派生产物，不纳入版本控制）
+生成内容/
