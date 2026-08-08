@@ -1,2 +1,16 @@
 需求编号: REQ-20260808-005
-产出物: []
+产出物:
+  - 产出物编号: ART-20260808T151832-3B98E041
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-005__画像增强与子仓库技能命令利用/REQ-20260808-005__画像增强与子仓库技能命令利用__praxis-next/src/praxis/portraits/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-005__画像增强与子仓库技能命令利用/产出物/代码变更/ART-20260808T151832-3B98E041.json
+    源内容哈希: blake2b:a91c0ee73471ae91676d3e9bddaeb489e314b15d
+    归档内容哈希: blake2b:e2fb06c0fbe36595c9f94986ced9a7427dbddb1c
+  - 产出物编号: ART-20260808T151832-E9C2474B
+    类型: 测试报告
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-005__画像增强与子仓库技能命令利用/REQ-20260808-005__画像增强与子仓库技能命令利用__praxis-next/tests/test_portrait_enhanced.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260808-005__画像增强与子仓库技能命令利用/产出物/测试报告/ART-20260808T151832-E9C2474B__test_portrait_enhanced.py
+    源内容哈希: blake2b:47bbb60508b7319d5bd6396e740a59d6c08a407b
+    归档内容哈希: blake2b:47bbb60508b7319d5bd6396e740a59d6c08a407b

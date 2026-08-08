@@ -1,0 +1,15 @@
+{
+  "branch": "praxis/REQ-20260808-005__画像增强与子仓库技能命令利用",
+  "diff": {
+    "deletions": 0,
+    "files": 1,
+    "insertions": 570
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:a91c0ee73471ae91676d3e9bddaeb489e314b15d",
+      "path": "src/praxis/portraits/service.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260808-005__画像增强与子仓库技能命令利用/REQ-20260808-005__画像增强与子仓库技能命令利用__praxis-next"
+}
