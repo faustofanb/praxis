@@ -211,3 +211,37 @@ def test_cleanup_skips_binding_with_unmerged_branch(tmp_path: Path) -> None:
     assert "unmerged" in result.data["worktrees"][0]["reason"]
     assert repository_path.exists()
     assert StateStore(tmp_path).get("worktree", f"WT-{requirement_id}--backend")
+
+
+def test_cleanup_allows_merged_binding(tmp_path: Path) -> None:
+    """Merge 后 binding 为 merged 状态（工作树已删、分支已合并），应允许清理而非阻断。"""
+    requirement_id = _init_workspace(tmp_path)
+    workspace_path, repository_path = _bind_worktree(
+        tmp_path, requirement_id, status="merged"
+    )
+    context_id = _build_context(tmp_path, requirement_id)
+
+    def run(command, cwd, environment):
+        if command[0] == "wt":
+            repository_path.rmdir()
+            return subprocess.CompletedProcess(
+                command, 0, '{"items": [{"branch_deleted": true}]}', ""
+            )
+        if command[:3] == ["git", "branch", "--merged"]:
+            return subprocess.CompletedProcess(
+                command, 0, f"  praxis/{requirement_id}\n", ""
+            )
+        if command[:3] == ["git", "branch", "--list"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        raise AssertionError(command)
+
+    result = WorktreeService(tmp_path, run=run).cleanup_for_requirement(
+        requirement_id, dry_run=False
+    )
+
+    assert result.ok
+    assert result.data["worktrees"][0]["action"] == "remove"
+    assert result.data["worktrees"][0]["removed"] is True
+    assert not workspace_path.exists()
+    assert StateStore(tmp_path).get("worktree", f"WT-{requirement_id}--backend") is None
+    assert not (tmp_path / "生成内容" / "上下文包" / f"{context_id}.md").exists()

@@ -1995,7 +1995,7 @@ class WorktreeService:
                 "path": binding.get("repository_path", binding.get("path", "")),
                 "action": "remove",
             }
-            if binding.get("status") != "active":
+            if binding.get("status") not in {"active", "merged"}:
                 entry.update(action="blocked", reason="binding_status_not_active")
                 worktrees.append(entry)
                 continue
