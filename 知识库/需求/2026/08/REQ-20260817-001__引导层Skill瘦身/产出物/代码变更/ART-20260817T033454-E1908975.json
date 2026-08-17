@@ -1,0 +1,27 @@
+{
+  "branch": "praxis/REQ-20260817-001__引导层Skill瘦身",
+  "diff": {
+    "deletions": 378,
+    "files": 4,
+    "insertions": 147
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:efa658db56ecbc1dd7b8df66be750e458ca46fff",
+      "path": "AGENTS.md"
+    },
+    {
+      "content_hash": "blake2b:b32b1df93994add03cbd623fc3a89af3f4446000",
+      "path": "CLAUDE.md"
+    },
+    {
+      "content_hash": "blake2b:701007c6015747fdf9d2af2cf0d338921c965b8a",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:4f4d95ad9cc9562b00badf4eab426126c402de6d",
+      "path": "tests/test_agent_guidance.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260817-001__引导层Skill瘦身/REQ-20260817-001__引导层Skill瘦身__praxis-next"
+}

@@ -1,2 +1,9 @@
 需求编号: REQ-20260817-001
-产出物: []
+产出物:
+  - 产出物编号: ART-20260817T033454-E1908975
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260817-001__引导层Skill瘦身/REQ-20260817-001__引导层Skill瘦身__praxis-next/src/praxis/agents/guidance.py
+    归档路径: 知识库/需求/2026/08/REQ-20260817-001__引导层Skill瘦身/产出物/代码变更/ART-20260817T033454-E1908975.json
+    源内容哈希: blake2b:701007c6015747fdf9d2af2cf0d338921c965b8a
+    归档内容哈希: blake2b:2a2dafd4e5ddd3c2da1354580323f4246753d960

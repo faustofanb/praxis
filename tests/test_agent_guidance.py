@@ -5,6 +5,17 @@ from pathlib import Path
 from praxis.agents.guidance import AgentGuidanceService
 from praxis.workspace.service import Project, WorkspaceService
 
+SKILL_MD = (
+    Path(__file__).resolve().parents[1]
+    / "skills"
+    / "praxis-requirement-workflow"
+    / "SKILL.md"
+)
+
+
+def _read_workflow_skill() -> str:
+    return SKILL_MD.read_text(encoding="utf-8")
+
 
 def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     tmp_path: Path,
@@ -33,60 +44,43 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert first.ok and second.ok
     agents = (tmp_path / "AGENTS.md").read_text()
     claude = (tmp_path / "CLAUDE.md").read_text()
+    # 自定义内容与 marker 保护
     assert "保留此内容。" in agents
     assert agents.count("<!-- praxis:managed:start -->") == 1
     assert agents.count("<!-- praxis:managed:end -->") == 1
+    # 动态数据表（由 guidance 生成，保留）
     assert "`local` | `develop`" in agents
     assert "`backend/.cursor/rules`" in agents
     assert "`backend/skills`" in agents
     assert "`brainstorming`（必需）" in agents
     assert "`grilling`（必需）" in agents
+    # 工作空间身份
+    assert "演示工作空间" in agents
+    # 指针/不变式（保留在 AGENTS）
+    assert "praxis-requirement-workflow" in agents
     assert ".worktrees/<需求ID>__<简称>" in agents
-    assert "praxis/<需求ID>" in agents
     assert "praxis skill route-node" in agents
     assert "praxis skill invoke" in agents
     assert "praxis skill complete" in agents
     assert "lifecycle complete-node" in agents
-    assert "自动生成当前项目的 coder context" in agents
     assert "select current_database()" in agents
-    assert "database investigate" in agents
-    assert "规划模式" in agents
-    assert "已登记的生产连接" in agents
-    assert "只读 SQL" in agents
-    assert "生产写入" in agents
     assert "默认执行 TDD" in agents
-    assert "RED" in agents
-    assert "GREEN" in agents
+    assert "fast_fix" in agents
     assert "完整回归" in agents
     assert "独立验证授权" in agents
-    assert "最小受影响模块" in agents
-    assert "minimum-module-compile" in agents
-    assert "禁止扩大为全仓构建" in agents
-    assert "所有外部命令" in agents
-    assert "rtk proxy" in agents
-    assert "RTK 自身执行失败" in agents
-    assert "降级命令" in agents
-    assert "高风险改动必须在编辑前" in agents
+    assert "rtk" in agents
     assert "codegraph-impact-analysis" in agents
-    assert "调用路径和 Blast Radius" in agents
-    assert "连续错误后才刷新" in agents
-    assert "investigating" in agents
-    assert "codegraph investigate" in agents
-    assert "persisted: false" in agents
-    assert "需求工作树 binding" in agents
-    assert "实施完成不等于验证通过" in agents
-    assert "### 禁止机械执行命令" in agents
-    assert "成功和失败分别导致什么行动" in agents
-    assert "注解存在" in agents
-    assert "正则匹配源码" in agents
-    assert "fast_fix 默认不运行测试、编译、全量类型检查和质量复核" in agents
-    assert "工作树、HEAD 和目标文件指纹" in agents
-    assert "超过 5 条命令或 3 分钟" in agents
-    assert "mode=fast_fix" in agents
-    assert "tests=declined_by_user" in agents
-    assert "compile=not_requested" in agents
-    assert "scope=target_file_only" in agents
     assert claude.startswith("# Claude Code 项目规则")
+    # 迁出细则改断言 SKILL.md 含该内容（AGENTS 不再重复正文）
+    skill = _read_workflow_skill()
+    assert "mode=fast_fix" in skill
+    assert "tests=declined_by_user" in skill
+    assert "compile=not_requested" in skill
+    assert "scope=target_file_only" in skill
+    assert "RTK 自身执行失败" in skill
+    assert "正则匹配" in skill
+    assert "目标文件指纹" in skill
+    assert "禁止扩大为全仓构建" in skill
 
 
 def test_agent_guidance_stops_on_broken_managed_markers(tmp_path: Path) -> None:
@@ -108,8 +102,7 @@ def test_agent_guidance_requires_canonical_praxis_entry_resolution(
 
     assert result.ok
     agents = (tmp_path / "AGENTS.md").read_text()
-    assert "优先使用已提供的 Praxis MCP" in agents
-    assert "MCP 不可用时才检查可解析的 `praxis` CLI" in agents
-    assert "当前工作区明确声明且文件存在" in agents
-    assert "禁止凭历史上下文推断 `scripts/codex/task.py`" in agents
-    assert "DBX 调查只使用已提供的 DBX MCP 工具" in agents
+    assert "Praxis MCP" in agents
+    assert "`praxis` CLI" in agents
+    assert "MCP 不可用时" in agents
+    assert "DBX 调查" in agents
