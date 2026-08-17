@@ -1,0 +1,27 @@
+{
+  "branch": "praxis/REQ-20260817-002__praxis-AI友好性优化",
+  "diff": {
+    "deletions": 13,
+    "files": 4,
+    "insertions": 51
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:0e231105f3150fe4c0f6ad37d4d91de42f8c05d9",
+      "path": "AGENTS.md"
+    },
+    {
+      "content_hash": "blake2b:9646af82f1045088cf94788e1f73dc33f8e5a944",
+      "path": "CLAUDE.md"
+    },
+    {
+      "content_hash": "blake2b:61480993be16e040cf5ec952417e1106635908b9",
+      "path": "src/praxis/agents/guidance.py"
+    },
+    {
+      "content_hash": "blake2b:af32f37699f8e1476dbc4b7c75f2f0da3c50ea1d",
+      "path": "src/praxis/cli/__init__.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260817-002__praxis-AI友好性优化/REQ-20260817-002__praxis-AI友好性优化__praxis-next"
+}

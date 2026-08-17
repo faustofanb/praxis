@@ -1,2 +1,9 @@
 需求编号: REQ-20260817-002
-产出物: []
+产出物:
+  - 产出物编号: ART-20260817T040544-6FB3E6CF
+    类型: 代码变更
+    任务阶段: development
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260817-002__praxis-AI友好性优化/REQ-20260817-002__praxis-AI友好性优化__praxis-next/src/praxis/cli/__init__.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260817-002__praxis-AI友好性优化/产出物/代码变更/ART-20260817T040544-6FB3E6CF.json
+    源内容哈希: blake2b:af32f37699f8e1476dbc4b7c75f2f0da3c50ea1d
+    归档内容哈希: blake2b:9675d1951ff11fd2530f0d7eab3c7add293ca537
