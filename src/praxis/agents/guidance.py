@@ -46,6 +46,8 @@ class AgentGuidanceService:
             "- 操作细则（fast_fix、RTK、TDD、命令预算、证据指纹缓存、subagent、investigate）",
             "  以内置 `praxis-requirement-workflow` Skill 为唯一权威源，进入节点时按需加载；",
             "  本文件只保留不随任务变化的指针与不变式。",
+            "- 不确定下一步时运行 `praxis guide` 获取当前状态对应的命令序列，",
+            "  错误码含义与恢复动作用 `praxis errors <CODE>` 查询。",
             "- 入口：Praxis 操作优先使用已提供的 Praxis MCP；MCP 不可用时先执行",
             "  `praxis doctor --json` 查看 CLI fallback.path 再使用可解析的 `praxis` CLI。",
             "  DBX 调查只使用已提供的 DBX MCP 工具，不调用或回退到 DBX CLI。",

@@ -8,6 +8,8 @@
 - 操作细则（fast_fix、RTK、TDD、命令预算、证据指纹缓存、subagent、investigate）
   以内置 `praxis-requirement-workflow` Skill 为唯一权威源，进入节点时按需加载；
   本文件只保留不随任务变化的指针与不变式。
+- 不确定下一步时运行 `praxis guide` 获取当前状态对应的命令序列，
+  错误码含义与恢复动作用 `praxis errors <CODE>` 查询。
 - 入口：Praxis 操作优先使用已提供的 Praxis MCP；MCP 不可用时先执行
   `praxis doctor --json` 查看 CLI fallback.path 再使用可解析的 `praxis` CLI。
   DBX 调查只使用已提供的 DBX MCP 工具，不调用或回退到 DBX CLI。
@@ -17,10 +19,11 @@
   先 `worktree preview` 固定工作空间、末级目录与分支，
   再 `worktree ensure --confirm <preview_id>`。工作树以仓库 `default_branch`
   为本地运行模板，先合并唯一 `origin/<template_branch>` 再从模板创建需求分支。
-- 需求工作空间 `.worktrees/<需求ID>__<简称>`、仓库末级目录 `<需求ID>__<简称>__<仓库ID>`、
+- 需求工作空间 `.worktrees/<需求ID>__<简称>`，仓库末级目录 `<需求ID>__<简称>__<仓库ID>`、
   分支 `praxis/<需求ID>__<简称>`；简称快照保持稳定，阶段名称不得进入目录或分支。
 - 禁止在工作空间根目录或未绑定目录修改业务代码；
-  pre-commit 在主仓库无 binding 且检测到业务代码改动时阻断，提示‘请走 praxis 工作树’。
+  pre-commit 在主仓库无 binding 且检测到业务代码改动时阻断，
+  提示‘请走 praxis 工作树’。
 - 功能、缺陷修复、重构和行为变更默认执行 TDD（RED→GREEN→重构），聚焦 TDD 授权
   不包含完整回归、lint、format、typecheck、覆盖率、构建或代码复核；
   TDD GREEN 后调用 `minimum-module-compile` 编译最小受影响模块。
@@ -28,13 +31,16 @@
   始终需要独立验证授权；“提交”“推送”“完成”“继续”不等于批准。
 - 用户明确说“快速修复”“只改这里”“不要跑测试”等时，按 `praxis-requirement-workflow`
   Skill 的 fast_fix 例外处理并记录 `mode=fast_fix`；否则回到标准流程。
-- 高风险改动（事务、锁、原生 SQL、并发、公共接口、共享服务、跨模块、结构迁移、高扇出）
+- 高风险改动（事务、锁、原生 SQL、并发、公共接口、共享服务、
+  跨模块、结构迁移、高扇出）
   必须在编辑前调用 `codegraph-impact-analysis`；Plan Mode 无 binding 时用
-  `praxis codegraph investigate <target> --project <项目> --purpose <目的>` 只读查询。
+  `praxis codegraph investigate <target> --project <项目>
+  --purpose <目的>` 只读查询。
 - 数据库调查必须从 context 已登记的 DBX 引用中显式选择连接，禁止默认库猜测；
   对结构或数据作出判断前先执行 `select current_database()` 核对目标库。
 - 需求按 `in_progress → implemented → verifying → completed` 推进，
-  `requirement advance` 一次只前进一个状态；状态流转与 `worktree create` 均 fail-closed，
+  `requirement advance` 一次只前进一个状态；
+  状态流转与 `worktree create` 均 fail-closed，
   当前节点缺少 route、完成凭证或 gate 时必须停止，不得自动补路由或绕过。
 - 产出物在代码稳定后登记，相同需求+路径 upsert；实施完成不等于验证通过，
   用户明确不执行某项验证时登记 decline receipt，不把 declined 或未执行投影为 passed。

@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from praxis.application import PraxisApplication
+from praxis.guides.errors import all_entries, lookup
+from praxis.guides.service import SCENARIOS, GuideService
 from praxis.result import Result
 
 
@@ -682,6 +684,14 @@ def _parser() -> argparse.ArgumentParser:
     repair_artifacts = repair.add_parser("artifact-archives")
     repair_artifacts.add_argument("--requirement")
     _json_flag(repair_artifacts)
+
+    guide = commands.add_parser("guide", help="任务导向引导：按工作区状态输出下一步命令")
+    guide.add_argument("--scenario", choices=sorted(SCENARIOS))
+    _json_flag(guide)
+
+    errors = commands.add_parser("errors", help="查询错误码含义与恢复动作")
+    errors.add_argument("code", nargs="?")
+    _json_flag(errors)
     return parser
 
 
@@ -1459,8 +1469,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = Result(False, "INVALID_HOOK_CONTEXT", data={"message": str(error)})
             print(json.dumps(result.to_dict(), ensure_ascii=False))
             return 2
-    operation, values = _operation(args)
-    result = PraxisApplication(args.root).execute(operation, values)
+    if args.group == "guide":
+        operation = "guide"
+        result = GuideService(args.root).render(args.scenario)
+    elif args.group == "errors":
+        operation = "errors"
+        result = all_entries() if args.code is None else lookup(args.code)
+    else:
+        operation, values = _operation(args)
+        result = PraxisApplication(args.root).execute(operation, values)
     payload = result.to_dict()
     if args.group == "lifecycle" or args.json:
         print(json.dumps(payload, ensure_ascii=False))
@@ -1477,5 +1494,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
     else:
-        print(f"{result.code}: {result.data.get('message', '')}")
+        hint = lookup(result.code)
+        message = result.data.get("message", "")
+        detail = f"{result.code}: {message}" if message else result.code
+        if hint.ok:
+            entry = hint.data
+            print(f"{detail}\n提示：{entry['hint']}\n下一步：{entry['next_step']}")
+        else:
+            print(detail)
     return 0 if result.ok else 2
