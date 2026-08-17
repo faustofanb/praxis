@@ -1,0 +1,51 @@
+{
+  "branch": "praxis/REQ-20260810-001__风险分层工作流与跨客户端-Skill-应用",
+  "diff": {
+    "deletions": 17,
+    "files": 9,
+    "insertions": 224
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:7ab540b721efa68cc421dbc3eae1f93fb0e7e91b",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:3063158e33f069da00e10ba19a485faf1c2834cb",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:60070ad5f383790afa7e478b766b1d2a7a2ef9b0",
+      "path": "src/praxis/fastlane/service.py"
+    },
+    {
+      "content_hash": "blake2b:25e39a425d3f4d9aaf8137dcb0111e20e05d97f9",
+      "path": "src/praxis/fastlane/small_fix.py"
+    },
+    {
+      "content_hash": "blake2b:a2329789a979d7cf7fadabdae6303a31146d53a7",
+      "path": "src/praxis/skills/risk.py"
+    },
+    {
+      "content_hash": "blake2b:937dd04a04e9a62b648c1b24080d0a80432db880",
+      "path": "src/praxis/skills/routing.py"
+    },
+    {
+      "content_hash": "blake2b:b16c6b2376761418843ece0e4f87a39aa2eb9cd6",
+      "path": "src/praxis/workspace/claude_integration.py"
+    },
+    {
+      "content_hash": "blake2b:803298ac8e588a5cddb469d0cac2ca19d1af7fe2",
+      "path": "tests/test_claude_integration.py"
+    },
+    {
+      "content_hash": "blake2b:3f897af9a039fa442f77b057934d098e822bfb2e",
+      "path": "tests/test_interfaces.py"
+    },
+    {
+      "content_hash": "blake2b:2eb658c422842f407912eece28b17a7c0c2d5837",
+      "path": "tests/test_skill_node_routing.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260810-001__风险分层工作流与跨客户端-Skill-应用/REQ-20260810-001__风险分层工作流与跨客户端-Skill-应用__praxis-next"
+}
