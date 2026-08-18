@@ -1,0 +1,59 @@
+{
+  "branch": "praxis/REQ-20260818-001__工作流摩擦点修复",
+  "diff": {
+    "deletions": 24,
+    "files": 11,
+    "insertions": 499
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:1e98f9912bfca217c4fbb5e360f0571f1875e6fc",
+      "path": "skills/praxis-requirement-workflow/SKILL.md"
+    },
+    {
+      "content_hash": "blake2b:8e6ced1becdacd55b74245789372bf49a758330d",
+      "path": "skills/praxis-system-development/references/node-routing.toml"
+    },
+    {
+      "content_hash": "blake2b:a014b7853747728299602a385cb86a7cc0cdb58f",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:c763e1bce06280623ee73a81909f73c9a2aaa94a",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:b48a4d8fcb0b450d1f9ec1692b51b3318a75d5bf",
+      "path": "src/praxis/domain/requirement.py"
+    },
+    {
+      "content_hash": "blake2b:025316ad9dd06e86a582732226653b9742bd8c4b",
+      "path": "src/praxis/guides/errors.py"
+    },
+    {
+      "content_hash": "blake2b:7882fa6dfc7e5ab4c95ef83e0bea929697302b36",
+      "path": "src/praxis/guides/service.py"
+    },
+    {
+      "content_hash": "blake2b:633f8b29d1dbf43a355d8b9825bdd04935b3d2d9",
+      "path": "src/praxis/knowledge/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:46a84e46eecb3c1d19fe2270eb6567a7f4ad9b23",
+      "path": "src/praxis/storage/sqlite.py"
+    },
+    {
+      "content_hash": "blake2b:bfe7125cb1233e732363cfc45118369ec711dd33",
+      "path": "src/praxis/worktree/service.py"
+    },
+    {
+      "content_hash": "blake2b:d7ca27190dceebdfc6054ff9037cfda5edd0bbc9",
+      "path": "tests/test_matt_skill_routing.py"
+    },
+    {
+      "content_hash": "blake2b:abb526520e4532b62c3c64aa345c87903fe11e0d",
+      "path": "tests/test_workspace_requirements.py"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next"
+}

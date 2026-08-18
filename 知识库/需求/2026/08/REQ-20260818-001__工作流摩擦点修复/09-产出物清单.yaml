@@ -1,2 +1,107 @@
 需求编号: REQ-20260818-001
-产出物: []
+产出物:
+  - 产出物编号: ART-20260818T070516-33EFAD80
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/guides/errors.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070516-33EFAD80.json
+    源内容哈希: blake2b:025316ad9dd06e86a582732226653b9742bd8c4b
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070516-488C4C1C
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/guides/testing.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070516-488C4C1C.json
+    源内容哈希: blake2b:a7b3457a30cd9c87ec3d4f85f6fc466447a9d260
+    归档内容哈希: blake2b:dc293baf85203fa082948b58d3a598bc487ac585
+  - 产出物编号: ART-20260818T070516-8E1EAA96
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/guides/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070516-8E1EAA96.json
+    源内容哈希: blake2b:7882fa6dfc7e5ab4c95ef83e0bea929697302b36
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070516-A2C43535
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/knowledge/requirements.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070516-A2C43535.json
+    源内容哈希: blake2b:633f8b29d1dbf43a355d8b9825bdd04935b3d2d9
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070517-55A9521C
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/domain/requirement.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070517-55A9521C.json
+    源内容哈希: blake2b:b48a4d8fcb0b450d1f9ec1692b51b3318a75d5bf
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070517-86FCB2C3
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/application.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070517-86FCB2C3.json
+    源内容哈希: blake2b:a014b7853747728299602a385cb86a7cc0cdb58f
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070517-BA28191D
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/cli/__init__.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070517-BA28191D.json
+    源内容哈希: blake2b:c763e1bce06280623ee73a81909f73c9a2aaa94a
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070518-40444E46
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/storage/sqlite.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070518-40444E46.json
+    源内容哈希: blake2b:46a84e46eecb3c1d19fe2270eb6567a7f4ad9b23
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070518-58824FE4
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/src/praxis/worktree/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070518-58824FE4.json
+    源内容哈希: blake2b:bfe7125cb1233e732363cfc45118369ec711dd33
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070524-7AEC0638
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/tests/test_guides_testing.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070524-7AEC0638.json
+    源内容哈希: blake2b:30a6e4b2535c8b6868d6284a5b126ad53eb8f8bd
+    归档内容哈希: blake2b:dabb6e293acf7fc249a4e9b6f2c3352ee475d85c
+  - 产出物编号: ART-20260818T070524-90BF08CB
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/tests/test_matt_skill_routing.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070524-90BF08CB.json
+    源内容哈希: blake2b:d7ca27190dceebdfc6054ff9037cfda5edd0bbc9
+    归档内容哈希: blake2b:d2a0864a0aae9e700ab639c31333a2b597c9912e
+  - 产出物编号: ART-20260818T070525-3281C18F
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/skills/praxis-requirement-workflow/SKILL.md
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070525-3281C18F.json
+    源内容哈希: blake2b:1e98f9912bfca217c4fbb5e360f0571f1875e6fc
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070525-499A62A7
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/skills/praxis-system-development/references/node-routing.toml
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070525-499A62A7.json
+    源内容哈希: blake2b:8e6ced1becdacd55b74245789372bf49a758330d
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
+  - 产出物编号: ART-20260818T070525-D0B4636A
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/tests/test_worktree_commit_hooks.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070525-D0B4636A.json
+    源内容哈希: blake2b:20f8603f53cf5d3195d1362839c8bd16c94be94f
+    归档内容哈希: blake2b:5d0f777fb58393053ccfd967f2b322b518538bd0
+  - 产出物编号: ART-20260818T070525-EC52D848
+    类型: 代码变更
+    任务阶段: implemented
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-001__工作流摩擦点修复/REQ-20260818-001__工作流摩擦点修复__praxis-next/tests/test_workspace_requirements.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-001__工作流摩擦点修复/产出物/代码变更/ART-20260818T070525-EC52D848.json
+    源内容哈希: blake2b:abb526520e4532b62c3c64aa345c87903fe11e0d
+    归档内容哈希: blake2b:4e2cb17b02d7b7f5ea41b60ed732f63e1b7ea36d
