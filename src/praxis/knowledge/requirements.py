@@ -217,11 +217,14 @@ class RequirementService:
             return Result(False, "REQUIREMENT_NOT_FOUND")
         status = current["status"]
         normalized_from = from_status.strip()
-        if normalized_from not in {"", "implemented", "verifying"}:
+        if normalized_from not in {"", "implemented", "verifying", "completed"}:
             return Result(
                 False,
                 "REQUIREMENT_REOPEN_STATUS_INVALID",
-                data={"status": status, "hint": "--from 仅支持 implemented 或 verifying"},
+                data={
+                    "status": status,
+                    "hint": "--from 仅支持 implemented、verifying 或 completed",
+                },
             )
         if status == "implemented" and normalized_from != "implemented":
             return Result(
@@ -237,13 +240,27 @@ class RequirementService:
                     ),
                 },
             )
-        if status != "verifying" and status != "implemented":
+        if status == "completed" and normalized_from != "completed":
             return Result(
                 False,
                 "REQUIREMENT_REOPEN_STATUS_INVALID",
                 data={
                     "status": status,
-                    "hint": "只有 implemented/verifying 状态可以 reopen 回 in_progress",
+                    "hint": (
+                        "completed 状态使用 "
+                        f"`praxis requirement reopen {requirement_id} "
+                        "--from completed --reason <原因>` 回开发；"
+                        "或走 fast 通道：`praxis fix start --id <需求ID> --repository <repo> --small`"
+                    ),
+                },
+            )
+        if status not in {"verifying", "implemented", "completed"}:
+            return Result(
+                False,
+                "REQUIREMENT_REOPEN_STATUS_INVALID",
+                data={
+                    "status": status,
+                    "hint": "只有 implemented/verifying/completed 状态可以 reopen 回 in_progress",
                 },
             )
         record = self.store.reopen_requirement(

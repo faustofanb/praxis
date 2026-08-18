@@ -599,7 +599,16 @@ class FastLaneService:
     @staticmethod
     def _typecheck_argv(project: Project) -> list[str] | Result:
         if not project.typecheck_commands:
-            return Result(False, "FAST_LANE_TYPECHECK_NOT_CONFIGURED")
+            return Result(
+                False,
+                "FAST_LANE_TYPECHECK_NOT_CONFIGURED",
+                data={
+                    "hint": (
+                        "仓库缺少 typecheck_commands 配置；在 praxis.toml 的 "
+                        "[[systems.repositories]] 段添加，例如 typecheck_commands = [\"mvn ... compile\"]"
+                    )
+                },
+            )
         if len(project.typecheck_commands) != 1:
             return Result(
                 False,

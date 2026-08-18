@@ -415,7 +415,7 @@ class StateStore:
             )
             expected = (
                 RequirementStatus(from_status)
-                if from_status in {"implemented", "verifying"}
+                if from_status in {"implemented", "verifying", "completed"}
                 else None
             )
             changed = current.reopen(expected)

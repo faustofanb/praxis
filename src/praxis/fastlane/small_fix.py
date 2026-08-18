@@ -58,6 +58,7 @@ class SmallFixService(FastLaneService):
         repository_id: str,
         small: bool,
         now: datetime | None = None,
+        worktree_binding: str = "",
     ) -> Result:
         started_at = monotonic()
         if not small:
@@ -108,10 +109,11 @@ class SmallFixService(FastLaneService):
 
         requirements = RequirementService(self.root)
         status = RequirementStatus(str(requirement["status"]))
-        if status == RequirementStatus.VERIFYING:
+        if status in {RequirementStatus.VERIFYING, RequirementStatus.COMPLETED}:
             reopened = requirements.reopen(
                 requirement_id,
                 "小修复快速通道重新进入实现阶段",
+                from_status="completed" if status == RequirementStatus.COMPLETED else "verifying",
             )
             if not reopened.ok:
                 return reopened
@@ -133,14 +135,46 @@ class SmallFixService(FastLaneService):
         if not resolved.ok:
             return resolved
         template_sha = str(resolved.data["revision"])
-        created = worktrees.create_for_requirement(
-            requirement_id,
-            repository_id,
-            base_revision=template_sha,
-        )
-        if not created.ok:
-            return created
-        binding = self._direct_binding(created)
+        binding: dict[str, Any] | None = None
+        if worktree_binding:
+            from praxis.worktree.service import resolve_worktree_binding
+
+            resolved_binding = resolve_worktree_binding(self.store, worktree_binding)
+            if not resolved_binding:
+                return Result(
+                    False,
+                    "SMALL_FIX_WORKTREE_UNAVAILABLE",
+                    data={"binding_id": worktree_binding},
+                )
+            _, binding = resolved_binding
+            if binding.get("repository_id") != repository_id:
+                return Result(
+                    False,
+                    "SMALL_FIX_WORKTREE_REPOSITORY_MISMATCH",
+                    data={
+                        "binding_id": worktree_binding,
+                        "binding_repository": binding.get("repository_id", ""),
+                        "requested_repository": repository_id,
+                    },
+                )
+            if binding.get("status") not in {"active", "bound_active"}:
+                return Result(
+                    False,
+                    "SMALL_FIX_WORKTREE_UNAVAILABLE",
+                    data={"binding_id": worktree_binding, "status": binding.get("status")},
+                )
+            binding["repository_path"] = str(
+                binding.get("repository_path") or binding.get("path", "")
+            )
+        else:
+            created = worktrees.create_for_requirement(
+                requirement_id,
+                repository_id,
+                base_revision=template_sha,
+            )
+            if not created.ok:
+                return created
+            binding = self._direct_binding(created)
         if not binding:
             return Result(False, "SMALL_FIX_WORKTREE_UNAVAILABLE")
         worktree = Path(str(binding["repository_path"])).resolve()

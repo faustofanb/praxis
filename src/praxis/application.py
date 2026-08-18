@@ -151,6 +151,7 @@ class PraxisApplication:
                 values["requirement_id"],
                 repository_id=values["repository_id"],
                 small=values.get("small", False),
+                worktree_binding=values.get("worktree_binding", ""),
             )
         if operation == "fix.finish":
             return SmallFixService(self.root).finish(
@@ -183,6 +184,20 @@ class PraxisApplication:
             audit_valid = StateStore(self.root).verify_audit_chain()
             skill_providers = NodeSkillRouter(self.root).provider_diagnostics()
             entrypoints = diagnose_entrypoints(values.get("entrypoint", "internal"))
+            warnings: list[str] = []
+            typed_kinds = {"java-maven", "java", "spring-boot", "typescript", "ts", "kotlin"}
+            for system in workspace.get("systems", []):
+                for repository in system.get("repositories", []):
+                    if (
+                        repository.get("kind", "").lower() in typed_kinds
+                        and not repository.get("typecheck_commands")
+                    ):
+                        warnings.append(
+                            f"仓库 {repository.get('id', '')}（{repository.get('kind', '')}）"
+                            " 缺少 typecheck_commands，fast-lane 将报 "
+                            "FAST_LANE_TYPECHECK_NOT_CONFIGURED；"
+                            "在 praxis.toml [[systems.repositories]] 段添加配置"
+                        )
             return Result(
                 audit_valid,
                 "OK" if audit_valid else "AUDIT_CHAIN_INVALID",
@@ -191,6 +206,7 @@ class PraxisApplication:
                     "audit_chain": audit_valid,
                     "skill_providers": skill_providers,
                     "entrypoints": entrypoints,
+                    "warnings": warnings,
                 },
             )
         if operation in {"workspace.inspect", "workspace.show"}:

@@ -73,6 +73,187 @@ _ERROR_CATALOG: dict[str, dict[str, str]] = {
         "hint": "操作未在分发表中注册。",
         "next_step": "检查命令拼写或版本（`praxis version`）；升级后重试。",
     },
+    # ---- fast-lane / fix 通道错误码（REQ-20260818-002 补齐） ----
+    "FAST_LANE_BUDGET_EXCEEDED": {
+        "hint": "fast-lane 预算超限。",
+        "next_step": "降低改动范围或分批处理；预算以耗时/文件数为准。",
+    },
+    "FAST_LANE_BUSINESS_FILES_INVALID": {
+        "hint": "fast-lane 候选文件不属于允许的业务文件范围。",
+        "next_step": "核对候选文件是否命中业务文件白名单（.sql/.java 等），排除生成物与配置。",
+    },
+    "FAST_LANE_CANDIDATE": {
+        "hint": "fast-lane 生成候选修复方案。",
+        "next_step": "候选非错误；确认后继续执行。",
+    },
+    "FAST_LANE_CONFIRMED": {
+        "hint": "fast-lane 已确认修复方案。",
+        "next_step": "已确认，继续按流程实施。",
+    },
+    "FAST_LANE_DIFF_CHECK_FAILED": {
+        "hint": "fast-lane diff 校验失败。",
+        "next_step": "核对修改是否在允许范围内（文件数/行数/高风险路径），缩小改动后重试。",
+    },
+    "FAST_LANE_DOWNGRADED": {
+        "hint": "fast-lane 已降级（不满足条件，回退标准流程）。",
+        "next_step": "查看降级原因，按标准流程处理。",
+    },
+    "FAST_LANE_EVIDENCE_REQUIRED": {
+        "hint": "fast-lane 需要证据（如 RED/GREEN 记录）。",
+        "next_step": "补齐对应证据后再继续。",
+    },
+    "FAST_LANE_FINISH_NOT_READY": {
+        "hint": "fast-lane 尚未达到 finish 条件。",
+        "next_step": "确认 RED/GREEN 已记录、diff 已登记后再 finish。",
+    },
+    "FAST_LANE_GREEN_FAILED": {
+        "hint": "fast-lane GREEN 失败。",
+        "next_step": "修复实现使测试通过，重新执行 GREEN。",
+    },
+    "FAST_LANE_IMPLEMENTED": {
+        "hint": "fast-lane 已实施完成。",
+        "next_step": "继续执行验证与收尾。",
+    },
+    "FAST_LANE_IMPLEMENTED_VERIFICATION_INCONCLUSIVE": {
+        "hint": "fast-lane 实施后验证不具结论性。",
+        "next_step": "补充证据或重新验证，不能将不明确结果记为 passed。",
+    },
+    "FAST_LANE_NEW_TYPE_DIAGNOSTICS": {
+        "hint": "fast-lane 检测到新增类型诊断。",
+        "next_step": "修复新增诊断或说明其非回归。",
+    },
+    "FAST_LANE_NOT_FOUND": {
+        "hint": "fast-lane 记录不存在。",
+        "next_step": "先 `praxis fast start` 建立记录再操作。",
+    },
+    "FAST_LANE_PROJECT_NOT_FOUND": {
+        "hint": "fast-lane 项目不存在。",
+        "next_step": "核对 repository_id 是否在 praxis.toml 登记。",
+    },
+    "FAST_LANE_RED_AFTER_IMPLEMENTATION": {
+        "hint": "fast-lane 实施后 RED 不应出现。",
+        "next_step": "检查实现是否引入回退。",
+    },
+    "FAST_LANE_RED_INVALID": {
+        "hint": "fast-lane RED 记录无效（未先失败）。",
+        "next_step": "先观察测试失败再实施（TDD RED 前提）。",
+    },
+    "FAST_LANE_RED_NOT_READY": {
+        "hint": "fast-lane RED 尚未就绪。",
+        "next_step": "先运行聚焦测试确认 RED。",
+    },
+    "FAST_LANE_RED_RECORDED": {
+        "hint": "fast-lane RED 已记录。",
+        "next_step": "继续实施（GREEN）。",
+    },
+    "FAST_LANE_REPRODUCTION_REQUIRED": {
+        "hint": "fast-lane 需要复现问题。",
+        "next_step": "先复现故障再实施修复。",
+    },
+    "FAST_LANE_SINGLE_PROJECT_REQUIRED": {
+        "hint": "fast-lane 只支持单项目。",
+        "next_step": "拆分需求或指定单一项目。",
+    },
+    "FAST_LANE_TEST_COMMAND_INVALID": {
+        "hint": "fast-lane 测试命令无效。",
+        "next_step": "核对 test_commands 配置格式。",
+    },
+    "FAST_LANE_TYPECHECK_AMBIGUOUS": {
+        "hint": "fast-lane typecheck 命令配置不唯一。",
+        "next_step": "在 praxis.toml 只保留一条 typecheck_commands。",
+    },
+    "FAST_LANE_TYPECHECK_COMMAND_INVALID": {
+        "hint": "fast-lane typecheck 命令不可解析。",
+        "next_step": "核对 typecheck_commands 的引号与空格。",
+    },
+    "FAST_LANE_TYPECHECK_NOT_CONFIGURED": {
+        "hint": "仓库缺少 typecheck_commands 配置。",
+        "next_step": "在 praxis.toml 的 [[systems.repositories]] 段添加 typecheck_commands，例如 typecheck_commands = [\"mvn ... compile\"]。",  # noqa: E501
+    },
+    "FAST_LANE_WORKTREE_UNAVAILABLE": {
+        "hint": "fast-lane 工作树不可用。",
+        "next_step": "检查绑定状态（active/bound_active）与路径。",
+    },
+    "SMALL_FIX_BINARY_DIFF_UNSUPPORTED": {
+        "hint": "小修复不支持二进制文件 diff。",
+        "next_step": "排除二进制文件或改走标准流程。",
+    },
+    "SMALL_FIX_DIFF_CHECK_FAILED": {
+        "hint": "小修复 diff 校验失败。",
+        "next_step": "核对文件数/行数/高风险路径，缩小改动后重试。",
+    },
+    "SMALL_FIX_DOWNGRADED": {
+        "hint": "小修复已降级回标准流程。",
+        "next_step": "查看降级原因（隔离工作树非干净等），按标准流程处理。",
+    },
+    "SMALL_FIX_FLAG_REQUIRED": {
+        "hint": "小修复需要 --small 标志。",
+        "next_step": "`praxis fix start <需求ID> --repository <仓库> --small` 重试。",
+    },
+    "SMALL_FIX_GOVERNANCE_BUDGET_EXCEEDED": {
+        "hint": "小修复治理预算超限。",
+        "next_step": "降低改动范围或分批处理。",
+    },
+    "SMALL_FIX_GOVERNANCE_RATIO_EXCEEDED": {
+        "hint": "小修复治理比例超限。",
+        "next_step": "控制改动文件与行数在阈值内。",
+    },
+    "SMALL_FIX_GREEN_FAILED": {
+        "hint": "小修复 GREEN 失败。",
+        "next_step": "修复实现使测试通过，重新执行 GREEN。",
+    },
+    "SMALL_FIX_IMPLEMENTED": {
+        "hint": "小修复已实施完成。",
+        "next_step": "继续执行验证与收尾。",
+    },
+    "SMALL_FIX_IMPLEMENTED_VERIFICATION_INCONCLUSIVE": {
+        "hint": "小修复实施后验证不具结论性。",
+        "next_step": "补充证据或重新验证，不将不明确结果记为 passed。",
+    },
+    "SMALL_FIX_NEW_TYPE_DIAGNOSTICS": {
+        "hint": "小修复检测到新增类型诊断。",
+        "next_step": "修复新增诊断或说明其非回归。",
+    },
+    "SMALL_FIX_NOT_STARTED": {
+        "hint": "小修复尚未开始。",
+        "next_step": "先 `praxis fix start` 建立记录。",
+    },
+    "SMALL_FIX_PROJECT_NOT_FOUND": {
+        "hint": "小修复项目不存在。",
+        "next_step": "核对 repository_id 是否在 praxis.toml 登记。",
+    },
+    "SMALL_FIX_REPOSITORY_MISMATCH": {
+        "hint": "小修复记录与请求的仓库不一致。",
+        "next_step": "核对当前记录仓库与 --repository 是否一致。",
+    },
+    "SMALL_FIX_REQUIREMENT_STATUS_INVALID": {
+        "hint": "小修复不接受当前需求状态。",
+        "next_step": "支持 in_progress/ready/verifying/completed（completed 自动回退 in_progress）；其他状态先推进。",  # noqa: E501
+    },
+    "SMALL_FIX_SCOPED_TYPECHECK_FAILED": {
+        "hint": "小修复 scoped typecheck 失败。",
+        "next_step": "修复新增诊断后重试。",
+    },
+    "SMALL_FIX_SINGLE_REPOSITORY_REQUIRED": {
+        "hint": "小修复只支持单仓库需求。",
+        "next_step": "拆分需求或指定单一仓库。",
+    },
+    "SMALL_FIX_STARTED": {
+        "hint": "小修复已开始。",
+        "next_step": "继续实施与验证。",
+    },
+    "SMALL_FIX_TEST_COMMAND_INVALID": {
+        "hint": "小修复测试命令无效。",
+        "next_step": "核对 test_commands 配置格式。",
+    },
+    "SMALL_FIX_WORKTREE_REPOSITORY_MISMATCH": {
+        "hint": "复用的工作树绑定与目标仓库不一致。",
+        "next_step": "`--worktree` 的 binding 必须属于 --repository 指定的仓库，核对后重试。",
+    },
+    "SMALL_FIX_WORKTREE_UNAVAILABLE": {
+        "hint": "小修复工作树不可用。",
+        "next_step": "检查绑定状态（active/bound_active）与路径。",
+    },
 }
 
 # 高频错误码之外的兜底提示

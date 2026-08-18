@@ -78,8 +78,9 @@ class Requirement:
         if self.status not in {
             RequirementStatus.VERIFYING,
             RequirementStatus.IMPLEMENTED,
+            RequirementStatus.COMPLETED,
         }:
-            raise ValueError("只有验证中或已实施的需求可以重开到开发中")
+            raise ValueError("只有验证中、已实施或已完成的需求可以重开到开发中")
         if expected_source is not None and self.status is not expected_source:
             raise ValueError(
                 f"指定的回退来源 {expected_source.value} 与当前状态 {self.status.value} 不一致"

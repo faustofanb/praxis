@@ -149,9 +149,9 @@ def _parser() -> argparse.ArgumentParser:
     reopen_requirement.add_argument(
         "--from",
         dest="from_status",
-        choices=["implemented", "verifying"],
+        choices=["implemented", "verifying", "completed"],
         default="",
-        help="显式回退来源；implemented 状态回退必须带 --from implemented",
+        help="显式回退来源；implemented/completed 状态回退必须带 --from 指定来源",
     )
     _json_flag(reopen_requirement)
     constraint = requirement.add_parser("constraint").add_subparsers(
@@ -218,6 +218,12 @@ def _parser() -> argparse.ArgumentParser:
     fix_start.add_argument("id")
     fix_start.add_argument("--repository", required=True)
     fix_start.add_argument("--small", action="store_true")
+    fix_start.add_argument(
+        "--worktree",
+        dest="worktree_binding",
+        default="",
+        help="复用既有绑定工作树的 binding_id（校验 repository 一致），默认新建",
+    )
     _json_flag(fix_start)
     fix_finish = fix.add_parser("finish")
     fix_finish.add_argument("id")
@@ -881,6 +887,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                 "requirement_id": args.id,
                 "repository_id": args.repository,
                 "small": args.small,
+                "worktree_binding": args.worktree_binding,
             }
         if args.action == "finish":
             return "fix.finish", {
