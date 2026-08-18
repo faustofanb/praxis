@@ -1,0 +1,47 @@
+{
+  "branch": "praxis/REQ-20260818-002__fastlane完工回退与自助恢复",
+  "diff": {
+    "deletions": 24,
+    "files": 9,
+    "insertions": 314
+  },
+  "files": [
+    {
+      "content_hash": "blake2b:100dbd1bb5b8e3420f7a9e9d2a10d4b237dd8798",
+      "path": "src/praxis/application.py"
+    },
+    {
+      "content_hash": "blake2b:fabc62fe377942ebf17966624aca61798e53e5fa",
+      "path": "src/praxis/cli/__init__.py"
+    },
+    {
+      "content_hash": "blake2b:285078aacb0a2f543565ee8c827f7f3427a64097",
+      "path": "src/praxis/domain/requirement.py"
+    },
+    {
+      "content_hash": "blake2b:3d549a8ad7a7bbf902615f6d1fdbf840f825fa7f",
+      "path": "src/praxis/fastlane/service.py"
+    },
+    {
+      "content_hash": "blake2b:7e33a2fb5617fcaf413270dfbaca00b37eb028a5",
+      "path": "src/praxis/fastlane/small_fix.py"
+    },
+    {
+      "content_hash": "blake2b:f2539364b230ab6b3c8e22bda6c355ba9629fc6b",
+      "path": "src/praxis/guides/errors.py"
+    },
+    {
+      "content_hash": "blake2b:a4d02cf50b4015ceb14854ff540efa710b38f064",
+      "path": "src/praxis/knowledge/requirements.py"
+    },
+    {
+      "content_hash": "blake2b:fa1887d58f46e1809f131e8876644882c5083dee",
+      "path": "src/praxis/storage/sqlite.py"
+    },
+    {
+      "content_hash": "blake2b:244ad2be1fe6085921d5e1184652bb4486606ad7",
+      "path": "知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/04-执行进度.md"
+    }
+  ],
+  "repository": "/Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next"
+}

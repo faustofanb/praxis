@@ -1,2 +1,65 @@
 需求编号: REQ-20260818-002
-产出物: []
+产出物:
+  - 产出物编号: ART-20260818T073918-32FAA3DD
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/fastlane/small_fix.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073918-32FAA3DD.json
+    源内容哈希: blake2b:7e33a2fb5617fcaf413270dfbaca00b37eb028a5
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073923-2A32C4F7
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/domain/requirement.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073923-2A32C4F7.json
+    源内容哈希: blake2b:285078aacb0a2f543565ee8c827f7f3427a64097
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073923-4583ED97
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/knowledge/requirements.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073923-4583ED97.json
+    源内容哈希: blake2b:a4d02cf50b4015ceb14854ff540efa710b38f064
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073923-A6E8EECC
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/storage/sqlite.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073923-A6E8EECC.json
+    源内容哈希: blake2b:fa1887d58f46e1809f131e8876644882c5083dee
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073924-594ACDD5
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/fastlane/service.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073924-594ACDD5.json
+    源内容哈希: blake2b:3d549a8ad7a7bbf902615f6d1fdbf840f825fa7f
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073924-691461CF
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/application.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073924-691461CF.json
+    源内容哈希: blake2b:100dbd1bb5b8e3420f7a9e9d2a10d4b237dd8798
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073924-B7552C92
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/cli/__init__.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073924-B7552C92.json
+    源内容哈希: blake2b:fabc62fe377942ebf17966624aca61798e53e5fa
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073925-097EFDEC
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/src/praxis/guides/errors.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073925-097EFDEC.json
+    源内容哈希: blake2b:f2539364b230ab6b3c8e22bda6c355ba9629fc6b
+    归档内容哈希: blake2b:abcb05ec648ccc51c29b3661ce7b9c20369d3e5e
+  - 产出物编号: ART-20260818T073925-C23CAF67
+    类型: 代码变更
+    任务阶段: in_progress
+    源路径: /Users/fausto/plugins/praxis-next/.worktrees/REQ-20260818-002__fastlane完工回退与自助恢复/REQ-20260818-002__fastlane完工回退与自助恢复__praxis-next/tests/test_fastlane_reopen_reuse.py
+    归档路径: /Users/fausto/plugins/praxis-next/知识库/需求/2026/08/REQ-20260818-002__fastlane完工回退与自助恢复/产出物/代码变更/ART-20260818T073925-C23CAF67.json
+    源内容哈希: blake2b:b69bf34467967adbd238d7bf1cdf99c237d272f6
+    归档内容哈希: blake2b:53f228c255b26dc07aed4c39558a68f997797509
