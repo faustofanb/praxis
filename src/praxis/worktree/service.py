@@ -38,6 +38,38 @@ _STAGES = {
 _GIT_REF_UNSAFE = re.compile(r"[\x00-\x20\x7f~^:?*\[\]\\]+")
 _PNPM_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
 
+_COMMIT_HOOK_NOTE = (
+    "提交钩子触发的校验（lint/测试）属于提交流程的一部分，不视为未授权运行；"
+    "提交前先核对触发项，失败时按钩子输出修复后重试提交。"
+)
+
+
+def detect_commit_hooks(repository_path: Path | str) -> dict[str, Any]:
+    """检测仓库提交时会被触发的钩子/校验，登记进 ensure 输出。"""
+
+    repository = Path(repository_path)
+    detected: list[str] = []
+    if (repository / ".husky" / "pre-commit").is_file():
+        detected.append("husky-pre-commit")
+    if (repository / ".pre-commit-config.yaml").is_file():
+        detected.append("pre-commit-framework")
+    git_hook = repository / ".git" / "hooks" / "pre-commit"
+    if git_hook.is_file() and not git_hook.name.endswith(".sample"):
+        detected.append("git-pre-commit")
+    package_json = repository / "package.json"
+    if package_json.is_file():
+        with suppress(ValueError):
+            payload = json.loads(package_json.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                if "lint-staged" in payload:
+                    detected.append("lint-staged")
+                if "husky" in payload:
+                    detected.append("husky")
+    return {
+        "detected": list(dict.fromkeys(detected)),
+        "note": _COMMIT_HOOK_NOTE,
+    }
+
 
 def _utf8_environment(overrides: dict[str, str] | None = None) -> dict[str, str]:
     environment = {**os.environ, **(overrides or {})}
@@ -1278,13 +1310,18 @@ class WorktreeService:
         with ThreadPoolExecutor(max_workers=min(4, len(repositories))) as executor:
             for repository_id, result in executor.map(create, repositories):
                 results[repository_id] = result
-        items = [
-            {
+        items = []
+        for repository_id in repositories:
+            result = results[repository_id]
+            item = {
                 "repository_id": repository_id,
-                **results[repository_id].to_dict(),
+                **result.to_dict(),
             }
-            for repository_id in repositories
-        ]
+            if result.ok:
+                item["commit_hooks"] = detect_commit_hooks(
+                    self._commit_hook_source(requirement_id, repository_id, result)
+                )
+            items.append(item)
         ok = all(result.ok for result in results.values())
         code = "WORKTREE_ENSURED" if ok else "WORKTREE_ENSURE_PARTIAL"
         data = {
@@ -1294,6 +1331,28 @@ class WorktreeService:
         }
         data["audit_id"] = store.audit("worktree.ensured", code, data)
         return Result(ok, code, data=data)
+
+    def _commit_hook_source(
+        self,
+        requirement_id: str,
+        repository_id: str,
+        result: Result,
+    ) -> Path:
+        repository_path = str(result.data.get("repository_path", ""))
+        if not repository_path:
+            resolved = resolve_worktree_binding(
+                StateStore(self.root),
+                worktree_binding_id(requirement_id, repository_id),
+            )
+            if resolved:
+                repository_path = str(
+                    resolved[1].get("repository_path")
+                    or resolved[1].get("path", "")
+                )
+        if repository_path:
+            return Path(repository_path)
+        project = WorkspaceService(self.root).project(repository_id)
+        return (self.root / project.path).resolve()
 
     def list(self) -> Result:
         if not (self.root / "praxis.toml").is_file():

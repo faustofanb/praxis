@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,31 @@ from praxis.naming.requirement import (
 from praxis.result import Result
 from praxis.storage.sqlite import StateStore
 from praxis.workspace.service import WorkspaceService
+
+
+def _repository_changed_files(repository_path: Path) -> list[Path] | None:
+    """枚举仓库相对 HEAD 的改动文件（含 untracked），失败返回 None。"""
+
+    def git(*arguments: str) -> list[str] | None:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=repository_path,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            return None
+        return [item for item in completed.stdout.split("\0") if item]
+
+    tracked = git("diff", "--name-only", "-z", "HEAD")
+    untracked = git("ls-files", "--others", "--exclude-standard", "-z")
+    if tracked is None or untracked is None:
+        return None
+    return [
+        (repository_path / item).resolve()
+        for item in dict.fromkeys([*tracked, *untracked])
+        if (repository_path / item).is_file()
+    ]
 
 
 class RequirementService:
@@ -116,13 +142,15 @@ class RequirementService:
         transitioned = self.transition(requirement_id, target)
         if not transitioned.ok:
             return transitioned
-        return Result(
-            True,
-            data={
-                **transitioned.data,
-                **preview.data,
-            },
-        )
+        data: dict[str, Any] = {
+            **transitioned.data,
+            **preview.data,
+        }
+        if target == RequirementStatus.IMPLEMENTED:
+            hint = self._artifact_registration_hint(requirement_id)
+            if hint:
+                data["artifact_hint"] = hint
+        return Result(True, data=data)
 
     def preview_advance(self, requirement_id: str) -> Result:
         current = self.store.requirement(requirement_id)
@@ -179,19 +207,50 @@ class RequirementService:
             },
         )
 
-    def reopen(self, requirement_id: str, reason: str) -> Result:
+    def reopen(
+        self, requirement_id: str, reason: str, *, from_status: str = ""
+    ) -> Result:
         if not reason.strip():
             return Result(False, "REQUIREMENT_REOPEN_REASON_REQUIRED")
         current = self.store.requirement(requirement_id)
         if not current:
             return Result(False, "REQUIREMENT_NOT_FOUND")
-        if current["status"] != RequirementStatus.VERIFYING:
+        status = current["status"]
+        normalized_from = from_status.strip()
+        if normalized_from not in {"", "implemented", "verifying"}:
             return Result(
                 False,
                 "REQUIREMENT_REOPEN_STATUS_INVALID",
-                data={"status": current["status"]},
+                data={"status": status, "hint": "--from 仅支持 implemented 或 verifying"},
             )
-        record = self.store.reopen_requirement(requirement_id, reason.strip())
+        if status == "implemented" and normalized_from != "implemented":
+            return Result(
+                False,
+                "REQUIREMENT_REOPEN_STATUS_INVALID",
+                data={
+                    "status": status,
+                    "hint": (
+                        "implemented 状态使用 "
+                        f"`praxis requirement reopen {requirement_id} "
+                        "--from implemented --reason <原因>` 单步回开发；"
+                        "或走 fast 通道：`praxis fix start --id <需求ID> --repository <repo> --small`"
+                    ),
+                },
+            )
+        if status != "verifying" and status != "implemented":
+            return Result(
+                False,
+                "REQUIREMENT_REOPEN_STATUS_INVALID",
+                data={
+                    "status": status,
+                    "hint": "只有 implemented/verifying 状态可以 reopen 回 in_progress",
+                },
+            )
+        record = self.store.reopen_requirement(
+            requirement_id,
+            reason.strip(),
+            from_status=normalized_from or status,
+        )
         self.repair_projections()
         return Result(
             True,
@@ -200,8 +259,54 @@ class RequirementService:
                 "requirement_id": requirement_id,
                 "status": record["status"],
                 "reason": reason.strip(),
+                "from_status": normalized_from or status,
             },
         )
+
+    def _artifact_registration_hint(self, requirement_id: str) -> dict[str, Any] | None:
+        from praxis.worktree.service import resolve_worktree_binding
+
+        registered: dict[Path, set[str]] = {}
+        for artifact in self.store.list_scope("artifact"):
+            if artifact.get("requirement_id") != requirement_id:
+                continue
+            source = Path(str(artifact.get("source_path", ""))).resolve()
+            registered.setdefault(source.parent, set()).add(source.name)
+        for binding in self.store.list_scope("worktree"):
+            if binding.get("requirement_id") != requirement_id:
+                continue
+            if binding.get("status") not in {"active", "bound_active"}:
+                continue
+            repository_path = Path(
+                str(binding.get("repository_path") or binding.get("path", ""))
+            ).resolve()
+            if not repository_path.is_dir():
+                continue
+            changed = _repository_changed_files(repository_path)
+            if changed is None:
+                continue
+            unregistered = sorted(
+                path.relative_to(repository_path).as_posix()
+                for path in changed
+                if path.name not in registered.get(path.parent, set())
+            )
+            if not unregistered:
+                continue
+            binding_id = str(
+                binding.get("binding_id")
+                or f"WT-{requirement_id}--{binding.get('repository_id', '')}"
+            )
+            first = repository_path / unregistered[0]
+            return {
+                "binding_id": binding_id,
+                "unregistered_files": unregistered,
+                "command": (
+                    f"praxis artifact add --requirement {requirement_id} "
+                    f"--type code-change --source {first} "
+                    f"--stage implemented --binding {binding_id}"
+                ),
+            }
+        return None
 
     def _ready_gate(self, record: dict[str, Any]) -> Result:
         workspace = WorkspaceService(self.root).load()
@@ -354,6 +459,7 @@ class RequirementService:
         *,
         artifact_ids: list[str] | None = None,
         projects: dict[str, list[str]] | None = None,
+        reset: bool = False,
     ) -> Result:
         if not self.store.requirement(requirement_id):
             return Result(False, "REQUIREMENT_NOT_FOUND")
@@ -366,6 +472,30 @@ class RequirementService:
             normalized[project_id.strip()] = list(dict.fromkeys(artifact_ids or []))
         if not normalized:
             return Result(False, "REQUIREMENT_PROJECT_REQUIRED")
+        if not reset:
+            implementation = self._delivery(requirement_id).get("implementation", {})
+            protected = {
+                project: list(implementation[project].get("artifact_ids", []))
+                for project, ids in normalized.items()
+                if not ids
+                and project in implementation
+                and implementation[project].get("artifact_ids")
+            }
+            if protected:
+                first = sorted(protected)[0]
+                return Result(
+                    False,
+                    "REQUIREMENT_IMPLEMENTATION_RESET_REQUIRED",
+                    data={
+                        "project_id": first,
+                        "existing_artifact_ids": protected[first],
+                        "protected_projects": protected,
+                        "hint": (
+                            "空列表会清空该项目已登记产出物；确认清空请加 --reset，"
+                            "或传入完整 artifact 列表"
+                        ),
+                    },
+                )
         recorded_at = datetime.now(UTC).isoformat()
         delivery, audit_id = self.store.record_requirement_implementations(
             requirement_id,

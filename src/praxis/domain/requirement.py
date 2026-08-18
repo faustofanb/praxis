@@ -74,7 +74,14 @@ class Requirement:
             raise ValueError(f"非法需求状态转换：{self.status.value} -> {target.value}")
         return replace(self, status=target)
 
-    def reopen(self) -> Requirement:
-        if self.status != RequirementStatus.VERIFYING:
-            raise ValueError("只有验证中的需求可以重开到开发中")
+    def reopen(self, expected_source: RequirementStatus | None = None) -> Requirement:
+        if self.status not in {
+            RequirementStatus.VERIFYING,
+            RequirementStatus.IMPLEMENTED,
+        }:
+            raise ValueError("只有验证中或已实施的需求可以重开到开发中")
+        if expected_source is not None and self.status is not expected_source:
+            raise ValueError(
+                f"指定的回退来源 {expected_source.value} 与当前状态 {self.status.value} 不一致"
+            )
         return replace(self, status=RequirementStatus.IN_PROGRESS)

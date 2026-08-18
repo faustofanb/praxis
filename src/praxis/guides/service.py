@@ -22,6 +22,7 @@ _SCENARIOS = {
         ("进入工作树开发", "cd .worktrees/<需求ID>__<简称>/<需求ID>__<简称>__<仓库ID>"),  # noqa: E501
     ],
     "tdd": [
+        ("Maven 仓库先检测测试跳过属性", "praxis test-hint --path <仓库路径> --module <模块>"),  # noqa: E501
         ("先写/改测试断言并观察失败（RED）", "/Users/fausto/plugins/praxis-next/.venv/bin/python -m pytest -q <聚焦测试文件> -o addopts=''"),  # noqa: E501
         ("写最小实现使其通过（GREEN）", "同上命令复跑"),
         ("最小模块编译", "/Users/fausto/plugins/praxis-next/.venv/bin/python -m compileall -q src/praxis"),  # noqa: E501

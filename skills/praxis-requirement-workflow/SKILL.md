@@ -134,6 +134,11 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - TDD GREEN 后默认调用 `minimum-module-compile`：根据变更文件选择最近的 Maven module、
   pnpm workspace package、UniApp 目标或 Python package，执行最小编译并记录命令和 exit code。
   禁止扩大为全仓构建；无法唯一确定安全命令时暂停并要求登记，不能猜命令。
+- Maven 仓库执行测试前先运行 `praxis test-hint --path <仓库路径> [--module <模块>]`：
+  命中 `*surefire.skipTests`、`*surefire.skip` 或 `maven.test.skip` 默认 true 属性时，
+  必须使用输出命令中的 `-D<属性>=false` 覆盖（含 `-pl` 模块参数），不得接受
+  “Tests are skipped” 的静默跳过当作测试通过；命中 `hardcoded_skips`（surefire 配置
+  硬编码 true）时 `-D` 无法覆盖，按 note 先把配置参数化或切到已参数化分支再跑。
 - 工作树创建或绑定失败时停止，不回退到根工作区继续开发。
 
 ## 4. 人工同意边界
@@ -150,6 +155,10 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 可在开发开始时把用户对精确验证矩阵的同意保存为当前需求的 approval receipt；
   只有直接用户授权才能生成收据，“继续/提交/完成”不能推断为授权。
 - 工作树绑定、允许路径、密钥检测、提交信息和只读 CodeGraph 新鲜度属于安全门禁，可以自动执行，但不得借安全门禁触发项目质量命令或测试。
+- 提交钩子（husky/lint-staged/pre-commit 框架、`.git/hooks`）在 `git commit` 时触发的
+  lint/测试校验属于提交流程的一部分，不视为未授权运行；`worktree ensure` 输出的
+  `commit_hooks` 字段登记各仓库提交触发项，提交前先核对，钩子失败按其输出修复后重试提交，
+  不得绕过或卸载钩子。
 - 所有外部命令必须先由 RTK 代理：有专用子命令时使用 `rtk rg`、`rtk mvn` 等适配；测试、
   错误聚合和无专用适配命令分别使用 `rtk test`、`rtk err`、`rtk proxy`。普通文本搜索默认
   使用 `rg`，不是 `grep` 或“rg-grep”；机器 JSON 也使用 `rtk proxy` 保持原始输出。
@@ -164,11 +173,18 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 - 工作树内新文件可用 `artifact add --binding <binding_id>` 登记；源路径按 binding 的仓库子目录
   解析，未绑定或跨 binding 的路径继续阻断，提交分支仍是最终交付来源。
 - 实施完成后用 `requirement record-implementation` 记录实施维度；多个项目使用重复
-  `--project <project>=<artifact-id,...>` 一次原子合并，避免并行登记互相覆盖。验证维度和人工
+  `--project <project>=<artifact-id,...>` 一次原子合并，避免并行登记互相覆盖；空列表
+  会清空该项目已登记产出物，已被 fail-closed 拒绝，确认清空必须显式 `--reset`；
+  未提及的项目字段保持原值。验证维度和人工
   验收维度独立。
   用户明确选择不运行某个精确验证项时用 `verification decline` 记录收据，状态只能是 declined，
   不得标为 verified 或 passed。
-- 从 verifying 回开发使用带原因的 `requirement reopen`；同一问题默认最多一次恢复、一次重试。
+- 从 verifying 回开发使用带原因的 `requirement reopen`；从 implemented 单步回开发使用
+  `requirement reopen <需求ID> --from implemented --reason <原因>`，不必先推进到 verifying。
+  同一问题默认最多一次恢复、一次重试。
+- `requirement advance` 迁入 implemented 时若 binding 存在未登记 code-change 改动，返回
+  `artifact_hint`（含可复制的 `praxis artifact add` 命令）；按提示登记，不要手算哈希或手写
+  归档 JSON 绕过。
 - 完成多个 Skill 后使用 `lifecycle complete-node --used-skill
   <id>=<passed|not_applicable|approval_missing|failed>:<outcome>` 原子写入真实结果、检查门禁并按需
   推进一个状态。未列出的 Skill 不得自动补写为已使用；`approval_missing` 必须显示“实施完成、

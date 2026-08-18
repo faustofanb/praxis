@@ -10,6 +10,7 @@ from typing import Any
 from praxis.application import PraxisApplication
 from praxis.guides.errors import all_entries, lookup
 from praxis.guides.service import SCENARIOS, GuideService
+from praxis.guides.testing import maven_test_hint
 from praxis.result import Result
 
 
@@ -145,6 +146,13 @@ def _parser() -> argparse.ArgumentParser:
     reopen_requirement = requirement.add_parser("reopen")
     reopen_requirement.add_argument("id")
     reopen_requirement.add_argument("--reason", required=True)
+    reopen_requirement.add_argument(
+        "--from",
+        dest="from_status",
+        choices=["implemented", "verifying"],
+        default="",
+        help="显式回退来源；implemented 状态回退必须带 --from implemented",
+    )
     _json_flag(reopen_requirement)
     constraint = requirement.add_parser("constraint").add_subparsers(
         dest="constraint_action", required=True
@@ -162,6 +170,11 @@ def _parser() -> argparse.ArgumentParser:
     record_implementation.add_argument("--requirement", required=True)
     record_implementation.add_argument("--project", action="append", required=True)
     record_implementation.add_argument("--artifact", action="append", default=[])
+    record_implementation.add_argument(
+        "--reset",
+        action="store_true",
+        help="显式清空项目已登记产出物（空列表写入前必须携带）",
+    )
     _json_flag(record_implementation)
 
     verification = commands.add_parser("verification").add_subparsers(
@@ -692,6 +705,13 @@ def _parser() -> argparse.ArgumentParser:
     errors = commands.add_parser("errors", help="查询错误码含义与恢复动作")
     errors.add_argument("code", nargs="?")
     _json_flag(errors)
+
+    test_hint = commands.add_parser(
+        "test-hint", help="检测 Maven 测试跳过属性并输出可直接复制的测试命令"
+    )
+    test_hint.add_argument("--path", required=True, help="仓库路径")
+    test_hint.add_argument("--module", default="", help="Maven 模块（生成 -pl 参数）")
+    _json_flag(test_hint)
     return parser
 
 
@@ -786,6 +806,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
                     "requirement_id": args.requirement,
                     "project_id": args.project[0],
                     "artifact_ids": args.artifact,
+                    "reset": args.reset,
                 }
             if args.artifact:
                 raise ValueError("--artifact 只能与单个不带 '=' 的 --project 一起使用")
@@ -804,6 +825,7 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             return "requirement.record-implementation", {
                 "requirement_id": args.requirement,
                 "projects": projects,
+                "reset": args.reset,
             }
         if args.action == "new":
             return "requirement.new", {
@@ -819,6 +841,8 @@ def _operation(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
             payload["short_name"] = args.name
         if args.action == "reopen":
             payload["reason"] = args.reason
+        if args.action == "reopen":
+            payload["from_status"] = args.from_status
         return f"requirement.{args.action}", payload
     if args.group == "verification":
         return "verification.decline", {
@@ -1475,6 +1499,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.group == "errors":
         operation = "errors"
         result = all_entries() if args.code is None else lookup(args.code)
+    elif args.group == "test-hint":
+        operation = "test-hint"
+        result = maven_test_hint(args.path, module=args.module)
     else:
         operation, values = _operation(args)
         result = PraxisApplication(args.root).execute(operation, values)

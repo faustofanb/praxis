@@ -397,6 +397,7 @@ class StateStore:
         requirement_id: str,
         reason: str,
         *,
+        from_status: str = "",
         now: datetime | None = None,
     ) -> dict[str, Any]:
         updated_at = (now or datetime.now(UTC)).isoformat()
@@ -412,7 +413,12 @@ class StateStore:
                 row["short_name"],
                 RequirementStatus(row["status"]),
             )
-            changed = current.reopen()
+            expected = (
+                RequirementStatus(from_status)
+                if from_status in {"implemented", "verifying"}
+                else None
+            )
+            changed = current.reopen(expected)
             database.execute(
                 "update requirements set status=?, updated_at=? where requirement_id=?",
                 (changed.status.value, updated_at, requirement_id),
@@ -426,7 +432,7 @@ class StateStore:
                 "OK",
                 {
                     "requirement_id": requirement_id,
-                    "from": RequirementStatus.VERIFYING.value,
+                    "from": current.status.value,
                     "status": changed.status.value,
                     "reason": reason,
                 },

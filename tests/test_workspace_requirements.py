@@ -267,6 +267,162 @@ def test_requirement_reopen_returns_verification_to_development_with_reason(
     assert reopened.data["reason"] == "验证发现兼容性问题"
 
 
+def test_record_implementation_empty_list_requires_explicit_reset(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("空列表保护", "空列表不得覆盖已有产出物", [], [])
+    requirement_id = created.data["requirement_id"]
+    requirements.record_implementation(requirement_id, "backend", artifact_ids=["ART-1"])
+
+    blocked = requirements.record_implementation(
+        requirement_id, projects={"backend": []}
+    )
+
+    assert not blocked.ok
+    assert blocked.code == "REQUIREMENT_IMPLEMENTATION_RESET_REQUIRED"
+    assert blocked.data["project_id"] == "backend"
+    assert blocked.data["existing_artifact_ids"] == ["ART-1"]
+
+    reset = requirements.record_implementation(
+        requirement_id, projects={"backend": []}, reset=True
+    )
+    assert reset.ok
+    delivery = requirements.delivery(requirement_id).data
+    assert delivery["implementation"]["backend"]["artifact_ids"] == []
+
+
+def test_record_implementation_preserves_unmentioned_project_recorded_at(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("时间戳保留", "未提及项目 recorded_at 不变", [], [])
+    requirement_id = created.data["requirement_id"]
+
+    requirements.record_implementation(
+        requirement_id, projects={"backend": ["ART-B"]}
+    )
+    backend_recorded_at = (
+        requirements.delivery(requirement_id).data["implementation"]["backend"][
+            "recorded_at"
+        ]
+    )
+    requirements.record_implementation(
+        requirement_id, projects={"mes-pda": ["ART-P"]}
+    )
+
+    implementation = requirements.delivery(requirement_id).data["implementation"]
+    assert implementation["backend"]["recorded_at"] == backend_recorded_at
+    assert implementation["backend"]["artifact_ids"] == ["ART-B"]
+
+
+def test_requirement_reopen_from_implemented_returns_to_in_progress(
+    tmp_path: Path,
+) -> None:
+    WorkspaceService(tmp_path).init("demo", "演示工作空间")
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("实施回退", "implemented 单步回开发", [], [])
+    requirement_id = created.data["requirement_id"]
+    store = StateStore(tmp_path)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+        RequirementStatus.IMPLEMENTED,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    blocked = requirements.reopen(requirement_id, "实施遗漏边界处理")
+
+    assert not blocked.ok
+    assert blocked.code == "REQUIREMENT_REOPEN_STATUS_INVALID"
+    assert "--from implemented" in blocked.data["hint"]
+
+    reopened = requirements.reopen(
+        requirement_id, "实施遗漏边界处理", from_status="implemented"
+    )
+
+    assert reopened.ok and reopened.code == "REQUIREMENT_REOPENED"
+    assert reopened.data["status"] == "in_progress"
+    assert reopened.data["from_status"] == "implemented"
+
+
+def test_advance_to_implemented_emits_artifact_hint_for_unregistered_changes(
+    tmp_path: Path,
+) -> None:
+    import subprocess
+    import time
+
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("backend", "python", "backend-repo", "main")],
+    )
+    repo = tmp_path / "backend-repo"
+    repo.mkdir()
+    (repo / "src").mkdir()
+    (repo / "src" / "service.py").write_text("print('v1')\n", encoding="utf-8")
+
+    def git(*arguments: str) -> None:
+        subprocess.run(
+            ["git", *arguments], cwd=repo, check=True, capture_output=True, text=True
+        )
+
+    git("init", "-b", "main")
+    git("config", "user.email", "test@praxis.local")
+    git("config", "user.name", "praxis-test")
+    git("add", "-A")
+    git("commit", "-m", "init")
+    (repo / "src" / "service.py").write_text("print('v2')\n", encoding="utf-8")
+    (repo / "src" / "new_module.py").write_text("print('new')\n", encoding="utf-8")
+
+    requirements = RequirementService(tmp_path)
+    created = requirements.create("产出物提示", "advance 提示未登记改动", ["demo"], [])
+    requirement_id = created.data["requirement_id"]
+    StateStore(tmp_path).set(
+        "worktree",
+        f"WT-{requirement_id}--backend",
+        {
+            "binding_id": f"WT-{requirement_id}--backend",
+            "requirement_id": requirement_id,
+            "repository_id": "backend",
+            "branch": f"praxis/{requirement_id}",
+            "path": str(repo.parent),
+            "repository_path": str(repo),
+            "status": "active",
+        },
+    )
+
+    requirements.record_implementation(requirement_id, "backend", artifact_ids=[])
+    time.sleep(0.01)
+    store = StateStore(tmp_path)
+    for status in (
+        RequirementStatus.INVESTIGATING,
+        RequirementStatus.ANALYZED,
+        RequirementStatus.PLANNED,
+        RequirementStatus.READY,
+        RequirementStatus.IN_PROGRESS,
+    ):
+        store.transition_requirement(requirement_id, status)
+
+    advanced = requirements.advance(requirement_id)
+
+    assert advanced.ok
+    assert advanced.data["target_status"] == "implemented"
+    hint = advanced.data["artifact_hint"]
+    assert hint["binding_id"] == f"WT-{requirement_id}--backend"
+    assert hint["command"].startswith(
+        f"praxis artifact add --requirement {requirement_id} "
+        "--type code-change --source"
+    )
+    assert "src/service.py" in hint["unregistered_files"]
+    assert "src/new_module.py" in hint["unregistered_files"]
+
+
 def test_requirement_constraints_supersede_atomically_and_project_active_state(
     tmp_path: Path,
 ) -> None:

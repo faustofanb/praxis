@@ -13,6 +13,14 @@ _ERROR_CATALOG: dict[str, dict[str, str]] = {
         "hint": "状态推进被阻塞：缺失门禁或前置产出物。",
         "next_step": "查看返回的 missing_gates，补齐对应文档或门禁后再 `praxis requirement advance <ID>`。",  # noqa: E501
     },
+    "REQUIREMENT_IMPLEMENTATION_RESET_REQUIRED": {
+        "hint": "空列表会清空该项目已登记产出物，已 fail-closed 拒绝。",
+        "next_step": "确认清空加 `--reset`；或传入完整 artifact 列表（`--project <项目>=<ART-ID,...>`）重试。",  # noqa: E501
+    },
+    "REQUIREMENT_REOPEN_STATUS_INVALID": {
+        "hint": "当前状态不能直接 reopen 回开发。",
+        "next_step": "implemented 用 `praxis requirement reopen <ID> --from implemented --reason <原因>` 单步回 in_progress；verifying 直接 reopen；其他状态先推进到 implemented/verifying。小步修复可走 fast 通道：`praxis fix start <需求ID> --repository <仓库> --small`。",  # noqa: E501
+    },
     "SKILL_NODE_GATE_BLOCKED": {
         "hint": "节点 Skill 门禁未完成。",
         "next_step": "`praxis skill route-node --node <节点> --requirement <ID>` 查看 required 列表，逐项 invoke/complete 后 `praxis lifecycle complete-node --requirement <ID> --node <节点> --used-skill '<skill-id>=passed:说明'`。",  # noqa: E501

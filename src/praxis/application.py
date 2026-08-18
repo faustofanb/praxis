@@ -322,6 +322,7 @@ class PraxisApplication:
                 values.get("project_id", ""),
                 artifact_ids=values.get("artifact_ids", []),
                 projects=values.get("projects", {}),
+                reset=values.get("reset", False),
             )
         if operation == "verification.decline":
             return VerificationService(self.root).decline(
@@ -336,7 +337,9 @@ class PraxisApplication:
             )
         if operation == "requirement.reopen":
             return RequirementService(self.root).reopen(
-                values["requirement_id"], values["reason"]
+                values["requirement_id"],
+                values["reason"],
+                from_status=values.get("from_status", ""),
             )
         if operation == "requirement.advance":
             requirement_id = values["requirement_id"]
