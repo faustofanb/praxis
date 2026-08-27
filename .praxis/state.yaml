@@ -1,8 +1,8 @@
 schema_version: 1
-current_milestone: M0
-last_accepted_milestone: null
+current_milestone: M1
+last_accepted_milestone: M0
 active_task: null
-development_state: ACCEPTED
+development_state: IDLE
 blockers: 
   []
 open_adrs: 
@@ -10,11 +10,13 @@ open_adrs:
 known_risks: 
   []
 last_acceptance: 
-  milestone: null
-  result: null
+  milestone: M0
+  result: ACCEPTED
+  accepted_by: "樊彪 (human)"
+  accepted_at: "2026-08-27"
 next_legal_actions: 
-  - all M0 backlog tasks accepted; milestone promotion awaits independent/human sign-off via docs/acceptance/M0.md
-  - after M0 acceptance, promote current_milestone to M1 and create the M1-T001 task contract
+  - create the M1-T001 task contract (ids, event envelope, session/turn contracts; risk class E, ADR required)
+  - milestone goal and gates are defined in .praxis/milestones/M1.yaml
 last_verification: 
   task: M0-T004
   at: 2026-08-27T14:09:36.451Z

@@ -1,6 +1,6 @@
 schema_version: 1
 id: M0
-status: active
+status: accepted
 goal: Create a reproducible repository foundation with frozen toolchain, workspace
   boundaries, CI and the AI development control plane itself operational.
 prerequisites: []

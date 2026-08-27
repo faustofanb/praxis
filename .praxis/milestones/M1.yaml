@@ -1,6 +1,6 @@
 schema_version: 1
 id: M1
-status: planned
+status: active
 goal: Implement deterministic Session/Event kernel without a real LLM.
 prerequisites:
 - M0
