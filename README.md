@@ -24,7 +24,7 @@
 - `AGENTS.md`：每次 AI 编码会话都必须进入上下文的短规则。
 - `.agents/rules/`：按主题拆分的详细规则。
 - `.agents/skills/`：高频开发任务的操作 Skill。
-- `bootstrap/`：建议的首批仓库配置文件，可在正式初始化仓库时复制到根目录后再生成 lockfile。
+- 仓库根配置：`mise.toml` / `package.json` / `bunfig.toml` / `tsconfig.base.json` / `biome.json` / `vitest.config.ts` / `knip` / `lefthook.yml` / `commitlint.config.mjs`；统一质量入口为 `mise run check:all`。
 
 ## 进入代码前的最低条件
 
@@ -42,7 +42,3 @@
 > Start simple, escalate on evidence.
 
 先实现最小确定性闭环；只有真实测试、故障注入或任务轨迹证明现有设计不足时，才增加新机制。
-
-## Bundle manifest
-
-See [`MANIFEST.md`](./MANIFEST.md) for the four requested deliverables, repository bootstrap materials, ADRs, and recommended reading order.
