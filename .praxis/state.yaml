@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M1
 last_accepted_milestone: M0
-active_task: null
-development_state: ACCEPTED
+active_task: M1-T003
+development_state: ACCEPTANCE_READY
 blockers: 
   []
 open_adrs: 
@@ -15,11 +15,12 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-27
 next_legal_actions: 
-  - generate handoff
-  - select next eligible task in current milestone
+  - implement only within Task Contract scope
+  - run ai:guard
+  - run ai:verify
 last_verification: 
-  task: M1-T002
-  at: 2026-08-27T14:48:20.346Z
+  task: M1-T003
+  at: 2026-08-27T15:00:02.367Z
   result: PASS
   gates: 
     - gate: architecture
@@ -33,6 +34,8 @@ last_verification:
     - gate: knip
       result: PASS
     - gate: lint
+      result: PASS
+    - gate: store
       result: PASS
     - gate: typecheck
       result: PASS
