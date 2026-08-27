@@ -1,0 +1,20 @@
+# Subsystem Docs
+
+各 subsystem 的**当前实现行为**文档，随对应 package 的实现逐步建立（M1+）。
+
+规则（见 `docs/02-system-design.md` 与 `.agents/rules/documentation.md`）：
+
+- 模块边界、依赖方向等架构事实的唯一权威是 `docs/02-system-design.md`；本目录只描述实现层细节，并链接到它，不复制它。
+- 每个 subsystem 文档描述"现在是什么"，不写变更历史；决策原因归 `docs/decisions/*`。
+
+## 索引
+
+| 文档 | Package | 状态 |
+| --- | --- | --- |
+| `contracts.md` | `packages/contracts` | 未开始（M1.1） |
+| `core.md` | `packages/core` | 未开始（M1.2） |
+| `store-sqlite.md` | `packages/store-sqlite` | 未开始（M1.3） |
+| `provider-openai.md` | `packages/provider-openai` | 未开始（M2.4） |
+| `tools-local.md` | `packages/tools-local` | 未开始（M2.3） |
+| `testkit.md` | `packages/testkit` | 未开始（M2.1） |
+| `cli.md` | `apps/cli` | 未开始（M2.5） |
