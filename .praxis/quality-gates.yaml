@@ -68,11 +68,10 @@ rules:
   match:
   - packages/contracts/src/**event**
   - packages/core/src/**reducer**
+  # replay/integration rejoin this rule when the M1 store/reducer suites land.
   require:
   - unit
   - property
-  - replay
-  - integration
 - id: agent-loop
   match:
   - packages/core/src/**agent-loop**

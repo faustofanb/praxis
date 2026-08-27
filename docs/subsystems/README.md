@@ -11,7 +11,7 @@
 
 | 文档 | Package | 状态 |
 | --- | --- | --- |
-| `contracts.md` | `packages/contracts` | 未开始（M1.1） |
+| `contracts.md` | `packages/contracts` | 进行中（M1：ids/信封/Session-Turn 词汇/EventStore port 已落地） |
 | `core.md` | `packages/core` | 未开始（M1.2） |
 | `store-sqlite.md` | `packages/store-sqlite` | 未开始（M1.3） |
 | `provider-openai.md` | `packages/provider-openai` | 未开始（M2.4） |

@@ -32,6 +32,10 @@ run = "bun run test"
 description = "Check import/dependency conformance against .praxis/architecture.yaml"
 run = "bun scripts/ai/check-architecture.ts"
 
+[tasks."test:property"]
+description = "Property-based tests (fast-check) over contracts and core laws"
+run = "bun run test:property"
+
 [tasks."test:coverage"]
 run = "bun run test:coverage"
 
