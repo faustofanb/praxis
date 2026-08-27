@@ -13,24 +13,18 @@ last_acceptance:
   milestone: null
   result: null
 next_legal_actions: 
-  - generate handoff
-  - select next eligible task in current milestone
+  - all M0 backlog tasks accepted; milestone promotion awaits independent/human sign-off via docs/acceptance/M0.md
+  - after M0 acceptance, promote current_milestone to M1 and create the M1-T001 task contract
 last_verification: 
-  task: M0-T003
-  at: 2026-08-27T14:07:47.444Z
+  task: M0-T004
+  at: 2026-08-27T14:09:36.451Z
   result: PASS
   gates: 
     - gate: architecture
       result: PASS
-    - gate: build
-      result: PASS
     - gate: format
-      result: PASS
-    - gate: knip
       result: PASS
     - gate: lint
       result: PASS
     - gate: typecheck
-      result: PASS
-    - gate: unit
       result: PASS
