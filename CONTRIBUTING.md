@@ -3,10 +3,11 @@
 ## Setup
 
 1. Install the repository-pinned mise version or a compatible mise capable of reading `mise.lock`.
-2. Run `mise install`.
-3. Run `bun install --frozen-lockfile` after lockfiles exist.
-4. Install hooks: `bunx lefthook install`.
-5. Verify: `mise run check:all`.
+2. Trust the repository mise config (first clone only): `mise trust`.
+3. Run `mise install`.
+4. Run `bun install --frozen-lockfile` after lockfiles exist.
+5. Install hooks: `bunx lefthook install`.
+6. Verify: `mise run check:all`.
 
 ## Before coding
 
