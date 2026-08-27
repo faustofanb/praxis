@@ -1,0 +1,13 @@
+{
+  "name": "@praxis/testkit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@praxis/contracts": "0.0.0",
+    "@praxis/core": "0.0.0"
+  }
+}

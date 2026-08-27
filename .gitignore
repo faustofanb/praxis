@@ -10,3 +10,4 @@ coverage/
 *.sqlite-wal
 *.sqlite-shm
 .tmp/
+*.tsbuildinfo
