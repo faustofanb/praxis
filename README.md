@@ -1,6 +1,31 @@
-# Praxis Harness 开发基线包
+# Praxis Harness
 
-本目录是 Praxis Harness 在进入应用代码开发之前的工程基线。它不是白皮书的重复，而是把白皮书中的原则转化为**可执行的技术选型、系统边界、开发计划和 AI 编码约束**。
+可验证智能体运行时（verifiable agent runtime）。本仓库是 Praxis Harness 的唯一实现仓库：冻结设计文档、工程基线与代码在同库演进；理论来源见 `docs/00-praxis-whitepaper.md`。
+
+## 当前状态
+
+M0 — Repository Foundation 已完成并实证验收：clean clone 仅凭已提交文件即可复现工具链并通过 `mise run check:all`。各里程碑的规划与出口标准见 `docs/03-project-plan.md`；M1（Deterministic Session Kernel）尚未开始。
+
+## 快速开始
+
+环境搭建与贡献流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)：`mise trust` → `mise install` → `bun install --frozen-lockfile`，统一质量入口为 `mise run check:all`。
+
+## 仓库结构
+
+```text
+apps/cli/               # composition root（M2+ 实装）
+packages/contracts/     # 协议、schema、ports；无 I/O
+packages/core/          # 确定性 Agent Runtime（M1+ 实装）
+packages/store-sqlite/  # EventStore SQLite adapter（M1.3 实装）
+packages/provider-openai/
+packages/tools-local/
+packages/testkit/
+tests/                  # 仓库级冒烟与依赖边界测试
+docs/                   # 权威文档与 ADR（docs/decisions/）
+.agents/                # AI 开发规则（rules/）与技能（skills/）
+```
+
+包依赖方向等架构事实以 `docs/02-system-design.md` 与 ADR-0002 为准，并由 `tests/boundaries.test.ts` 自动守护；各包当前为最小占位实现，不含业务代码。
 
 ## 文档权威顺序
 
@@ -24,18 +49,6 @@
 - `AGENTS.md`：每次 AI 编码会话都必须进入上下文的短规则。
 - `.agents/rules/`：按主题拆分的详细规则。
 - `.agents/skills/`：高频开发任务的操作 Skill。
-- 仓库根配置：`mise.toml` / `package.json` / `bunfig.toml` / `tsconfig.base.json` / `biome.json` / `vitest.config.ts` / `knip` / `lefthook.yml` / `commitlint.config.mjs`；统一质量入口为 `mise run check:all`。
-
-## 进入代码前的最低条件
-
-只有以下条件全部满足，才进入 M1 应用代码实现：
-
-- 技术栈和依赖版本已冻结；
-- Core/Adapter/Composition Root 边界已接受；
-- Event Store 与 Tool Execution 状态机已接受；
-- v1 不做清单已冻结；
-- CI、测试分层、提交规则和 AI 开发规则已启用；
-- M0 验收清单全部通过。
 
 ## 开发原则
 
