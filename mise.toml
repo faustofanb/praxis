@@ -32,6 +32,10 @@ run = "bun run test"
 description = "Check import/dependency conformance against .praxis/architecture.yaml"
 run = "bun scripts/ai/check-architecture.ts"
 
+[tasks."test:integration"]
+description = "Integration tests across core, contracts ports, and adapters"
+run = "bun run test:integration"
+
 [tasks."test:property"]
 description = "Property-based tests (fast-check) over contracts and core laws"
 run = "bun run test:property"
@@ -41,8 +45,6 @@ run = "bun run test:coverage"
 
 # These task names are reserved for later milestones; add the matching package
 # scripts once the corresponding test suites exist.
-# [tasks."test:integration"]
-# run = "bun run test:integration"
 # [tasks."test:replay"]
 # run = "bun run test:replay"
 # [tasks."test:fault"]

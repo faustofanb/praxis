@@ -1,4 +1,4 @@
-import type { EventStore, SessionCreatedEvent, SessionEventUnion } from "@praxis/contracts";
+import type { SessionCreatedEvent, SessionEventUnion } from "@praxis/contracts";
 import {
   asEventId,
   asSessionId,
@@ -12,6 +12,7 @@ import {
   ToolExecutionStatusSchema,
 } from "@praxis/contracts";
 import { describe, expect, test } from "vitest";
+import { inMemoryEventStore } from "./helpers/in-memory-event-store";
 
 const sessionId = asSessionId("session-1");
 const eventId = asEventId("event-1");
@@ -163,22 +164,7 @@ describe("tool execution status", () => {
 
 describe("EventStore port", () => {
   test("an in-memory implementation satisfies the interface contract", async () => {
-    const streams = new Map<string, SessionEventUnion[]>();
-    const store: EventStore = {
-      async append(events, expectedHeadSeq) {
-        for (const event of events) {
-          const stream = streams.get(event.sessionId) ?? [];
-          const actualHeadSeq = stream.at(-1)?.seq ?? EMPTY_STREAM_HEAD_SEQ;
-          if (expectedHeadSeq !== actualHeadSeq) {
-            throw new EventStoreConflictError(event.sessionId, expectedHeadSeq, actualHeadSeq);
-          }
-          streams.set(event.sessionId, [...stream, event]);
-        }
-      },
-      async readStream(id, afterSeq = EMPTY_STREAM_HEAD_SEQ) {
-        return (streams.get(id) ?? []).filter((event) => event.seq > afterSeq);
-      },
-    };
+    const store = inMemoryEventStore();
 
     const created: SessionCreatedEvent = {
       ...envelopeOverrides(),
