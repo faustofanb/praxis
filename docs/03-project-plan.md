@@ -50,27 +50,27 @@ Multi-Agent、Emergency Command、长期 Drift AI 不属于 v1.0。
 
 ### M0.1 仓库初始化
 
-- [ ] Bun workspace 目录；
-- [ ] `mise.toml` / `mise.lock`；
-- [ ] `package.json` exact pins；
-- [ ] `bun.lock`；
-- [ ] `tsconfig.base.json`；
-- [ ] Biome；
-- [ ] Vitest；
-- [ ] fast-check；
-- [ ] Knip；
-- [ ] Lefthook；
-- [ ] commitlint。
+- [x] Bun workspace 目录；
+- [x] `mise.toml` / `mise.lock`；
+- [x] `package.json` exact pins；
+- [x] `bun.lock`；
+- [x] `tsconfig.base.json`；
+- [x] Biome；
+- [x] Vitest；
+- [x] fast-check；
+- [x] Knip；
+- [x] Lefthook；
+- [x] commitlint。
 
 ### M0.2 文档治理
 
-- [ ] root `AGENTS.md`；
-- [ ] `CONTRIBUTING.md`；
-- [ ] architecture/system design；
-- [ ] ADR template；
-- [ ] PR template；
-- [ ] AI skills/rules；
-- [ ] `docs/subsystems/` skeleton。
+- [x] root `AGENTS.md`；
+- [x] `CONTRIBUTING.md`；
+- [x] architecture/system design；
+- [x] ADR template；
+- [x] PR template；
+- [x] AI skills/rules；
+- [x] `docs/subsystems/` skeleton。
 
 ### M0.3 CI
 
