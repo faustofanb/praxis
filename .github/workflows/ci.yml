@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: quality gate (frozen install)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install mise
+        # jdx/mise-action v4.3.0; runs `mise install --locked` itself
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: "2026.7.13"
+          install_args: --locked
+      - name: Install dependencies (frozen lockfile)
+        run: mise run install
+      - name: Quality gate
+        run: mise run check:all
+
+  commitlint:
+    name: PR title commitlint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install mise
+        # jdx/mise-action v4.3.0; runs `mise install --locked` itself
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        with:
+          version: "2026.7.13"
+          install_args: --locked
+      - name: Install dependencies (frozen lockfile)
+        run: mise run install
+      - name: Lint PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | bunx commitlint
