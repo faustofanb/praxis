@@ -2,7 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { YAML } from "bun";
 
-const ROOT = resolve(import.meta.dir, "../..");
+// PRAXIS_ROOT allows tests and tooling to point the controller at another
+// repository root (defaults to the repository containing this script).
+const ROOT = resolve(process.env.PRAXIS_ROOT ?? resolve(import.meta.dir, "../.."));
 const PRAXIS = resolve(ROOT, ".praxis");
 
 type PlainObject = Record<string, unknown>;
@@ -107,7 +109,7 @@ function gitChangedFiles(): string[] {
   for (const line of output.split("\n")) {
     if (!line.trim()) continue;
     const raw = line.slice(3).trim();
-    const finalName = raw.includes(" -> ") ? raw.split(" -> ").at(-1)! : raw;
+    const finalName = raw.includes(" -> ") ? (raw.split(" -> ").at(-1) ?? raw) : raw;
     files.push(finalName.replace(/^"|"$/g, ""));
   }
   return [...new Set(files)].sort();
@@ -136,18 +138,88 @@ function scopeFromTask(task: PlainObject): { allowed: string[]; forbidden: strin
   };
 }
 
-function validateTask(task: PlainObject, state: PlainObject): void {
-  for (const key of ["id", "title", "milestone", "status", "objective", "falsified_if"]) {
-    if (typeof task[key] !== "string" || !(task[key] as string).trim()) {
-      die(`task.${key} must be a non-empty string`);
+// Minimal JSON Schema subset validator for .praxis/schemas/task.schema.json.
+// The schema file is the single source of truth; an unknown keyword fails
+// loudly so schema evolution forces this validator to keep up.
+const SUPPORTED_SCHEMA_KEYWORDS = new Set([
+  "$schema",
+  "$id",
+  "type",
+  "required",
+  "properties",
+  "const",
+  "enum",
+  "pattern",
+  "minLength",
+  "items",
+]);
+
+function loadTaskSchema(): PlainObject {
+  const path = resolve(PRAXIS, "schemas", "task.schema.json");
+  if (!existsSync(path)) die(`missing file: ${relative(ROOT, path)}`);
+  const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+  if (!isObject(parsed)) die("task.schema.json must be a JSON object");
+  return parsed;
+}
+
+function validateSchema(value: unknown, schema: PlainObject, label: string): void {
+  for (const keyword of Object.keys(schema)) {
+    if (!SUPPORTED_SCHEMA_KEYWORDS.has(keyword)) {
+      die(`task.schema.json uses unsupported keyword '${keyword}' at ${label}`);
     }
   }
+  if ("const" in schema && value !== schema.const) {
+    die(`${label} must equal ${JSON.stringify(schema.const)}`);
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.some((entry) => entry === value)) {
+    die(`${label} must be one of: ${schema.enum.map((entry) => JSON.stringify(entry)).join(", ")}`);
+  }
+  if (typeof schema.type === "string") {
+    const matchesType =
+      (schema.type === "object" && isObject(value)) ||
+      (schema.type === "array" && Array.isArray(value)) ||
+      (schema.type === "string" && typeof value === "string") ||
+      (schema.type === "boolean" && typeof value === "boolean") ||
+      (schema.type === "number" && typeof value === "number") ||
+      (schema.type === "integer" && Number.isInteger(value));
+    if (!matchesType) die(`${label} must be of type ${schema.type}`);
+  }
+  if (typeof schema.pattern === "string" && typeof value === "string") {
+    if (!new RegExp(schema.pattern).test(value)) die(`${label} must match ${schema.pattern}`);
+  }
+  if (typeof schema.minLength === "number" && typeof value === "string") {
+    if (value.trim().length < schema.minLength) {
+      die(`${label} must have at least ${schema.minLength} non-whitespace characters`);
+    }
+  }
+  if ("items" in schema) {
+    if (!isObject(schema.items)) die(`task.schema.json items must be an object at ${label}`);
+    if (Array.isArray(value)) {
+      for (const [index, item] of value.entries()) {
+        validateSchema(item, schema.items, `${label}[${index}]`);
+      }
+    }
+  }
+  if (Array.isArray(schema.required) && isObject(value)) {
+    for (const key of schema.required) {
+      if (!(key in value)) die(`${label}.${String(key)} is required by task schema`);
+    }
+  }
+  if (isObject(schema.properties) && isObject(value)) {
+    for (const [key, subschema] of Object.entries(schema.properties)) {
+      if (!isObject(subschema)) continue;
+      if (key in value) validateSchema(value[key], subschema, `${label}.${key}`);
+    }
+  }
+}
+
+function validateTask(task: PlainObject, state: PlainObject): void {
+  validateSchema(task, loadTaskSchema(), "task");
   if (task.milestone !== currentMilestone(state)) {
     die(`task milestone ${String(task.milestone)} != current milestone ${currentMilestone(state)}`);
   }
   const scope = scopeFromTask(task);
   if (scope.allowed.length === 0) die("Task Contract must declare allowed_paths");
-  stringArray(task.required_gates ?? [], "task.required_gates");
 }
 
 function printStatus(): void {
@@ -238,8 +310,8 @@ function packageNameMap(): Map<string, string> {
     for (const manifest of glob.scanSync({ cwd: ROOT, absolute: true })) {
       const json = JSON.parse(readFileSync(manifest, "utf8")) as PlainObject;
       if (typeof json.name !== "string") continue;
-      const id = manifest.split("/").at(-2)!;
-      result.set(json.name, id);
+      const id = manifest.split("/").at(-2);
+      if (id) result.set(json.name, id);
     }
   }
   return result;
@@ -254,7 +326,8 @@ function architectureGuard(changed: readonly string[]): void {
     /^(packages|apps)\/[^/]+\/package\.json$/.test(item),
   )) {
     const manifest = JSON.parse(readFileSync(resolve(ROOT, file), "utf8")) as PlainObject;
-    const pkgId = file.split("/")[1]!;
+    const pkgId = file.split("/")[1];
+    if (!pkgId) continue;
     const rules = architecture.packages[pkgId];
     if (!isObject(rules)) continue;
     const allowed = new Set(
@@ -317,7 +390,7 @@ function verify(): void {
     process.stdout.write(`\n==> ${gate}: ${command.join(" ")}\n`);
     const result = Bun.spawnSync({ cmd: command, cwd: ROOT, stdout: "inherit", stderr: "inherit" });
     const status = result.exitCode === 0 ? "PASS" : "FAIL";
-    results.push({ gate, result });
+    results.push({ gate, result: status });
     if (status === "FAIL") break;
   }
   const pass = results.length === gates.length && results.every((item) => item.result === "PASS");

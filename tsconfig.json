@@ -11,16 +11,19 @@
       "path": "./packages/core"
     },
     {
+      "path": "./packages/provider-openai"
+    },
+    {
       "path": "./packages/store-sqlite"
     },
     {
-      "path": "./packages/provider-openai"
+      "path": "./packages/testkit"
     },
     {
       "path": "./packages/tools-local"
     },
     {
-      "path": "./packages/testkit"
+      "path": "./scripts/ai"
     },
     {
       "path": "./tests"

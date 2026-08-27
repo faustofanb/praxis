@@ -23,6 +23,15 @@ run = "bun run typecheck"
 [tasks.test]
 run = "bun run test"
 
+# All current tests are unit-level; point this at a dedicated script when the
+# integration/replay/fault suites split off in later milestones.
+[tasks."test:unit"]
+run = "bun run test"
+
+[tasks."test:architecture"]
+description = "Check import/dependency conformance against .praxis/architecture.yaml"
+run = "bun scripts/ai/check-architecture.ts"
+
 [tasks."test:coverage"]
 run = "bun run test:coverage"
 
@@ -35,11 +44,39 @@ run = "bun run test:coverage"
 # [tasks."test:fault"]
 # run = "bun run test:fault"
 
+# M0 build gate: the workspace compiles as one project graph. Diverge from
+# typecheck once real package builds exist.
+[tasks.build]
+run = "bun run build"
+
 [tasks.knip]
 run = "bun run knip"
 
+# AI development control plane (docs/06-ai-development-control-plane.md §5).
+# ai:plan takes the Task Contract path: mise run ai:plan -- .praxis/tasks/<id>.yaml
+[tasks."ai:status"]
+run = "bun scripts/ai/praxis-dev.ts status"
+
+[tasks."ai:brief"]
+run = "bun scripts/ai/praxis-dev.ts brief"
+
+[tasks."ai:plan"]
+run = "bun scripts/ai/praxis-dev.ts plan"
+
+[tasks."ai:guard"]
+run = "bun scripts/ai/praxis-dev.ts guard"
+
+[tasks."ai:verify"]
+run = "bun scripts/ai/praxis-dev.ts verify"
+
+[tasks."ai:accept"]
+run = "bun scripts/ai/praxis-dev.ts accept"
+
+[tasks."ai:handoff"]
+run = "bun scripts/ai/praxis-dev.ts handoff"
+
 [tasks.check]
-depends = ["format:check", "lint", "typecheck", "test", "knip"]
+depends = ["format:check", "lint", "typecheck", "test", "knip", "test:architecture"]
 
 [tasks."check:all"]
 depends = ["check", "test:coverage"]

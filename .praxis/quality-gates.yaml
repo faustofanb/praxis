@@ -40,6 +40,10 @@ gates:
   - mise
   - run
   - build
+  architecture:
+  - mise
+  - run
+  - test:architecture
   knip:
   - mise
   - run
@@ -52,6 +56,7 @@ rules:
   - format
   - lint
   - typecheck
+  - architecture
 - id: core-behavior
   match:
   - packages/core/src/**
@@ -120,6 +125,5 @@ rules:
   require:
   - build
   - unit
-  - integration
   - knip
   human_acceptance: true
