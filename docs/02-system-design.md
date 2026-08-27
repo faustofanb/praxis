@@ -1,0 +1,1105 @@
+# Praxis Harness v1 系统设计文档
+
+**文档类型：实施级 System Design**  
+**状态：Development Baseline**  
+**目标读者：**实现 Core、Store、Provider、Tool、CLI 的工程师与 AI 编码 Agent。
+
+> 本文描述“当前应该实现什么”。理论依据参见 `00-praxis-whitepaper.md`；设计原因参见 `docs/decisions/`。代码若与本文冲突，应先判断是代码缺陷还是本文已过时，再通过 ADR/文档变更明确解决，禁止默默分叉。
+
+---
+
+# 1. 系统目标
+
+Praxis Harness 是一个以用户目标为最高目的、以外部现实为最终检验标准的 Agent Runtime。v1 必须做到：
+
+1. 模型可以在有限上下文中提出工具行动；
+2. 工具行动经过确定性 Runtime 权限检查；
+3. 外部副作用有明确生命周期与失败语义；
+4. 每个重要事实写入可重放 Event Store；
+5. Session 可以在进程重启后恢复；
+6. `UNKNOWN`/不确定副作用不会被错误重试；
+7. Observation / Hypothesis / Plan / Challenge 可以显式记录；
+8. Agent Loop 的行为可以通过确定测试替身完整集成测试；
+9. 简单请求不强迫走复杂多 Agent/治理流程；
+10. Core 不绑定 OpenAI、SQLite 之外的具体适配器实现（SQLite 也只在 adapter package）。
+
+## 1.1 v1 非目标
+
+本文设计**不要求**：
+
+- 内建 Multi-Agent 调度系统；
+- 实时“主要矛盾”AI 分类器；
+- 独立 Critic/Judge Agent；
+- 云端 App Server/IDE 协议；
+- Workflow DSL；
+- 自动修改系统宪法/Policy；
+- 企业级分布式数据库；
+- Exactly-once 外部副作用承诺；
+- 长期自治生产运维。
+
+---
+
+# 2. 设计原则
+
+## 2.1 Deterministic Core, Nondeterministic Edge
+
+LLM 和外部环境允许不确定；以下内容必须确定：
+
+- 状态机；
+- Event append / replay；
+- Capability 决策；
+- Tool 生命周期；
+- Session seq；
+- `UNKNOWN` 语义；
+- Context budget；
+- Goal hard constraints；
+- 关键状态转换。
+
+## 2.2 One Fact, One Authority
+
+同一个事实只有一个权威来源：
+
+- 历史事实：Event Store；
+- 当前状态：由 Event Stream 纯函数/受控 reducer 派生；
+- 权限：CapabilityPolicy；
+- 模型可见 Policy：从同一 Runtime state 投影；
+- 外部副作用事实：Tool Result / Reconciliation Observation。
+
+禁止出现：
+
+```text
+config=A
+runtime=B
+model believes=C
+```
+
+却没有明确谁是真实来源。
+
+## 2.3 Commands Are Intent; Events Are Facts
+
+`ExecuteTool` 是意图；`ToolSucceeded` 才是事实。Command 不允许直接写进 Verified Knowledge。
+
+## 2.4 Fail Closed on Governance/Verification Failure
+
+审批/验证机制不可用时，不得默认成功；高风险动作进入 paused/blocked，而不是绕过。
+
+## 2.5 Start Simple, Escalate on Evidence
+
+默认使用最低充分复杂度。只有真实 evidence 证明问题跨域、风险高或当前路径不足，才升级到完整 Praxis 流程。
+
+---
+
+# 3. 顶层架构
+
+```text
+┌─────────────────────────────────────────────┐
+│                 Product Layer               │
+│  apps/cli · Task Routing · Human I/O        │
+└────────────────────┬────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────┐
+│                  Praxis Core                │
+│                                             │
+│  SessionRuntime                             │
+│  AgentLoop                                  │
+│  StateReducer                               │
+│  ContextBuilder                             │
+│  ToolRuntime                                │
+│  CapabilityPolicy                          │
+│  Extension Seams                           │
+└───────┬──────────────┬──────────────┬───────┘
+        │              │              │
+        ▼              ▼              ▼
+  EventStore      ModelProvider    Tool Providers
+   (port)           (port)           (ports)
+        │              │              │
+        ▼              ▼              ▼
+ SqliteStore      OpenAIAdapter    Local Tools
+        │                             │
+        └──────────────┬──────────────┘
+                       ▼
+                   Environment
+```
+
+所有外部实现都通过 `contracts` 中定义的 Port 接入。`core` 不能 import `openai`、`bun:sqlite` 或具体本地工具。
+
+---
+
+# 4. Workspace 与模块职责
+
+## 4.1 `packages/contracts`
+
+**定位：**系统公共协议与数据模型，原则上无 I/O。
+
+职责：
+
+- Branded IDs：`SessionId`, `EventId`, `TurnId`, `StepId`, `ToolExecutionId`；
+- Event Envelope / Event Payload schema；
+- `EventStore` port；
+- `ModelProvider` port；
+- `ToolDefinition` / `ToolHandler` port；
+- `CapabilityPolicy` port；
+- Goal / Constraint / Observation / Hypothesis / Plan / Challenge / Verification 类型；
+- Tool effect class / execution result；
+- runtime config schema；
+- Extension hook contracts。
+
+约束：
+
+- 不得读文件、网络、数据库、环境变量；
+- 不得 import 其他 workspace package；
+- Zod 是唯一允许的核心 runtime dependency；
+- schema 是持久化边界，变更需要 schema version 与 migration 策略。
+
+## 4.2 `packages/core`
+
+**定位：**确定性 Agent Runtime。
+
+职责：
+
+- `SessionRuntime`：启动/恢复 Session；
+- `StateReducer`：Event -> DerivedState；
+- `AgentLoop`：Turn/Step 生命周期；
+- `ContextBuilder`：有限上下文投影；
+- `ToolRuntime`：Tool proposal/authorization/execution/reconciliation 协调；
+- `CompletionPolicy`：是否允许 Turn/Session 完成；
+- Extension hook 执行；
+- 取消/暂停/继续；
+- 单 Session 单写者序列化。
+
+约束：
+
+- 只依赖 `contracts`；
+- 不依赖 provider/store/tool adapters；
+- 不读取 secrets；
+- 所有 side effect 通过 Port；
+- 重要状态改变必须产出 Event。
+
+## 4.3 `packages/store-sqlite`
+
+**定位：**Event Store 的本地 SQLite 实现。
+
+职责：
+
+- SQLite 打开与配置；
+- migration；
+- session metadata；
+- append event transaction；
+- `loadEvents(sessionId, afterSeq?)`；
+- event ID/seq 唯一性；
+- health/checkpoint；
+- fixture DB 支持。
+
+约束：
+
+- 使用 Bun `bun:sqlite`；
+- append-only：普通代码没有 UPDATE/DELETE event API；
+- migration 必须单调版本号；
+- schema 变更要有旧 fixture replay test；
+- v1 不做自动 compaction 删除历史。
+
+## 4.4 `packages/provider-openai`
+
+**定位：**OpenAI ModelProvider adapter。
+
+职责：
+
+- 将 Praxis `ModelRequest` 转换为 OpenAI Responses 请求；
+- streaming 转换为统一 `ModelEvent`；
+- Tool schema 映射；
+- usage/finish/error 映射；
+- cancel/timeout；
+- provider-specific error taxonomy。
+
+约束：
+
+- Core 不知道 OpenAI SDK 类型；
+- Provider-specific raw payload 可作为 telemetry debug data，但不可污染 Core state；
+- API 变更仅在 adapter 内消化；
+- 真实 API 测试属于 eval/e2e，默认 CI 使用 ScriptedModel。
+
+## 4.5 `packages/tools-local`
+
+**定位：**v1 本地工具实现。
+
+首批工具：
+
+1. `read_file`：read-only；
+2. `write_file`：reconcilable write；
+3. `bash`：高风险、需 capability；
+4. 可选 `list_dir`：read-only。
+
+职责：
+
+- Tool schema；
+- effect class；
+- 参数校验；
+- path policy；
+- timeout/cancel；
+- result normalization；
+- reconciliation（能做时）；
+- tool-specific telemetry。
+
+约束：
+
+- 工具不能自行修改 Session State；
+- 只能返回结果，由 Core 追加 Event；
+- shell 工具必须有 cwd、timeout、output truncation；
+- v1 默认 workspace root 外读写受限。
+
+## 4.6 `packages/testkit`
+
+职责：
+
+- `ScriptedModelProvider`；
+- `FakeTool` / `IndeterminateTool`；
+- in-memory EventStore；
+- event fixture builder；
+- crash injection points；
+- replay assertion helpers；
+- fake clock / deterministic IDs。
+
+不进入生产依赖。
+
+## 4.7 `apps/cli`
+
+**定位：Composition Root。**
+
+职责：
+
+- parse args；
+- load/validate config；
+- load secrets；
+- instantiate SQLite/OpenAI/tools/policy/core；
+- human approval UI（v1 可最简）；
+- stream events to terminal；
+- session create/resume/list；
+- exit codes。
+
+CLI 不放领域逻辑。
+
+---
+
+# 5. 领域模型
+
+## 5.1 Goal Stack
+
+v1 保持轻量：
+
+```ts
+type GoalState = {
+  need?: string;
+  goal: string;
+  constraints: readonly HardConstraint[];
+  strategy?: string;
+  mission?: string;
+};
+```
+
+- `goal`：当前高层任务目的；
+- `constraints`：不可由 local metric 覆盖；
+- `strategy/mission`：可被新证据修改；
+- v1 不把 Goal Stack 做成复杂树。
+
+## 5.2 Observation
+
+表示从 Tool/用户/Runtime 外部取得的事实材料：
+
+```ts
+type Observation = {
+  id: ObservationId;
+  source: ObservationSource;
+  claim: string;
+  evidenceEventIds: readonly EventId[];
+  observedAt: number;
+};
+```
+
+Observation 不自动等于 Verified Claim。
+
+## 5.3 Hypothesis
+
+```ts
+type HypothesisStatus =
+  | "proposed"
+  | "supported"
+  | "falsified"
+  | "superseded";
+
+type Hypothesis = {
+  id: HypothesisId;
+  statement: string;
+  status: HypothesisStatus;
+  support: readonly EventId[];
+  conflicts: readonly EventId[];
+};
+```
+
+v1 不使用模型生成的浮点 confidence 作为真理依据；可选显示 confidence，但 reducer 不依赖其值做安全决策。
+
+## 5.4 Plan
+
+Plan 是**当前行动假设**，不是 TODO 清单：
+
+```ts
+type Plan = {
+  id: PlanId;
+  goalRef: string;
+  focus?: string;
+  hypothesisId?: HypothesisId;
+  nextAction: string;
+  falsifiedIf?: string;
+  status: "active" | "invalidated" | "completed" | "superseded";
+};
+```
+
+## 5.5 Challenge
+
+```ts
+type Challenge = {
+  id: ChallengeId;
+  targetType: "hypothesis" | "plan" | "completion" | "policy";
+  targetId: string;
+  claim: string;
+  evidenceEventIds: readonly EventId[];
+  status: "open" | "accepted" | "rejected" | "resolved";
+};
+```
+
+Challenge 是一等事实，不要求存在 Critic Agent。
+
+---
+
+# 6. Event Store
+
+## 6.1 Event Envelope
+
+建议：
+
+```ts
+type SessionEvent<TType extends EventType, TPayload> = {
+  id: EventId;
+  sessionId: SessionId;
+  seq: number;
+  type: TType;
+  schemaVersion: number;
+  occurredAt: number;
+  actor: EventActor;
+  causationId?: EventId;
+  correlationId?: string;
+  payload: TPayload;
+};
+```
+
+### 必须满足的不变量
+
+- `(session_id, seq)` 唯一；
+- `event_id` 全局唯一；
+- seq 从 1 单调递增，不允许洞由正常 append 产生；
+- Event immutable；
+- replay 不执行外部副作用；
+- 同一 event stream + 同一 reducer 版本必须得到确定 state（若迁移，先转换 schema）；
+- Event timestamp 不决定顺序，`seq` 才决定顺序。
+
+## 6.2 v1 Event Vocabulary
+
+建议首批：
+
+### Session/Turn
+
+- `SessionCreated`
+- `SessionResumed`
+- `TurnStarted`
+- `TurnCompleted`
+- `SessionCompleted`
+- `SessionPaused`
+
+### Goal / Epistemic
+
+- `GoalSet`
+- `ObservationRecorded`
+- `HypothesisProposed`
+- `HypothesisStatusChanged`
+- `PlanSet`
+- `PlanInvalidated`
+- `ChallengeRaised`
+- `ChallengeResolved`
+- `VerificationRecorded`
+
+### Model
+
+- `ModelRequestStarted`
+- `ModelResponseCompleted`
+- `ModelRequestFailed`
+
+### Tool
+
+- `ToolProposed`
+- `ToolAuthorized`
+- `ToolRejected`
+- `ToolStarted`
+- `ToolSucceeded`
+- `ToolFailed`
+- `ToolIndeterminate`
+- `ToolReconciled`
+
+不要为每个 UI 动画、debug log 创造 durable event。
+
+## 6.3 SQLite Schema
+
+```sql
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  head_seq INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL
+);
+
+CREATE TABLE events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  schema_version INTEGER NOT NULL,
+  occurred_at INTEGER NOT NULL,
+  actor_json TEXT NOT NULL,
+  causation_id TEXT,
+  correlation_id TEXT,
+  payload_json TEXT NOT NULL,
+  FOREIGN KEY(session_id) REFERENCES sessions(id),
+  UNIQUE(session_id, seq)
+);
+
+CREATE INDEX events_session_seq
+  ON events(session_id, seq);
+```
+
+`head_seq` 是缓存/metadata，不是事件事实的替代；更新必须与 append 同事务。
+
+---
+
+# 7. State Reducer
+
+Reducer 是 Pure Function：
+
+```ts
+reduce(state, event) -> nextState
+```
+
+不得：
+
+- 访问网络；
+- 读当前时间；
+- 生成随机数；
+- 写 DB；
+- 调模型；
+- 依赖环境变量。
+
+所有不确定输入必须先作为 Event 进入。
+
+Derived State 至少包括：
+
+```ts
+type DerivedSessionState = {
+  status: SessionStatus;
+  headSeq: number;
+  currentTurnId?: TurnId;
+  goal?: GoalState;
+  activePlan?: Plan;
+  hypotheses: ReadonlyMap<HypothesisId, Hypothesis>;
+  openChallenges: readonly Challenge[];
+  toolExecutions: ReadonlyMap<ToolExecutionId, ToolExecutionState>;
+  lastVerification?: VerificationResult;
+};
+```
+
+大 Session 后期可加 snapshot；v1 先 replay 全事件，使用 soak 数据决定是否需要。
+
+---
+
+# 8. Tool Runtime
+
+## 8.1 Tool Definition
+
+```ts
+type ToolEffect =
+  | "read_only"
+  | "idempotent_write"
+  | "reconcilable_write"
+  | "non_idempotent_write";
+
+type ToolDefinition<TInput, TOutput> = {
+  name: string;
+  description: string;
+  inputSchema: z.ZodType<TInput>;
+  effect: ToolEffect;
+  requiredCapability?: CapabilityRequirement;
+  execute(ctx: ToolExecutionContext, input: TInput): Promise<ToolExecutionOutcome<TOutput>>;
+  reconcile?: (...args) => Promise<ReconciliationOutcome<TOutput>>;
+};
+```
+
+## 8.2 Tool Execution State Machine
+
+```text
+PROPOSED
+   │
+   ├── denied ──> REJECTED
+   │
+   ▼
+AUTHORIZED
+   │
+   ▼
+EXECUTING
+  / | \
+ /  |  \
+▼   ▼   ▼
+SUCCEEDED FAILED INDETERMINATE
+                  │
+             reconcile
+               /   \
+              ▼     ▼
+        SUCCEEDED  FAILED
+              \
+               -> INDETERMINATE (仍未知)
+```
+
+硬规则：
+
+- timeout **不是自动 FAILED**；
+- request 已可能到达外部系统时，若无法判断结果，应 `INDETERMINATE`；
+- `INDETERMINATE` 不允许盲目 retry `non_idempotent_write`；
+- replay 不执行 `execute()`；
+- Tool 结果先作为事实 Event，再由 ContextBuilder 决定如何告诉模型。
+
+## 8.3 Reconciliation
+
+优先级：
+
+1. provider idempotency key；
+2. 查询外部对象是否存在/状态；
+3. 比较预期状态与现实状态；
+4. 无法确认则保持 `INDETERMINATE` 并升级给用户/上层。
+
+---
+
+# 9. Capability / Policy
+
+## 9.1 Capability 是 Runtime 强约束
+
+Capability 不依赖 Prompt。模型可知道当前 capability，但不能自己授予。
+
+示例：
+
+```ts
+type CapabilityRequirement = {
+  name: "fs.read" | "fs.write" | "shell.exec" | string;
+  scope?: CapabilityScope;
+};
+```
+
+Policy 决策：
+
+```ts
+type AuthorizationDecision =
+  | { type: "allow"; lease?: CapabilityLease }
+  | { type: "deny"; reason: string }
+  | { type: "requires_approval"; request: ApprovalRequest };
+```
+
+## 9.2 Lease
+
+写权限/高风险权限优先使用 lease：
+
+```ts
+type CapabilityLease = {
+  id: CapabilityLeaseId;
+  capability: string;
+  scope: CapabilityScope;
+  issuedAt: number;
+  expiresAt: number;
+  reason: string;
+};
+```
+
+过期后 Runtime 无条件拒绝，不由 LLM 判断“应该还能用”。
+
+## 9.3 Sandbox
+
+v1 能力边界优先两层：
+
+1. CapabilityPolicy：逻辑授权；
+2. Tool implementation：路径/root/cwd 限制。
+
+OS 级 sandbox 是 v1.1/平台增强方向；在真正高风险自动化之前必须补齐，不能声称 v1 已具备企业级隔离。
+
+---
+
+# 10. Model Provider
+
+统一 Port 不追求“抽象所有模型特性”，只抽取 Agent Loop 真正需要的最小集合：
+
+```ts
+type ModelProvider = {
+  complete(request: ModelRequest, signal: AbortSignal): AsyncIterable<ModelEvent>;
+};
+```
+
+`ModelRequest`：
+
+- normalized messages/context fragments；
+- tool definitions；
+- model id；
+- max output / provider options（通过有限 escape hatch）；
+- correlation metadata。
+
+`ModelEvent`：
+
+- text delta；
+- tool call start/delta/end；
+- usage；
+- completion；
+- provider error。
+
+原则：
+
+- Core 不解析 provider-specific raw response；
+- adapter 负责 provider retry，Core 只处理规范化失败；
+- Provider API error 不自动等于 Session failure；根据错误种类决定 retry/暂停。
+
+---
+
+# 11. Agent Loop
+
+## 11.1 Turn / Step
+
+- **Turn**：一次用户输入/恢复指令触发的工作周期；
+- **Step**：一次 model request 及其产生的 tool calls/results。
+
+## 11.2 核心伪代码
+
+```ts
+async function runTurn(runtime: SessionRuntime, input: UserInput) {
+  await runtime.append(turnStarted(input));
+
+  while (true) {
+    runtime.throwIfCancelled();
+
+    const state = runtime.state();
+    const context = await runtime.contextBuilder.build(state);
+
+    const modelResult = await runtime.runModel(context);
+
+    if (modelResult.toolCalls.length > 0) {
+      for (const call of modelResult.toolCalls) {
+        await runtime.toolRuntime.handle(call);
+      }
+      continue;
+    }
+
+    if (!runtime.completionPolicy.canComplete(runtime.state())) {
+      await runtime.append(completionBlocked(/* reason */));
+      continue;
+    }
+
+    await runtime.append(turnCompleted(modelResult.finalText));
+    return modelResult.finalText;
+  }
+}
+```
+
+实际实现需避免“completion blocked 后无变化无限循环”，必须有可执行下一动作或 pause/ask-user。
+
+## 11.3 Loop Guard
+
+v1 内建确定性 guards：
+
+- max steps per turn；
+- max repeated identical tool call；
+- max consecutive model failures；
+- context budget；
+- wall clock cancellation；
+- no-progress detector（简单规则版）。
+
+达到 guard：`SessionPaused` / `TurnFailed`，不无限循环。
+
+---
+
+# 12. Context Builder
+
+Context 是**有限工作集**，不是历史数据库。
+
+## 12.1 组成顺序
+
+建议：
+
+1. system/runtime identity；
+2. Goal + hard constraints；
+3. current plan/focus/open challenge；
+4. active policy/capability summary；
+5. recent conversational turns；
+6. relevant observations/hypotheses；
+7. relevant recent tool results；
+8. tool schemas。
+
+## 12.2 不可依赖自由摘要保留的信息
+
+以下使用结构化 fragment：
+
+- hard constraints；
+- pending `INDETERMINATE` tool execution；
+- open challenge；
+- active plan；
+- current mode；
+- required verification state。
+
+## 12.3 Budget
+
+必须有 hard caps：
+
+```text
+max fragment bytes
+max single tool result bytes
+max active observations
+max recent messages
+max total estimated tokens
+```
+
+超限策略：
+
+- tool output truncation + artifact/reference；
+- old conversation summarization；
+- inactive hypothesis 不进入 active context；
+- Event history 保留，不因 compaction 删除。
+
+v1 先实现简单 deterministic projection；自动 semantic retrieval 后置。
+
+---
+
+# 13. Completion / Verification
+
+v1 不强制所有任务都启动独立 Verifier Agent。
+
+`CompletionPolicy` 根据模式和工具 effect 决定最低条件：
+
+### Direct / read-only
+
+- 无 pending tools；
+- 模型输出完成；
+- 无 open hard conflict。
+
+### 写操作
+
+- 所有 tool execution 非 `EXECUTING/INDETERMINATE`；
+- required postcondition check 完成（若 tool 定义要求）；
+- hard constraints 未违反。
+
+### 显式 `VerificationRecorded`
+
+用于高风险/复杂任务，可由 extension/worker/确定 checker 产生。
+
+原则：Verifier 不可用时，若 policy 要求 verification，则 fail closed。
+
+---
+
+# 14. Challenge 与 Replan
+
+Challenge 不需要 Critic Agent。
+
+流程：
+
+```text
+Observation
+   ↓
+ChallengeRaised(target, evidence)
+   ↓
+Core marks open challenge
+   ↓
+Context contains unresolved challenge
+   ↓
+Model/extension resolves:
+   ├─ accept -> PlanInvalidated / HypothesisFalsified
+   ├─ reject -> ChallengeResolved(reason)
+   └─ pause -> human/independent review
+```
+
+若 Challenge 指向 completion 且 policy 要求解决，Session 不能完成。
+
+v1 不自动做复杂 appeal hierarchy；保留 `Challenge` + `SessionPaused` 足够。
+
+---
+
+# 15. Session Lifecycle
+
+```text
+NEW
+ │
+ ▼
+IDLE
+ │ user input
+ ▼
+RUNNING
+ ├── needs user/unknown ──> PAUSED
+ │                         │ resume
+ │                         └──────> RUNNING
+ ├── unrecoverable ───────> FAILED
+ └── goal reached ────────> COMPLETED
+```
+
+- `FAILED` 表示 Harness 无法继续，而非某次 Tool Failed；
+- Tool failure 通常仍可回到 RUNNING；
+- `PAUSED` 是正常状态，用于 `UNKNOWN`、approval、guard；
+- Completed session 允许 fork/resume-as-new-session，v1 后半段实现。
+
+---
+
+# 16. 单写者与并发
+
+v1 原则：**Single Writer per Session**。
+
+- 一个 SessionRuntime 串行 append durable events；
+- Model streaming 与 Tool execution 可异步，但最终 Event commit 顺序由 runtime 序列化；
+- 多 Worker（未来 extension）只能提交 Observation/Proposal，不直接写全局 state object；
+- SQLite 多 session 可并发；同一 session 保证 seq serialization；
+- 避免第一版实现 distributed consensus。
+
+---
+
+# 17. Crash Recovery
+
+恢复步骤：
+
+1. 打开 EventStore；
+2. 加载 Session events；
+3. schema migrate / validate；
+4. reducer replay；
+5. 检查 tool executions：
+   - `EXECUTING` 无 terminal event -> 视为潜在 `INDETERMINATE`；
+6. 对可 reconcile 的工具运行 reconciliation（需明确恢复命令/策略）；
+7. 不可确定则 `SessionPaused`；
+8. 重建 Context；
+9. 用户 resume 或 runtime 按安全策略继续。
+
+### 绝对禁止
+
+- 因为没有 result event 就假设工具没执行；
+- replay 时重执行历史 tool；
+- crash 后直接清空 pending state；
+- `INDETERMINATE` 默认 retry 非幂等操作。
+
+---
+
+# 18. Configuration 与 Secrets
+
+v1：
+
+```text
+praxis.config.json
+.env / process env (secrets only)
+```
+
+Config 使用 Zod 验证。
+
+示例：
+
+```json
+{
+  "model": {
+    "provider": "openai",
+    "model": "<model-id>"
+  },
+  "workspace": {
+    "root": "."
+  },
+  "limits": {
+    "maxStepsPerTurn": 32,
+    "toolTimeoutMs": 120000
+  }
+}
+```
+
+API key 不写入 config/event/model context；telemetry 必须 redaction。
+
+---
+
+# 19. Extension API
+
+v1 Extension 目标：让 Plan UI/Multi-Agent/Emergency/Audit 后续接入，但不把 Core 变成 Event Bus framework。
+
+只提供少量 seam：
+
+```ts
+type PraxisExtension = {
+  name: string;
+  onTurnStart?(ctx: ExtensionContext): Promise<void>;
+  contributeContext?(ctx: ContextContributionContext): Promise<ContextFragment[]>;
+  beforeModel?(ctx: ModelHookContext): Promise<void>;
+  afterModel?(ctx: ModelResultHookContext): Promise<void>;
+  beforeTool?(ctx: ToolHookContext): Promise<ToolHookDecision | void>;
+  afterTool?(ctx: ToolResultHookContext): Promise<void>;
+  onEvent?(event: SessionEvent): Promise<void>;
+  onTurnEnd?(ctx: ExtensionContext): Promise<void>;
+};
+```
+
+约束：
+
+- hook 数量不随每个新需求增长；
+- extension 不能绕过 CapabilityPolicy；
+- extension 自己的 durable state 必须以 Event 或独立显式 storage 管理；
+- extension failure 是否阻断主循环由 hook contract 明确；默认 telemetry extension 不阻断，security/policy extension fail closed。
+
+---
+
+# 20. 生产模式
+
+## 20.1 Direct Mode
+
+简单、低风险、无需复杂 tool lifecycle 的任务。
+
+```text
+Request -> Model/Read-only Tool -> Response
+```
+
+可以共用 provider，但不需要完整 epistemic state。
+
+## 20.2 Praxis Mode
+
+复杂/需要工具/需要恢复的正常模式：
+
+```text
+Goal -> Context -> Model -> Tool -> Event -> Context -> ... -> Complete
+```
+
+Observation/Hypothesis/Plan/Challenge 可用。
+
+## 20.3 Emergency Mode
+
+**v1 只预留 mode/capability lease 机制，不实现完整 emergency extension。**
+
+未来 extension 可以临时修改：
+
+- capability lease；
+- context instruction；
+- approval latency；
+- selected tool set；
+
+但 hard constraints 和 Event recording 不可关闭。
+
+---
+
+# 21. Telemetry
+
+Event Store 是业务/Agent 事实；Telemetry 是运维数据，二者分离。
+
+Telemetry 至少：
+
+- session/turn/step IDs；
+- provider latency/usage；
+- tool duration/result class；
+- authorization outcome；
+- event append latency；
+- context size；
+- retry/reconciliation count；
+- loop guard hit；
+- crash recovery outcome。
+
+禁止把秘密、完整敏感 Tool output 无条件写 telemetry。
+
+---
+
+# 22. Error Taxonomy
+
+错误必须分层，避免“一切 throw Error”：
+
+```text
+ConfigurationError
+ContractValidationError
+ModelProviderError
+ToolExecutionError
+ToolIndeterminateError
+AuthorizationError
+PersistenceError
+ReplayError
+InvariantViolation
+CancellationError
+```
+
+每类定义：
+
+- 是否 retryable；
+- 是否 session-fatal；
+- 是否产生 durable event；
+- 是否需要 human escalation；
+- 是否可以安全显示给模型。
+
+---
+
+# 23. 安全边界
+
+v1 的安全声明必须克制：
+
+- Capability + workspace path policy 是逻辑边界；
+- 不宣称已经完全 sandbox；
+- shell 默认最小权限；
+- workspace root 外 write 默认拒绝；
+- secrets 不进 model context；
+- external network 默认由 Provider/Tool 显式拥有，而非所有 shell 随意联网；
+- 后续 OS sandbox 作为高风险自动化前置里程碑。
+
+---
+
+# 24. 关键不变量
+
+以下进入 Core 测试：
+
+1. `seq` 单调、唯一；
+2. replay 无外部副作用；
+3. reducer 确定；
+4. `UNKNOWN != FAILED`；
+5. pending `INDETERMINATE` 在要求 resolve 的策略下阻止完成；
+6. expired capability 不授权；
+7. Tool 未 `AUTHORIZED` 不得进入 `STARTED`；
+8. Tool terminal state 不可被同 execution 再次覆盖；
+9. hard constraint 不可由 Plan/Event 非授权路径修改；
+10. required verification 不满足时不得 `SessionCompleted`；
+11. Context 有硬上限；
+12. extension 不得绕过 capability；
+13. Session load 对未知 schema version fail explicit；
+14. Event append 与 head seq 更新事务一致；
+15. crash/recover 不自动重执行 non-idempotent Tool。
+
+---
+
+# 25. 首批架构决策（需要建 ADR）
+
+建议初始化时建立：
+
+- ADR-0001：Bun + TypeScript v1 runtime；
+- ADR-0002：Event Sourcing + SQLite；
+- ADR-0003：Single Writer per Session；
+- ADR-0004：Deterministic Core / Adapter Ports；
+- ADR-0005：Tool `INDETERMINATE` 状态；
+- ADR-0006：Capability Core, UI approval outside core；
+- ADR-0007：Multi-Agent 不进入 v1 Core；
+- ADR-0008：Exact dependency pinning。
+
+---
+
+# 26. 可演进边界
+
+只有真实实践出现以下信号才升级设计：
+
+| 信号 | 才考虑的设计 |
+|---|---|
+| replay 明显变慢 | snapshot/compaction |
+| SQLite 成为实际瓶颈 | 新 Store adapter |
+| 单写者成为主要瓶颈 | session actor/并发模型 |
+| provider 差异难以隔离 | 扩展 ModelProvider contract |
+| 多任务真实需要并行实践 | Worker/Multi-Agent extension |
+| capability policy 难表达 | scoped policy language |
+| 高风险自动化要上线 | OS sandbox/isolated executor |
+| Direct/Praxis 路由频繁误判 | 智能 Task Router |
+
+没有 evidence 不提前实现。

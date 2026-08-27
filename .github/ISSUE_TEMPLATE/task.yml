@@ -1,0 +1,39 @@
+name: Development Task
+description: Scoped implementation/fix/design task for Praxis Harness
+title: "[task] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the observable problem or required behavior, not a preselected implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / context
+      description: Reproduction, trace, design requirement, or source material supporting the task.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions that prove the task is done.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: Explicitly state adjacent work that is out of scope.
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk class
+      options:
+        - P0 - state/security/irreversible side-effect risk
+        - P1 - core runtime or durable schema
+        - P2 - adapter/feature with bounded impact
+        - P3 - docs/tooling/low risk
+    validations:
+      required: true

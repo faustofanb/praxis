@@ -1,0 +1,7 @@
+[install]
+exact = true
+saveTextLockfile = true
+
+# CI should run `bun install --frozen-lockfile`.
+# Do not enable a global frozen lockfile here because intentional dependency
+# updates need a normal local install to refresh bun.lock explicitly.
