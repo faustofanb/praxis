@@ -40,6 +40,11 @@ run = "bun run test:integration"
 description = "Property-based tests (fast-check) over contracts and core laws"
 run = "bun run test:property"
 
+# Store tests exercise bun:sqlite and run under Bun's native test runner.
+[tasks."test:store"]
+description = "SQLite EventStore adapter tests under the Bun runtime"
+run = "bun run test:store"
+
 [tasks."test:coverage"]
 run = "bun run test:coverage"
 

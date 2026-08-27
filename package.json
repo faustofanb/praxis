@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:integration": "vitest run tests/integration",
     "test:property": "vitest run tests/property",
+    "test:store": "bun test tests/store",
     "test:coverage": "vitest run --coverage",
     "knip": "knip",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run knip",

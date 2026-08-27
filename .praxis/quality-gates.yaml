@@ -40,6 +40,10 @@ gates:
   - mise
   - run
   - build
+  store:
+  - mise
+  - run
+  - test:store
   architecture:
   - mise
   - run
@@ -98,10 +102,11 @@ rules:
 - id: store
   match:
   - packages/store-sqlite/src/**
+  # replay rejoins this rule when the M1-T004 replay/parity suite lands.
   require:
   - unit
+  - store
   - integration
-  - replay
 - id: migration
   match:
   - packages/store-sqlite/src/migrations/**
