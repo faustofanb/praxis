@@ -1,0 +1,35 @@
+schema_version: 1
+id: M2
+status: planned
+goal: Deliver the first minimal read-only agent loop and CLI, recoverable from Event
+  Store.
+prerequisites:
+- M1
+required_deliverables:
+- ModelProvider port
+- ScriptedModel
+- ContextBuilder v0
+- read-only tool runtime
+- CLI
+- OpenAI-compatible adapter smoke
+forbidden_work:
+- unsafe writes
+- multi-agent core
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- integration
+- replay
+- build
+scenario_acceptance:
+- user -> scripted model -> read_file -> model -> final
+- process exit and resume without re-running historical read tool
+failure_acceptance:
+- malformed model output
+- provider cancellation/timeout
+human_demo_required: true
+real_model_eval: non-blocking provider smoke
+acceptance_doc: docs/acceptance/M2.md
+promotion_requires_independent_or_human_acceptance: true

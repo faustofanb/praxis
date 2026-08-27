@@ -1,0 +1,47 @@
+schema_version: 1
+packages:
+  contracts:
+    responsibility: schemas ports ids durable contracts
+    may_depend_on: []
+  core:
+    responsibility: deterministic runtime state reducer agent loop context builder tool lifecycle capability decisions
+    may_depend_on: [contracts]
+    forbidden_dependencies: [provider-openai, store-sqlite, tools-local, apps-cli, apps-tui]
+  store-sqlite:
+    responsibility: SQLite EventStore adapter migrations fixtures
+    may_depend_on: [contracts]
+  provider-openai:
+    responsibility: model provider adapter only
+    may_depend_on: [contracts]
+  tools-local:
+    responsibility: local filesystem and process tools
+    may_depend_on: [contracts]
+  testkit:
+    responsibility: scripted model fault model fake tools deterministic ids clocks fixtures
+    may_depend_on: [contracts, core]
+  apps-cli:
+    responsibility: composition root and CLI UX
+    may_depend_on: [contracts, core, store-sqlite, provider-openai, tools-local]
+  apps-tui:
+    responsibility: optional operator runtime inspector
+    may_depend_on: [contracts]
+    v1_core: false
+tiers:
+  tier0:
+    - packages/contracts/src/**
+    - packages/core/src/**
+    - packages/store-sqlite/src/migrations/**
+  tier1:
+    - packages/store-sqlite/src/**
+    - packages/provider-openai/src/**
+    - packages/tools-local/src/**
+  tier2:
+    - apps/**
+    - docs/**
+adr_required_for:
+  - change_core_dependency_direction
+  - add_or_change_durable_event_semantics
+  - change_capability_security_semantics
+  - change_session_persistence_compatibility
+  - add_dependency_to_core
+  - change_v1_goal_or_non_goal

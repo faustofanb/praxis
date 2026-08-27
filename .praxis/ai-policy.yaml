@@ -1,0 +1,21 @@
+schema_version: 1
+default_mode: guarded_task
+planning:
+  task_level_autonomy: allowed
+  milestone_task_selection: allowed_if_prerequisites_met
+  roadmap_modification: forbidden_without_adr_and_human_approval
+completion:
+  ai_may_claim_implementation_done: false
+  low_risk_task_machine_acceptance: allowed
+  tier0_task_requires_independent_or_human_acceptance: true
+  milestone_promotion_requires_human_or_independent_acceptance: true
+scope:
+  opportunistic_refactor: forbidden
+  dependency_upgrade_as_side_effect: forbidden
+  whole_repo_formatting_as_side_effect: forbidden
+  expand_scope_on_evidence: allowed_only_after_task_contract_update
+git:
+  stage_explicit_paths_only: true
+  destructive_cleanup_commands: forbidden
+  auto_push: forbidden
+  auto_commit: false

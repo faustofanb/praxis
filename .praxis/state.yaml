@@ -1,0 +1,14 @@
+schema_version: 1
+current_milestone: M0
+last_accepted_milestone: null
+active_task: null
+development_state: IDLE
+blockers: []
+open_adrs: []
+known_risks: []
+last_acceptance:
+  milestone: null
+  result: null
+next_legal_actions:
+  - create M0 task contract
+  - initialize repository foundation

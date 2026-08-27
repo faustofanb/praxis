@@ -1,0 +1,29 @@
+schema_version: 1
+id: M0-T000
+title: replace me
+milestone: M0
+status: planned
+risk_class: A
+objective: >-
+  One concrete outcome only.
+evidence:
+  observed: []
+  expected: []
+  references: []
+hypothesis: >-
+  Minimal implementation hypothesis. For pure foundation tasks this may state
+  which repository mechanism is expected to satisfy the milestone contract.
+scope:
+  allowed_paths: []
+  forbidden_paths: []
+architecture_refs:
+  - docs/02-system-design.md
+required_gates: []
+acceptance:
+  scenarios: []
+  failure_cases: []
+  artifacts: []
+falsified_if: >-
+  State what evidence would show the proposed implementation direction is wrong.
+requires_adr: false
+requires_human_acceptance: false

@@ -1,0 +1,234 @@
+schema_version: 1
+selection_policy:
+  one_active_task_by_default: true
+  prefer_lower_order: true
+  prerequisites_must_be_accepted: true
+  ai_may_split_active_task_into_implementation_steps: true
+  ai_may_reorder_milestone_tasks: false
+  ai_may_change_milestone_scope: false
+milestones:
+  M0:
+    - id: M0-T001
+      order: 10
+      title: initialize Bun/mise workspace and exact-pinned toolchain
+      prerequisites: []
+      risk_class: A
+    - id: M0-T002
+      order: 20
+      title: establish package skeleton and TypeScript/Biome/Vitest/Knip configuration
+      prerequisites: [M0-T001]
+      risk_class: A
+    - id: M0-T003
+      order: 30
+      title: wire AI development control plane commands and schema validation
+      prerequisites: [M0-T002]
+      risk_class: B
+    - id: M0-T004
+      order: 40
+      title: establish CI and clean-clone reproducibility proof
+      prerequisites: [M0-T003]
+      risk_class: B
+  M1:
+    - id: M1-T001
+      order: 10
+      title: define ids event envelope and session/turn contracts
+      prerequisites: [M0]
+      risk_class: E
+    - id: M1-T002
+      order: 20
+      title: implement deterministic reducer and illegal transition checks
+      prerequisites: [M1-T001]
+      risk_class: C
+    - id: M1-T003
+      order: 30
+      title: implement SQLite EventStore append load and replay
+      prerequisites: [M1-T001]
+      risk_class: E
+    - id: M1-T004
+      order: 40
+      title: add property replay and store parity test suites
+      prerequisites: [M1-T002, M1-T003]
+      risk_class: C
+  M2:
+    - id: M2-T001
+      order: 10
+      title: define ModelProvider and ScriptedModel with cancellation
+      prerequisites: [M1]
+      risk_class: B
+    - id: M2-T002
+      order: 20
+      title: implement bounded ContextBuilder v0
+      prerequisites: [M2-T001]
+      risk_class: C
+    - id: M2-T003
+      order: 30
+      title: implement read-only tool runtime and local read tools
+      prerequisites: [M2-T001]
+      risk_class: C
+    - id: M2-T004
+      order: 40
+      title: implement minimal recoverable Agent Loop integration
+      prerequisites: [M2-T002, M2-T003]
+      risk_class: C
+    - id: M2-T005
+      order: 50
+      title: add CLI run resume and sessions commands
+      prerequisites: [M2-T004]
+      risk_class: B
+    - id: M2-T006
+      order: 60
+      title: add OpenAI-compatible provider adapter and non-blocking real-model smoke
+      prerequisites: [M2-T004]
+      risk_class: B
+  M3:
+    - id: M3-T001
+      order: 10
+      title: define tool effect classes and indeterminate execution contract
+      prerequisites: [M2]
+      risk_class: E
+    - id: M3-T002
+      order: 20
+      title: implement runtime capability policy and leases
+      prerequisites: [M3-T001]
+      risk_class: D
+    - id: M3-T003
+      order: 30
+      title: implement safe write_file and bash tools
+      prerequisites: [M3-T001, M3-T002]
+      risk_class: D
+    - id: M3-T004
+      order: 40
+      title: implement reconciliation and crash-after-side-effect recovery
+      prerequisites: [M3-T003]
+      risk_class: D
+    - id: M3-T005
+      order: 50
+      title: add adversarial capability and path escape tests
+      prerequisites: [M3-T002, M3-T003]
+      risk_class: D
+  M4:
+    - id: M4-T001
+      order: 10
+      title: define Observation Hypothesis Plan and Challenge contracts
+      prerequisites: [M3]
+      risk_class: E
+    - id: M4-T002
+      order: 20
+      title: implement structured epistemic projection into context
+      prerequisites: [M4-T001]
+      risk_class: C
+    - id: M4-T003
+      order: 30
+      title: implement falsifiable plan semantics and invalidation
+      prerequisites: [M4-T001, M4-T002]
+      risk_class: C
+    - id: M4-T004
+      order: 40
+      title: implement first-class Challenge path that changes legal next actions
+      prerequisites: [M4-T001, M4-T003]
+      risk_class: C
+    - id: M4-T005
+      order: 50
+      title: establish comparative real-model epistemic eval suite
+      prerequisites: [M4-T003, M4-T004]
+      risk_class: B
+  M5:
+    - id: M5-T001
+      order: 10
+      title: implement context hard bounds and structured non-compactable state
+      prerequisites: [M4]
+      risk_class: C
+    - id: M5-T002
+      order: 20
+      title: implement deterministic compaction and long-session tests
+      prerequisites: [M5-T001]
+      risk_class: C
+    - id: M5-T003
+      order: 30
+      title: establish versioned replay fixtures and migrations
+      prerequisites: [M5-T001]
+      risk_class: E
+    - id: M5-T004
+      order: 40
+      title: implement crash matrix and recovery evidence
+      prerequisites: [M5-T002, M5-T003]
+      risk_class: D
+    - id: M5-T005
+      order: 50
+      title: implement session fork if evidence shows acceptable complexity
+      prerequisites: [M5-T003]
+      risk_class: C
+      optional: true
+  M6:
+    - id: M6-T001
+      order: 10
+      title: define minimal extension lifecycle and context/tool/event seams
+      prerequisites: [M5]
+      risk_class: C
+    - id: M6-T002
+      order: 20
+      title: implement telemetry observer extension
+      prerequisites: [M6-T001]
+      risk_class: B
+    - id: M6-T003
+      order: 30
+      title: implement sample context/tool extension without Core modification
+      prerequisites: [M6-T001]
+      risk_class: B
+    - id: M6-T004
+      order: 40
+      title: verify extension unload and failure isolation
+      prerequisites: [M6-T002, M6-T003]
+      risk_class: C
+  M7:
+    - id: M7-T001
+      order: 10
+      title: complete property and state-machine hardening suite
+      prerequisites: [M6]
+      risk_class: C
+    - id: M7-T002
+      order: 20
+      title: complete fault injection and security bypass suites
+      prerequisites: [M6]
+      risk_class: D
+    - id: M7-T003
+      order: 30
+      title: run 10k+ synthetic turn soak and bounded-growth analysis
+      prerequisites: [M7-T001]
+      risk_class: C
+    - id: M7-T004
+      order: 40
+      title: establish dependency license and maintenance inventory
+      prerequisites: [M6]
+      risk_class: A
+    - id: M7-T005
+      order: 50
+      title: establish formal real-model eval matrix and baseline report
+      prerequisites: [M7-T002, M7-T003]
+      risk_class: B
+  M8:
+    - id: M8-T001
+      order: 10
+      title: finalize current-state architecture subsystem and API documentation
+      prerequisites: [M7]
+      risk_class: A
+    - id: M8-T002
+      order: 20
+      title: finalize CLI quickstart sample sessions and replay demo
+      prerequisites: [M7]
+      risk_class: B
+    - id: M8-T003
+      order: 30
+      title: run engineering release acceptance and recovery demo
+      prerequisites: [M8-T001, M8-T002]
+      risk_class: C
+    - id: M8-T004
+      order: 40
+      title: run release real-model eval and produce v1 baseline
+      prerequisites: [M8-T003]
+      risk_class: B
+    - id: M8-T005
+      order: 50
+      title: freeze v1 non-goals changelog and release checklist
+      prerequisites: [M8-T003, M8-T004]
+      risk_class: A

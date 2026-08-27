@@ -1,0 +1,33 @@
+schema_version: 1
+id: M1
+status: planned
+goal: Implement deterministic Session/Event kernel without a real LLM.
+prerequisites:
+- M0
+required_deliverables:
+- contracts
+- state reducer
+- SQLite EventStore
+- replay
+- fixtures
+forbidden_work:
+- real LLM in correctness gate
+- side-effecting tools
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- property
+- replay
+- integration
+- build
+scenario_acceptance:
+- same event stream yields same state in memory and SQLite
+failure_acceptance:
+- illegal state transition rejected
+- unknown/old schema handled explicitly
+human_demo_required: false
+real_model_eval: none
+acceptance_doc: docs/acceptance/M1.md
+promotion_requires_independent_or_human_acceptance: true

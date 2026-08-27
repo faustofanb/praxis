@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://praxis.local/schemas/task.schema.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "milestone",
+    "status",
+    "objective",
+    "scope",
+    "required_gates",
+    "acceptance",
+    "falsified_if"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^M[0-8]-T[0-9]{3,}$" },
+    "title": { "type": "string", "minLength": 3 },
+    "milestone": { "type": "string", "pattern": "^M[0-8]$" },
+    "status": {
+      "enum": [
+        "planned",
+        "discovering",
+        "plan_ready",
+        "implementing",
+        "verifying",
+        "acceptance_ready",
+        "rework",
+        "accepted"
+      ]
+    },
+    "risk_class": { "enum": ["A", "B", "C", "D", "E"] },
+    "objective": { "type": "string", "minLength": 10 },
+    "scope": {
+      "type": "object",
+      "required": ["allowed_paths", "forbidden_paths"],
+      "properties": {
+        "allowed_paths": { "type": "array", "items": { "type": "string" } },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "required_gates": { "type": "array", "items": { "type": "string" } },
+    "acceptance": { "type": "object" },
+    "falsified_if": { "type": "string", "minLength": 10 },
+    "requires_adr": { "type": "boolean" },
+    "requires_human_acceptance": { "type": "boolean" }
+  }
+}

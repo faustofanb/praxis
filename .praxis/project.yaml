@@ -1,0 +1,47 @@
+schema_version: 1
+project: praxis-harness
+release_line: v1
+status: pre-code-baseline
+canonical_docs:
+  system_design: docs/02-system-design.md
+  technical_baseline: docs/01-technical-baseline.md
+  project_plan: docs/03-project-plan.md
+  ai_guide: docs/04-ai-development-guide.md
+  acceptance: docs/05-acceptance-strategy.md
+  ai_control_plane: docs/06-ai-development-control-plane.md
+goal: >-
+  Build a small, deterministic-core AI harness that organizes model reasoning,
+  bounded context, governed tool effects, durable session events, recovery,
+  external verification, and lightweight epistemic primitives into a reliable
+  local developer runtime.
+v1_outcomes:
+  - local CLI
+  - recoverable agent loop
+  - SQLite event store
+  - OpenAI-compatible provider adapter
+  - local read/write/bash tools
+  - runtime capability enforcement
+  - explicit indeterminate external effect semantics and reconciliation
+  - observation/hypothesis/plan/challenge primitives
+  - deterministic integration/replay/fault/security test suites
+non_goals:
+  - core multi-agent scheduler
+  - critic agent
+  - judge agent
+  - workflow DSL
+  - real-time coalition analysis
+  - AI-driven governance drift engine
+  - distributed event bus
+  - web UI
+  - automatic constitution rewriting
+  - autonomous production operations
+core_invariants:
+  - commands_are_intent_events_are_facts
+  - runtime_security_is_not_prompt_enforced
+  - indeterminate_is_not_failure
+  - context_is_bounded_working_state_not_history_store
+  - durable_state_is_reconstructable
+  - consequential_side_effects_have_failure_semantics
+  - required_verification_cannot_fail_open
+  - model_cannot_promote_milestones
+  - dependencies_are_exact_pinned

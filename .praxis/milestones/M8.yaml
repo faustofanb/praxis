@@ -1,0 +1,37 @@
+schema_version: 1
+id: M8
+status: planned
+goal: Produce v1 release candidate with engineering, capability, human UX and recovery
+  acceptance evidence.
+prerequisites:
+- M7
+required_deliverables:
+- release candidate
+- acceptance report
+- CLI docs
+- optional operator TUI if included
+- model eval baseline
+forbidden_work:
+- new architecture features
+- late scope expansion
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- integration
+- property
+- replay
+- fault
+- security
+- build
+- knip
+scenario_acceptance:
+- clean install -> read task -> write task -> approval -> resume/fork
+- kill process -> resume -> finish
+failure_acceptance:
+- release blocker regression suite
+human_demo_required: true
+real_model_eval: release eval required
+acceptance_doc: docs/acceptance/M8.md
+promotion_requires_independent_or_human_acceptance: true

@@ -1,0 +1,32 @@
+schema_version: 1
+id: M0
+status: active
+goal: Create a reproducible repository foundation with frozen toolchain, workspace
+  boundaries, CI and the AI development control plane itself operational.
+prerequisites: []
+required_deliverables:
+- workspace skeleton
+- mise and Bun lockfiles
+- quality scripts
+- CI
+- AI control plane commands
+forbidden_work:
+- agent loop
+- real model provider feature implementation
+- multi-agent
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- build
+- knip
+scenario_acceptance:
+- clean clone/bootstrap/check-all
+failure_acceptance:
+- lint error must fail gate
+- type error must fail gate
+human_demo_required: false
+real_model_eval: none
+acceptance_doc: docs/acceptance/M0.md
+promotion_requires_independent_or_human_acceptance: true

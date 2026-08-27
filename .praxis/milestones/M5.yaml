@@ -1,0 +1,34 @@
+schema_version: 1
+id: M5
+status: planned
+goal: Harden recovery, context bounds, compaction invariants and session evolution.
+prerequisites:
+- M4
+required_deliverables:
+- bounded context
+- compaction
+- crash matrix
+- migration fixtures
+- session fork/resume
+forbidden_work:
+- unbounded context/history injection
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- integration
+- property
+- replay
+- fault
+- build
+scenario_acceptance:
+- 1000-turn synthetic session stays bounded
+- old fixtures replay after migration
+failure_acceptance:
+- crash at each critical tool/event boundary
+- compaction must retain structured invariants
+human_demo_required: true
+real_model_eval: eval continues
+acceptance_doc: docs/acceptance/M5.md
+promotion_requires_independent_or_human_acceptance: true

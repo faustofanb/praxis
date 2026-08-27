@@ -1,0 +1,125 @@
+schema_version: 1
+gates:
+  format:
+  - mise
+  - run
+  - format:check
+  lint:
+  - mise
+  - run
+  - lint
+  typecheck:
+  - mise
+  - run
+  - typecheck
+  unit:
+  - mise
+  - run
+  - test:unit
+  integration:
+  - mise
+  - run
+  - test:integration
+  replay:
+  - mise
+  - run
+  - test:replay
+  property:
+  - mise
+  - run
+  - test:property
+  fault:
+  - mise
+  - run
+  - test:fault
+  security:
+  - mise
+  - run
+  - test:security
+  build:
+  - mise
+  - run
+  - build
+  knip:
+  - mise
+  - run
+  - knip
+rules:
+- id: baseline
+  match:
+  - '**/*'
+  require:
+  - format
+  - lint
+  - typecheck
+- id: core-behavior
+  match:
+  - packages/core/src/**
+  require:
+  - unit
+  - integration
+  - build
+- id: event-reducer
+  match:
+  - packages/contracts/src/**event**
+  - packages/core/src/**reducer**
+  require:
+  - unit
+  - property
+  - replay
+  - integration
+- id: agent-loop
+  match:
+  - packages/core/src/**agent-loop**
+  require:
+  - integration
+  - replay
+  - fault
+- id: tool-lifecycle
+  match:
+  - packages/core/src/**tool**
+  - packages/tools-local/src/**
+  require:
+  - integration
+  - fault
+  - security
+- id: capability
+  match:
+  - packages/contracts/src/**capability**
+  - packages/core/src/**capability**
+  require:
+  - unit
+  - integration
+  - security
+- id: store
+  match:
+  - packages/store-sqlite/src/**
+  require:
+  - unit
+  - integration
+  - replay
+- id: migration
+  match:
+  - packages/store-sqlite/src/migrations/**
+  require:
+  - integration
+  - replay
+  human_acceptance: true
+- id: provider
+  match:
+  - packages/provider-openai/src/**
+  require:
+  - unit
+  - integration
+- id: dependencies
+  match:
+  - package.json
+  - bun.lock
+  - mise.toml
+  - mise.lock
+  require:
+  - build
+  - unit
+  - integration
+  - knip
+  human_acceptance: true

@@ -1,0 +1,36 @@
+schema_version: 1
+id: M3
+status: planned
+goal: Introduce real side effects only after effect semantics, runtime capability
+  enforcement, UNKNOWN and reconciliation are correct.
+prerequisites:
+- M2
+required_deliverables:
+- effect classes
+- capability policy
+- write_file
+- bash
+- UNKNOWN/reconciliation
+forbidden_work:
+- blind retry of indeterminate writes
+- prompt-only security
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- integration
+- fault
+- security
+- replay
+- build
+scenario_acceptance:
+- authorized write succeeds and verifies
+- expired capability cannot execute
+failure_acceptance:
+- crash after side effect before result event -> indeterminate -> reconcile
+- path/capability bypass attempts rejected
+human_demo_required: true
+real_model_eval: optional smoke only
+acceptance_doc: docs/acceptance/M3.md
+promotion_requires_independent_or_human_acceptance: true

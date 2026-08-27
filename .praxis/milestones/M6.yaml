@@ -1,0 +1,31 @@
+schema_version: 1
+id: M6
+status: planned
+goal: Stabilize minimal extension seams without moving core invariants into optional
+  plugins.
+prerequisites:
+- M5
+required_deliverables:
+- extension API
+- telemetry extension
+- context/tool extension example
+forbidden_work:
+- everything-is-plugin rewrite
+- optional capability enforcement
+machine_gates:
+- format
+- lint
+- typecheck
+- unit
+- integration
+- replay
+- build
+scenario_acceptance:
+- extension adds tool/context/event observer without core edit
+- extension unload does not corrupt state
+failure_acceptance:
+- extension cannot bypass core capability checks
+human_demo_required: true
+real_model_eval: eval continues
+acceptance_doc: docs/acceptance/M6.md
+promotion_requires_independent_or_human_acceptance: true
