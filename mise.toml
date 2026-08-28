@@ -49,13 +49,18 @@ run = "bun run test:property"
 description = "SQLite EventStore adapter tests under the Bun runtime"
 run = "bun run test:store"
 
+# Fault injection: crashes and unknown-outcome paths around the tool runtime.
+[tasks."test:fault"]
+description = "Fault-injection tests over crash and indeterminate-outcome paths"
+run = "bun run test:fault"
+
+# Security: confinement and adversarial-input tests for tools and policies.
+[tasks."test:security"]
+description = "Security tests for path confinement and deny-by-default policy"
+run = "bun run test:security"
+
 [tasks."test:coverage"]
 run = "bun run test:coverage"
-
-# These task names are reserved for later milestones; add the matching package
-# scripts once the corresponding test suites exist.
-# [tasks."test:fault"]
-# run = "bun run test:fault"
 
 # M0 build gate: the workspace compiles as one project graph. Diverge from
 # typecheck once real package builds exist.

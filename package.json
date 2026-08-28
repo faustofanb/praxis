@@ -17,6 +17,8 @@
     "test:integration": "vitest run tests/integration",
     "test:property": "vitest run tests/property",
     "test:replay": "vitest run tests/replay",
+    "test:fault": "vitest run tests/fault",
+    "test:security": "vitest run tests/security",
     "test:store": "bun test tests/store",
     "test:coverage": "vitest run --coverage",
     "knip": "knip",
@@ -40,6 +42,7 @@
     "knip": "6.32.2",
     "lefthook": "2.1.10",
     "typescript": "7.0.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "zod": "4.4.3"
   }
 }
