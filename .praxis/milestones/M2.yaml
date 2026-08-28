@@ -1,6 +1,6 @@
 schema_version: 1
 id: M2
-status: active
+status: accepted
 goal: Deliver the first minimal read-only agent loop and CLI, recoverable from Event
   Store.
 prerequisites:
