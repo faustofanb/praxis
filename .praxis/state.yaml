@@ -1,6 +1,6 @@
 schema_version: 1
-current_milestone: M1
-last_accepted_milestone: M0
+current_milestone: M2
+last_accepted_milestone: M1
 active_task: null
 development_state: ACCEPTED
 blockers: 
@@ -10,13 +10,12 @@ open_adrs:
 known_risks: 
   []
 last_acceptance: 
-  milestone: M0
+  milestone: M1
   result: ACCEPTED
   accepted_by: 樊彪 (human)
-  accepted_at: 2026-08-27
+  accepted_at: 2026-08-28
 next_legal_actions: 
-  - generate handoff
-  - select next eligible task in current milestone
+  - select next eligible task in current milestone (M2-T001)
 last_verification: 
   task: M1-T004
   at: 2026-08-28T01:48:43.104Z
