@@ -1,0 +1,102 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import type { SessionEventUnion } from "@praxis/contracts";
+import { SessionEventUnionSchema } from "@praxis/contracts";
+import { foldSessionEvents, reduceSession } from "@praxis/core";
+import fc from "fast-check";
+import { describe, expect, test } from "vitest";
+import { inMemoryEventStore } from "../helpers/in-memory-event-store";
+import { commandArbitrary, translateCommands } from "../helpers/random-session-streams";
+import { sessionCreated, TEST_SESSION_ID } from "../helpers/session-events";
+
+/**
+ * Replay laws (ADR-0003 verification): historical fixtures stay loadable,
+ * persisted streams fold identically on every read, and any checkpoint
+ * state continued with the remaining suffix equals a single full fold.
+ */
+
+const fixturePath = fileURLToPath(
+  new URL("../fixtures/replay/session-lifecycle-v1.json", import.meta.url),
+);
+
+function loadFixture(): SessionEventUnion[] {
+  const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
+  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+}
+
+describe("historical fixture replay", () => {
+  test("the v1 fixture stream loads through the public schema and folds to its recorded terminal state", () => {
+    const events = loadFixture();
+    expect(events).toHaveLength(12);
+    const state = foldSessionEvents(events);
+    expect(state.status).toBe("COMPLETED");
+    expect(state.headSeq).toBe(12);
+    expect(state.sessionId?.valueOf()).toBe("session-fixture");
+    expect(state.currentTurnId).toBeUndefined();
+    expect([...state.turnIds].map((id) => id.valueOf())).toEqual(["turn-1", "turn-2", "turn-3"]);
+  });
+
+  test("folding the fixture twice yields identical states", () => {
+    const events = loadFixture();
+    expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
+  });
+});
+
+describe("replay properties", () => {
+  test("a persisted stream read twice through the EventStore port folds identically", () => {
+    fc.assert(
+      fc.asyncProperty(fc.array(commandArbitrary, { maxLength: 40 }), async (commands) => {
+        const events = translateCommands(commands);
+        const store = inMemoryEventStore();
+        await store.append(events, 0);
+        const first = await store.readStream(TEST_SESSION_ID);
+        const second = await store.readStream(TEST_SESSION_ID);
+        expect(foldSessionEvents(first)).toEqual(foldSessionEvents(second));
+        expect(first).toEqual(events);
+      }),
+    );
+  });
+
+  test("any checkpoint state continued with the suffix equals a single full fold", () => {
+    fc.assert(
+      fc.property(
+        fc.array(commandArbitrary, { minLength: 1, maxLength: 40 }),
+        fc.nat(),
+        (commands, index) => {
+          const events = translateCommands(commands);
+          const cut = index % events.length;
+          let checkpoint = foldSessionEvents(events.slice(0, cut));
+          for (const event of events.slice(cut)) {
+            checkpoint = reduceSession(checkpoint, event);
+          }
+          expect(checkpoint).toEqual(foldSessionEvents(events));
+        },
+      ),
+    );
+  });
+
+  test("replaying the whole stream from the initial state recovers every intermediate state", () => {
+    fc.assert(
+      fc.property(fc.array(commandArbitrary, { maxLength: 40 }), (commands) => {
+        const events = translateCommands(commands);
+        const live = [foldSessionEvents(events.slice(0, 1))];
+        for (const event of events.slice(1)) {
+          live.push(reduceSession(live.at(-1) ?? foldSessionEvents([]), event));
+        }
+        const replayed = [foldSessionEvents(events.slice(0, 1))];
+        for (let cut = 2; cut <= events.length; cut += 1) {
+          replayed.push(foldSessionEvents(events.slice(0, cut)));
+        }
+        expect(replayed).toEqual(live);
+      }),
+    );
+  });
+
+  test("a single-event stream still round-trips through the port", async () => {
+    const store = inMemoryEventStore();
+    await store.append([sessionCreated(1)], 0);
+    const stream = await store.readStream(TEST_SESSION_ID);
+    expect(stream).toHaveLength(1);
+    expect(foldSessionEvents(stream).status).toBe("ACTIVE");
+  });
+});

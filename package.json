@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:integration": "vitest run tests/integration",
     "test:property": "vitest run tests/property",
+    "test:replay": "vitest run tests/replay",
     "test:store": "bun test tests/store",
     "test:coverage": "vitest run --coverage",
     "knip": "knip",

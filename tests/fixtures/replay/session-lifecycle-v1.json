@@ -1,0 +1,131 @@
+[
+  {
+    "id": "fixture-event-1",
+    "sessionId": "session-fixture",
+    "seq": 1,
+    "type": "SessionCreated",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000001,
+    "actor": { "kind": "user" },
+    "payload": { "reason": "fixture: full session lifecycle" }
+  },
+  {
+    "id": "fixture-event-2",
+    "sessionId": "session-fixture",
+    "seq": 2,
+    "type": "TurnStarted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000002,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "correlationId": "fixture-correlation-1",
+    "payload": { "turnId": "turn-1" }
+  },
+  {
+    "id": "fixture-event-3",
+    "sessionId": "session-fixture",
+    "seq": 3,
+    "type": "TurnCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000003,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "causationId": "fixture-event-2",
+    "correlationId": "fixture-correlation-1",
+    "payload": { "turnId": "turn-1" }
+  },
+  {
+    "id": "fixture-event-4",
+    "sessionId": "session-fixture",
+    "seq": 4,
+    "type": "SessionPaused",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000004,
+    "actor": { "kind": "user" },
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-5",
+    "sessionId": "session-fixture",
+    "seq": 5,
+    "type": "SessionResumed",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000005,
+    "actor": { "kind": "system" },
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-6",
+    "sessionId": "session-fixture",
+    "seq": 6,
+    "type": "TurnStarted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000006,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "correlationId": "fixture-correlation-2",
+    "payload": { "turnId": "turn-2" }
+  },
+  {
+    "id": "fixture-event-7",
+    "sessionId": "session-fixture",
+    "seq": 7,
+    "type": "TurnCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000007,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "causationId": "fixture-event-6",
+    "correlationId": "fixture-correlation-2",
+    "payload": { "turnId": "turn-2" }
+  },
+  {
+    "id": "fixture-event-8",
+    "sessionId": "session-fixture",
+    "seq": 8,
+    "type": "SessionPaused",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000008,
+    "actor": { "kind": "user" },
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-9",
+    "sessionId": "session-fixture",
+    "seq": 9,
+    "type": "SessionResumed",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000009,
+    "actor": { "kind": "system" },
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-10",
+    "sessionId": "session-fixture",
+    "seq": 10,
+    "type": "TurnStarted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000010,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "correlationId": "fixture-correlation-3",
+    "payload": { "turnId": "turn-3" }
+  },
+  {
+    "id": "fixture-event-11",
+    "sessionId": "session-fixture",
+    "seq": 11,
+    "type": "TurnCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000011,
+    "actor": { "kind": "model", "provider": "openai", "model": "gpt-5" },
+    "causationId": "fixture-event-10",
+    "correlationId": "fixture-correlation-3",
+    "payload": { "turnId": "turn-3" }
+  },
+  {
+    "id": "fixture-event-12",
+    "sessionId": "session-fixture",
+    "seq": 12,
+    "type": "SessionCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777777000012,
+    "actor": { "kind": "user" },
+    "payload": {}
+  }
+]
