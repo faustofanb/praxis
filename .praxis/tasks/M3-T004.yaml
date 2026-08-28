@@ -87,3 +87,7 @@ falsified_if: "Any path coerces an unresolved indeterminate into a failure or si
 requires_adr: false
 requires_human_acceptance: true
 notes: "The pause applies uniformly to unresolved indeterminates regardless of effect class — docs/02 section 17 makes no exception, and an idempotent tool's safe_to_repeat policy still holds: after the human resumes, the model may re-propose the call in a fresh turn. Known v1 edge: an indeterminate execution whose tool is absent from the current registry stays unresolved forever and pauses every entry until the host appends a ToolReconciled fact or drops the execution from the registry decision — recorded here, not solved here."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-28 — \"继续\" reply to the acceptance-ready report, which explicitly surfaced the ToolReconciled historical-fact reducer law change)"
+  evidence: ".praxis/state.yaml last_verification (14 gates PASS) + handoff M3-T004-1787924595021.md"
