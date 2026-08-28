@@ -28,6 +28,18 @@ export type ToolExecutionOutcome =
   | { status: "failed"; error: { message: string } }
   | { status: "indeterminate"; reason: string };
 
+/**
+ * What a reconciliation attempt provably established about an INDETERMINATE
+ * execution (docs/02 sections 8.3 and 17). Same epistemic rule as
+ * ToolExecutionOutcome: `succeeded`/`failed` assert the external effect did /
+ * did not happen; anything short of proof stays `indeterminate`. The result
+ * lands in the stream as a ToolReconciled event.
+ */
+export type ReconciliationOutcome =
+  | { status: "succeeded"; resultJson: string }
+  | { status: "failed"; error: { message: string } }
+  | { status: "indeterminate"; reason: string };
+
 export interface ToolDefinition {
   readonly name: string;
   readonly description: string;
@@ -40,4 +52,21 @@ export interface ToolDefinition {
    */
   readonly parametersJson: string;
   execute(context: ToolExecutionContext, input: unknown): Promise<ToolExecutionOutcome>;
+  /**
+   * Optional reconciliation for write effects (ADR-0006). Required for
+   * `reconcilable_write` tools — registration rejects the definition without
+   * it. Receives the same parsed input as `execute` so it can look up the
+   * external object (idempotency key, provider-side state) and compare
+   * expected versus actual.
+   *
+   * Contract rules:
+   *
+   * - Reconciliation verifies; it must not perform new external effects.
+   * - It runs only after the execution is INDETERMINATE, and replay never
+   *   calls it (its conclusion is already a ToolReconciled fact).
+   * - Returning `failed` asserts the effect provably never happened; it is
+   *   the only outcome that can unlock re-execution, and only for effects
+   *   whose retry policy allows repeating.
+   */
+  reconcile?(context: ToolExecutionContext, input: unknown): Promise<ReconciliationOutcome>;
 }

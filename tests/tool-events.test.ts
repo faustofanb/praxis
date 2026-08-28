@@ -4,6 +4,7 @@ import {
   TOOL_EVENT_TYPES,
   ToolEffectSchema,
   ToolProposedEventSchema,
+  ToolReconciledEventSchema,
 } from "@praxis/contracts";
 import { describe, expect, test } from "vitest";
 import {
@@ -11,6 +12,7 @@ import {
   toolFailed,
   toolIndeterminate,
   toolProposed,
+  toolReconciled,
   toolRejected,
   toolStarted,
   toolSucceeded,
@@ -26,13 +28,16 @@ describe("tool lifecycle event schemas", () => {
       toolSucceeded(4, 1),
       toolFailed(4, 1),
       toolIndeterminate(4, 1),
+      toolReconciled(5, 1, "succeeded", '{"paymentId":"pay_1"}'),
+      toolReconciled(5, 1, "failed", "provably absent"),
+      toolReconciled(5, 1, "indeterminate", "still unknown"),
     ];
     for (const sample of samples) {
       expect(SessionEventUnionSchema.parse(sample)).toBeTruthy();
     }
   });
 
-  test("the vocabulary covers exactly the seven lifecycle events", () => {
+  test("the vocabulary covers exactly the eight lifecycle events", () => {
     expect(TOOL_EVENT_TYPES).toEqual([
       "ToolProposed",
       "ToolAuthorized",
@@ -41,6 +46,7 @@ describe("tool lifecycle event schemas", () => {
       "ToolSucceeded",
       "ToolFailed",
       "ToolIndeterminate",
+      "ToolReconciled",
     ]);
   });
 
@@ -86,6 +92,59 @@ describe("tool lifecycle event schemas", () => {
       SessionEventUnionSchema.parse({
         ...toolStarted(1, 1),
         type: "ToolCancelled",
+      }),
+    ).toThrow();
+  });
+});
+
+describe("ToolReconciled payload boundaries", () => {
+  test("each outcome variant carries exactly its proof field", () => {
+    const succeeded = ToolReconciledEventSchema.parse(
+      toolReconciled(1, 1, "succeeded", '{"paymentId":"pay_1"}'),
+    );
+    expect(succeeded.payload).toEqual({
+      toolExecutionId: "tool-exec-1",
+      outcome: "succeeded",
+      resultJson: '{"paymentId":"pay_1"}',
+    });
+
+    const failed = ToolReconciledEventSchema.parse(toolReconciled(1, 1, "failed", "absent"));
+    expect(failed.payload).toEqual({
+      toolExecutionId: "tool-exec-1",
+      outcome: "failed",
+      message: "absent",
+    });
+
+    const indeterminate = ToolReconciledEventSchema.parse(
+      toolReconciled(1, 1, "indeterminate", "still unknown"),
+    );
+    expect(indeterminate.payload).toEqual({
+      toolExecutionId: "tool-exec-1",
+      outcome: "indeterminate",
+      reason: "still unknown",
+    });
+  });
+
+  test("variant and payload must agree — no coerced or invented outcomes", () => {
+    // succeeded without its proof
+    expect(() =>
+      SessionEventUnionSchema.parse({
+        ...toolReconciled(1, 1),
+        payload: { toolExecutionId: "tool-exec-1", outcome: "succeeded" },
+      }),
+    ).toThrow();
+    // failed with an empty justification
+    expect(() =>
+      SessionEventUnionSchema.parse({
+        ...toolReconciled(1, 1),
+        payload: { toolExecutionId: "tool-exec-1", outcome: "failed", message: "" },
+      }),
+    ).toThrow();
+    // an outcome outside the reconciliation vocabulary
+    expect(() =>
+      SessionEventUnionSchema.parse({
+        ...toolReconciled(1, 1),
+        payload: { toolExecutionId: "tool-exec-1", outcome: "cancelled" },
       }),
     ).toThrow();
   });

@@ -77,6 +77,8 @@ export type {
   ToolFailedEvent,
   ToolIndeterminateEvent,
   ToolProposedEvent,
+  ToolReconciledEvent,
+  ToolReconciledPayload,
   ToolRejectedEvent,
   ToolStartedEvent,
   ToolSucceededEvent,
@@ -87,6 +89,7 @@ export {
   TOOL_FAILED,
   TOOL_INDETERMINATE,
   TOOL_PROPOSED,
+  TOOL_RECONCILED,
   TOOL_REJECTED,
   TOOL_STARTED,
   TOOL_SUCCEEDED,
@@ -98,6 +101,8 @@ export {
   ToolIndeterminatePayloadSchema,
   ToolProposedEventSchema,
   ToolProposedPayloadSchema,
+  ToolReconciledEventSchema,
+  ToolReconciledPayloadSchema,
   ToolRejectedEventSchema,
   ToolRejectedPayloadSchema,
   ToolStartedEventSchema,
@@ -177,6 +182,7 @@ export {
   EventStoreConflictError,
 } from "./ports/event-store";
 export type {
+  ReconciliationOutcome,
   ToolDefinition,
   ToolExecutionContext,
   ToolExecutionOutcome,

@@ -159,6 +159,22 @@ export function toolIndeterminate(
   };
 }
 
+export function toolReconciled(
+  seq: number,
+  execution: number,
+  outcome: "succeeded" | "failed" | "indeterminate" = "indeterminate",
+  detail?: string,
+): SessionEventUnion {
+  const id = toolExecutionId(execution);
+  const payload =
+    outcome === "succeeded"
+      ? { toolExecutionId: id, outcome, resultJson: detail ?? '{"content":"reconciled"}' }
+      : outcome === "failed"
+        ? { toolExecutionId: id, outcome, message: detail ?? "provably absent" }
+        : { toolExecutionId: id, outcome, reason: detail ?? "still unknown" };
+  return { ...base(seq), type: "ToolReconciled", payload };
+}
+
 export function modelRequestStarted(seq: number, model = "test-model"): SessionEventUnion {
   return {
     ...base(seq),
