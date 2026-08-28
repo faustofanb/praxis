@@ -1,4 +1,5 @@
 import type {
+  CapabilityRequirement,
   EventActor,
   EventId,
   EventStore,
@@ -38,6 +39,8 @@ export type ToolAuthorizer = (request: {
   readonly name: string;
   readonly effect: ToolEffect;
   readonly argumentsJson: string;
+  /** The registered tool's declared requirement, when it declares one. */
+  readonly requiredCapability?: CapabilityRequirement;
 }) => ToolAuthorizationDecision;
 
 /**
@@ -152,6 +155,9 @@ export async function executeToolCall(
     name: proposal.name,
     effect,
     argumentsJson: proposal.argumentsJson,
+    ...(tool.requiredCapability === undefined
+      ? {}
+      : { requiredCapability: tool.requiredCapability }),
   });
   if (decision.decision === "rejected") {
     await appendOne({

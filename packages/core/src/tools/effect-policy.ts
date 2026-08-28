@@ -37,13 +37,16 @@ export function retryPolicyForEffect(effect: ToolEffect): EffectRetryPolicy {
 
 /**
  * Registration-time enforcement of ADR-0006 ("writes must define idempotency
- * and/or reconciliation behavior before merge"):
+ * and/or reconciliation behavior before merge") and ADR-0007 (capability
+ * enforcement is Core, never prompt or tool-author discipline):
  *
  * - `reconcilable_write` promises reconciliation, so a definition without
  *   `reconcile` is rejected — the class name would be a lie.
  * - `non_idempotent_write` with `reconcile` is legal: reconciliation there
  *   settles facts for escalation; it never unlocks repetition, and the retry
  *   policy stays `never_repeat` regardless.
+ * - every write-effect tool must declare `requiredCapability`; a write that
+ *   polices itself would be prompt-only security.
  * - duplicate names would make registry lookup ambiguous.
  *
  * Throws Error on the first violation; callers run this before any tool is
@@ -59,6 +62,11 @@ export function validateToolDefinitions(tools: readonly ToolDefinition[]): void 
     if (tool.effect === "reconcilable_write" && tool.reconcile === undefined) {
       throw new Error(
         `tool ${tool.name} declares effect reconcilable_write but defines no reconcile`,
+      );
+    }
+    if (tool.effect !== "read_only" && tool.requiredCapability === undefined) {
+      throw new Error(
+        `tool ${tool.name} has effect ${tool.effect} but declares no requiredCapability`,
       );
     }
   }

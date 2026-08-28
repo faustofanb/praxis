@@ -31,7 +31,9 @@ describe("retryPolicyForEffect", () => {
   });
 });
 
-describe("validateToolDefinitions (ADR-0006 registration enforcement)", () => {
+describe("validateToolDefinitions (ADR-0006/0007 registration enforcement)", () => {
+  const writeCapability = { name: "fs.write", scope: { kind: "workspace" as const, root: "/w" } };
+
   test("accepts definitions whose effect class keeps its promise", () => {
     expect(() =>
       validateToolDefinitions([
@@ -39,15 +41,18 @@ describe("validateToolDefinitions (ADR-0006 registration enforcement)", () => {
         makeTool({
           name: "write_file",
           effect: "idempotent_write",
+          requiredCapability: writeCapability,
         }),
         makeTool({
           name: "send_payment",
           effect: "reconcilable_write",
+          requiredCapability: { name: "payments.execute" },
           reconcile: async () => ({ status: "indeterminate", reason: "unknown" }),
         }),
         makeTool({
           name: "send_email",
           effect: "non_idempotent_write",
+          requiredCapability: { name: "mail.send" },
         }),
       ]),
     ).not.toThrow();
@@ -55,7 +60,13 @@ describe("validateToolDefinitions (ADR-0006 registration enforcement)", () => {
 
   test("rejects reconcilable_write without reconcile — the class name would be a lie", () => {
     expect(() =>
-      validateToolDefinitions([makeTool({ name: "send_payment", effect: "reconcilable_write" })]),
+      validateToolDefinitions([
+        makeTool({
+          name: "send_payment",
+          effect: "reconcilable_write",
+          requiredCapability: { name: "payments.execute" },
+        }),
+      ]),
     ).toThrow(/send_payment declares effect reconcilable_write but defines no reconcile/u);
   });
 
@@ -65,10 +76,35 @@ describe("validateToolDefinitions (ADR-0006 registration enforcement)", () => {
         makeTool({
           name: "send_email",
           effect: "non_idempotent_write",
+          requiredCapability: { name: "mail.send" },
           reconcile: async () => ({ status: "indeterminate", reason: "unknown" }),
         }),
       ]),
     ).not.toThrow();
+  });
+
+  test("rejects write-effect tools without a declared capability (ADR-0007)", () => {
+    for (const effect of [
+      "idempotent_write",
+      "reconcilable_write",
+      "non_idempotent_write",
+    ] as const) {
+      expect(() =>
+        validateToolDefinitions([
+          makeTool({
+            name: "rogue_write",
+            effect,
+            ...(effect === "reconcilable_write"
+              ? { reconcile: async () => ({ status: "indeterminate", reason: "?" }) }
+              : {}),
+          }),
+        ]),
+      ).toThrow(/rogue_write has effect .* but declares no requiredCapability/u);
+    }
+  });
+
+  test("read-only tools may omit the capability requirement", () => {
+    expect(() => validateToolDefinitions([makeTool({ name: "read_file" })])).not.toThrow();
   });
 
   test("rejects duplicate names", () => {

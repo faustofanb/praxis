@@ -18,6 +18,9 @@ export {
   runTurn,
   validateTurnGuards,
 } from "./agent-loop/run-turn";
+export { capabilityAuthorizer } from "./capability/authorizer";
+export type { CapabilityPolicyConfig } from "./capability/policy";
+export { capabilityDecision, capabilityPolicySummary } from "./capability/policy";
 export type { ContextBudget } from "./context/budget";
 export {
   DEFAULT_CONTEXT_BUDGET,
