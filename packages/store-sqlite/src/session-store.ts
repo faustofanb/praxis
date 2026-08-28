@@ -1,6 +1,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import type { EventStore, SessionEventUnion, SessionId } from "@praxis/contracts";
 import {
+  asSessionId,
   EMPTY_STREAM_HEAD_SEQ,
   EventStoreConflictError,
   SessionEventUnionSchema,
@@ -24,6 +25,21 @@ type SessionRow = {
   status: string;
 };
 
+type SessionListRow = {
+  id: string;
+  head_seq: number;
+  status: string;
+  updated_at: number;
+};
+
+/** Metadata projection for listing; facts stay authoritative in events. */
+export type SessionSummary = {
+  readonly sessionId: SessionId;
+  readonly status: string;
+  readonly headSeq: number;
+  readonly updatedAt: number;
+};
+
 const STATUS_BY_EVENT: Partial<Record<SessionEventUnion["type"], string>> = {
   SessionCreated: "ACTIVE",
   SessionResumed: "ACTIVE",
@@ -37,6 +53,7 @@ export class SqliteEventStore implements EventStore {
   private readonly insertSession: Statement;
   private readonly updateSession: Statement;
   private readonly selectEvents: Statement;
+  private readonly selectSessionList: Statement;
 
   constructor(private readonly db: Database) {
     this.insertEvent = db.prepare(`
@@ -66,6 +83,10 @@ export class SqliteEventStore implements EventStore {
       ORDER BY seq ASC;
     `);
     this.appendTx = db.transaction(this.#appendWithinTransaction);
+    this.selectSessionList = db.prepare(`
+      SELECT id, head_seq, status, updated_at FROM sessions
+      ORDER BY updated_at ASC, id ASC;
+    `);
   }
 
   private readonly appendTx: (
@@ -93,6 +114,16 @@ export class SqliteEventStore implements EventStore {
       afterSeq,
     }) as unknown as Array<EventRow>;
     return rows.map(rowToEvent);
+  }
+
+  listSessions(): readonly SessionSummary[] {
+    const rows = this.selectSessionList.all() as unknown as Array<SessionListRow>;
+    return rows.map((row) => ({
+      sessionId: asSessionId(row.id),
+      status: row.status,
+      headSeq: row.head_seq,
+      updatedAt: row.updated_at,
+    }));
   }
 
   close(): void {

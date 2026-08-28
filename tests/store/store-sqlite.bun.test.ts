@@ -153,8 +153,8 @@ describe("sqlite event store", () => {
     }
   });
 
-  test("the public surface is append, readStream, and close only", () => {
+  test("the public surface is append, readStream, listSessions, and close only", () => {
     const own = Object.getOwnPropertyNames(Object.getPrototypeOf(store)).sort();
-    expect(own).toEqual(["append", "close", "constructor", "readStream"]);
+    expect(own).toEqual(["append", "close", "constructor", "listSessions", "readStream"]);
   });
 });

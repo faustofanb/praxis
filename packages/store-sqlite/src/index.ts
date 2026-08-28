@@ -2,7 +2,7 @@ import type { EventStore } from "@praxis/contracts";
 import { packageName as contractsPackageName } from "@praxis/contracts";
 import { openDatabase } from "./db";
 import { migrate } from "./migrations";
-import { SqliteEventStore } from "./session-store";
+import { type SessionSummary, SqliteEventStore } from "./session-store";
 
 /**
  * Public API of @praxis/store-sqlite. Deep imports are forbidden
@@ -12,7 +12,11 @@ import { SqliteEventStore } from "./session-store";
 
 export type SessionStore = EventStore & {
   close(): void;
+  /** Metadata listing (facts stay authoritative in the event stream). */
+  listSessions(): readonly SessionSummary[];
 };
+
+export type { SessionSummary };
 
 export function openSessionStore(path: string): SessionStore {
   const db = openDatabase(path);
