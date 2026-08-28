@@ -905,10 +905,10 @@ v1 原则：**Single Writer per Session**。
 4. reducer replay；
 5. 检查 tool executions：
    - `EXECUTING` 无 terminal event -> 视为潜在 `INDETERMINATE`；
-6. 对可 reconcile 的工具运行 reconciliation（需明确恢复命令/策略）；
-7. 不可确定则 `SessionPaused`；
+6. 对可 reconcile 的工具运行 reconciliation：以注册工具的 inputSchema 解析 recorded input，调用其 verification-only `reconcile`，结论落为 durable `ToolReconciled` 事实；不可解析、尝试失败或无定论 → 诚实 indeterminate 事实，绝不猜测；
+7. 仍有 unresolved indeterminate → 先 `TurnCompleted`（若有 open turn）再 `SessionPaused`：升级为 durable 暂停，不得带着未定论的外部效果继续 turn；
 8. 重建 Context；
-9. 用户 resume 或 runtime 按安全策略继续。
+9. 用户 resume（`SessionResumed`，唯一解锁；PAUSED 会话拒绝运行）后 runtime 重新进入恢复流程并重试 reconciliation；`ToolReconciled` 是关于历史执行的事实，不要求 open turn——否则人工解锁环在结构上不可能。
 
 ### 绝对禁止
 
