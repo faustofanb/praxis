@@ -46,6 +46,8 @@ export {
   initialSessionState,
   reduceSession,
 } from "./state/reducer";
+export type { EffectRetryPolicy } from "./tools/effect-policy";
+export { retryPolicyForEffect, validateToolDefinitions } from "./tools/effect-policy";
 export type {
   ExecutedToolSummary,
   ToolAuthorizationDecision,

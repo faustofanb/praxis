@@ -19,6 +19,7 @@ import type { ContextBudget } from "../context/budget";
 import { buildContext } from "../context/builder";
 import type { DerivedSessionState } from "../state/reducer";
 import { foldSessionEvents } from "../state/reducer";
+import { validateToolDefinitions } from "../tools/effect-policy";
 import type { ToolAuthorizer } from "../tools/tool-runtime";
 import { executeToolCall } from "../tools/tool-runtime";
 import { projectConversation } from "./conversation";
@@ -112,6 +113,9 @@ export async function runTurn(
 ): Promise<TurnOutcome> {
   const guards = options.guards ?? DEFAULT_TURN_GUARDS;
   validateTurnGuards(guards);
+  // Fail closed before any execution: effect-class promises (ADR-0006) are
+  // checked here, not trusted from tool authors at call time.
+  validateToolDefinitions(deps.tools);
   const modelTools = toModelTools(deps.tools);
 
   let state = foldSessionEvents(await deps.store.readStream(deps.sessionId));

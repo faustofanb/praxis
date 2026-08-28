@@ -24,6 +24,12 @@ export type ToolExecutionSnapshot = {
   readonly argumentsJson: string;
   readonly effect: ToolEffect;
   readonly status: ToolExecutionStatus;
+  /**
+   * Reconciliation attempts recorded against this execution. Zero until a
+   * ToolReconciled fact arrives; INDETERMINATE executions may reconcile
+   * repeatedly, so this counts attempts, not outcomes.
+   */
+  readonly reconciliationCount: number;
   readonly resultJson?: string;
   readonly rejectionReason?: string;
   readonly failureMessage?: string;
@@ -173,6 +179,7 @@ export function reduceSession(
         argumentsJson: event.payload.argumentsJson,
         effect: event.payload.effect,
         status: "PROPOSED",
+        reconciliationCount: 0,
       });
     }
     case "ToolAuthorized": {
@@ -243,6 +250,45 @@ export function reduceSession(
         status: "INDETERMINATE",
         indeterminateReason: event.payload.reason,
       });
+    }
+    case "ToolReconciled": {
+      // Only INDETERMINATE may settle (docs/02 section 8.2): reconciliation
+      // must never resurrect a terminal reached by execution or by an earlier
+      // reconciliation, and a still-indeterminate attempt stays honest for a
+      // later retry or escalation.
+      const snapshot = requireTool(
+        state,
+        "ToolReconciled",
+        event.payload.toolExecutionId,
+        "INDETERMINATE",
+      );
+      const reconciled = { ...snapshot, reconciliationCount: snapshot.reconciliationCount + 1 };
+      const outcome = event.payload.outcome;
+      switch (outcome) {
+        case "succeeded":
+          return withTool(advanced, {
+            ...reconciled,
+            status: "SUCCEEDED",
+            resultJson: event.payload.resultJson,
+          });
+        case "failed":
+          return withTool(advanced, {
+            ...reconciled,
+            status: "FAILED",
+            failureMessage: event.payload.message,
+          });
+        case "indeterminate":
+          return withTool(advanced, {
+            ...reconciled,
+            indeterminateReason: event.payload.reason,
+          });
+      }
+      // Unreachable for the validated union; guards against schema drift.
+      throw new IllegalTransitionError(
+        "ToolReconciled",
+        state.status,
+        `unhandled reconciliation outcome ${JSON.stringify(outcome)}`,
+      );
     }
     case "ModelRequestStarted": {
       requireStatus(state, "ModelRequestStarted", "ACTIVE");

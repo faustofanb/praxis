@@ -22,7 +22,9 @@ import {
   modelResponseCompleted,
   sessionCreated,
   toolFailed,
+  toolIndeterminate,
   toolProposed,
+  toolReconciled,
   toolRejected,
   toolSucceeded,
   turnStarted,
@@ -412,5 +414,50 @@ describe("projectConversation", () => {
         text: JSON.stringify({ status: "failed", message: "boom" }),
       },
     ]);
+  });
+
+  test("a reconciled execution appends the settled fact after the indeterminate one", () => {
+    const messages = projectConversation(
+      [
+        toolProposed(1, 3, { name: "send_payment", toolCallId: "call-3" }),
+        toolIndeterminate(2, 3, "response lost after send"),
+        toolReconciled(3, 3, "succeeded", '{"paymentId":"pay_1"}'),
+      ].map((event) => ({ ...event, sessionId: SESSION_ID })),
+    );
+    expect(messages).toEqual([
+      {
+        role: "tool",
+        toolCallId: "call-3",
+        text: JSON.stringify({ status: "indeterminate", reason: "response lost after send" }),
+      },
+      {
+        role: "tool",
+        toolCallId: "call-3",
+        text: JSON.stringify({
+          status: "succeeded",
+          reconciled: true,
+          result: { paymentId: "pay_1" },
+        }),
+      },
+    ]);
+  });
+
+  test("a reconciliation that stays indeterminate reports the new reason honestly", () => {
+    const messages = projectConversation(
+      [
+        toolProposed(1, 3, { name: "send_payment" }),
+        toolIndeterminate(2, 3, "response lost after send"),
+        toolReconciled(3, 3, "indeterminate", "provider query timed out too"),
+      ].map((event) => ({ ...event, sessionId: SESSION_ID })),
+    );
+    expect(messages.at(-1)).toEqual({
+      role: "tool",
+      toolCallId: "tool-exec-3",
+      text: JSON.stringify({
+        status: "indeterminate",
+        reconciled: true,
+        reason: "provider query timed out too",
+      }),
+    });
   });
 });

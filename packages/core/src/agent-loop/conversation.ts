@@ -1,4 +1,9 @@
-import type { ModelMessage, SessionEventUnion, ToolExecutionId } from "@praxis/contracts";
+import type {
+  ModelMessage,
+  SessionEventUnion,
+  ToolExecutionId,
+  ToolReconciledPayload,
+} from "@praxis/contracts";
 
 /**
  * Pure conversation projection (docs/02 section 12): rebuilds the model-side
@@ -70,6 +75,17 @@ export function projectConversation(events: readonly SessionEventUnion[]): Model
           }),
         );
         break;
+      case "ToolReconciled":
+        // A later fact about the same execution: the model sees the settled
+        // (or still-unknown) outcome verbatim, after the earlier indeterminate
+        // message — never instead of it.
+        messages.push(
+          toolMessage(callIdByExecution, event.payload.toolExecutionId, {
+            status: event.payload.outcome,
+            ...reconciliationDetail(event.payload),
+          }),
+        );
+        break;
       default:
         break;
     }
@@ -87,6 +103,17 @@ function toolMessage(
     toolCallId: callIdByExecution.get(toolExecutionId) ?? toolExecutionId,
     text: JSON.stringify(body),
   };
+}
+
+function reconciliationDetail(payload: ToolReconciledPayload): Record<string, unknown> {
+  switch (payload.outcome) {
+    case "succeeded":
+      return { reconciled: true, result: safeJson(payload.resultJson) };
+    case "failed":
+      return { reconciled: true, message: payload.message };
+    case "indeterminate":
+      return { reconciled: true, reason: payload.reason };
+  }
 }
 
 function safeJson(raw: string): unknown {

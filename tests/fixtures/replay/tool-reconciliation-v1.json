@@ -1,0 +1,284 @@
+[
+  {
+    "id": "fixture-event-1",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 1,
+    "schemaVersion": 1,
+    "occurredAt": 2001,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "SessionCreated",
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-2",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 2,
+    "schemaVersion": 1,
+    "occurredAt": 2002,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-1",
+      "input": "send the two invoices"
+    }
+  },
+  {
+    "id": "fixture-event-3",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 3,
+    "schemaVersion": 1,
+    "occurredAt": 2003,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "fixture-model"
+    }
+  },
+  {
+    "id": "fixture-event-4",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 4,
+    "schemaVersion": 1,
+    "occurredAt": 2004,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-1",
+          "name": "send_invoice",
+          "argumentsJson": "{\"invoice\":\"inv-1\"}"
+        },
+        {
+          "id": "call-2",
+          "name": "send_invoice",
+          "argumentsJson": "{\"invoice\":\"inv-2\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "fixture-event-5",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 5,
+    "schemaVersion": 1,
+    "occurredAt": 2005,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "name": "send_invoice",
+      "argumentsJson": "{\"invoice\":\"inv-1\"}",
+      "effect": "reconcilable_write",
+      "toolCallId": "call-1"
+    }
+  },
+  {
+    "id": "fixture-event-6",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 6,
+    "schemaVersion": 1,
+    "occurredAt": 2006,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "fixture-event-7",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 7,
+    "schemaVersion": 1,
+    "occurredAt": 2007,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "fixture-event-8",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 8,
+    "schemaVersion": 1,
+    "occurredAt": 2008,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "reason": "response lost after side effect window"
+    }
+  },
+  {
+    "id": "fixture-event-9",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 9,
+    "schemaVersion": 1,
+    "occurredAt": 2009,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "outcome": "indeterminate",
+      "reason": "provider status endpoint timed out"
+    }
+  },
+  {
+    "id": "fixture-event-10",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 10,
+    "schemaVersion": 1,
+    "occurredAt": 2010,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "outcome": "succeeded",
+      "resultJson": "{\"invoiceId\":\"inv-1\",\"status\":\"paid\"}"
+    }
+  },
+  {
+    "id": "fixture-event-11",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 11,
+    "schemaVersion": 1,
+    "occurredAt": 2011,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "name": "send_invoice",
+      "argumentsJson": "{\"invoice\":\"inv-2\"}",
+      "effect": "reconcilable_write",
+      "toolCallId": "call-2"
+    }
+  },
+  {
+    "id": "fixture-event-12",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 12,
+    "schemaVersion": 1,
+    "occurredAt": 2012,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-2"
+    }
+  },
+  {
+    "id": "fixture-event-13",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 13,
+    "schemaVersion": 1,
+    "occurredAt": 2013,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-2"
+    }
+  },
+  {
+    "id": "fixture-event-14",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 14,
+    "schemaVersion": 1,
+    "occurredAt": 2014,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "reason": "executor crashed before outcome was known"
+    }
+  },
+  {
+    "id": "fixture-event-15",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 15,
+    "schemaVersion": 1,
+    "occurredAt": 2015,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "outcome": "failed",
+      "message": "idempotency key inv-2 never seen by provider"
+    }
+  },
+  {
+    "id": "fixture-event-16",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 16,
+    "schemaVersion": 1,
+    "occurredAt": 2016,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "fixture-model"
+    }
+  },
+  {
+    "id": "fixture-event-17",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 17,
+    "schemaVersion": 1,
+    "occurredAt": 2017,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "invoice 1 was paid; invoice 2 never reached the provider"
+    }
+  },
+  {
+    "id": "fixture-event-18",
+    "sessionId": "session-reconcile-fixture",
+    "seq": 18,
+    "schemaVersion": 1,
+    "occurredAt": 2018,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-1"
+    }
+  }
+]

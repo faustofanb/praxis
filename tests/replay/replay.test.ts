@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { SessionEventUnion } from "@praxis/contracts";
-import { SessionEventUnionSchema } from "@praxis/contracts";
+import { asToolExecutionId, SessionEventUnionSchema } from "@praxis/contracts";
 import { foldSessionEvents, reduceSession } from "@praxis/core";
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
@@ -21,6 +21,9 @@ const fixturePath = fileURLToPath(
 const loopFixturePath = fileURLToPath(
   new URL("../fixtures/replay/agent-loop-recovery-v1.json", import.meta.url),
 );
+const reconcileFixturePath = fileURLToPath(
+  new URL("../fixtures/replay/tool-reconciliation-v1.json", import.meta.url),
+);
 
 function loadFixture(): SessionEventUnion[] {
   const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
@@ -29,6 +32,11 @@ function loadFixture(): SessionEventUnion[] {
 
 function loadLoopFixture(): SessionEventUnion[] {
   const raw: unknown = JSON.parse(readFileSync(loopFixturePath, "utf8"));
+  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+}
+
+function loadReconcileFixture(): SessionEventUnion[] {
+  const raw: unknown = JSON.parse(readFileSync(reconcileFixturePath, "utf8"));
   return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
 }
 
@@ -79,6 +87,46 @@ describe("agent-loop recovery fixture replay", () => {
 
   test("folding the loop fixture twice yields identical states", () => {
     const events = loadLoopFixture();
+    expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
+  });
+});
+
+describe("tool reconciliation fixture replay", () => {
+  test("the reconciliation stream loads through the public schema and folds to its recorded state", () => {
+    const events = loadReconcileFixture();
+    expect(events).toHaveLength(18);
+    const state = foldSessionEvents(events);
+    expect(state.status).toBe("ACTIVE");
+    expect(state.headSeq).toBe(18);
+    expect(state.currentTurnId).toBeUndefined();
+
+    const first = state.toolExecutions.get(asToolExecutionId("tool-exec-1"));
+    expect(first?.status).toBe("SUCCEEDED");
+    expect(first?.reconciliationCount).toBe(2);
+    expect(first?.resultJson).toBe('{"invoiceId":"inv-1","status":"paid"}');
+
+    const second = state.toolExecutions.get(asToolExecutionId("tool-exec-2"));
+    expect(second?.status).toBe("FAILED");
+    expect(second?.reconciliationCount).toBe(1);
+    expect(second?.failureMessage).toBe("idempotency key inv-2 never seen by provider");
+  });
+
+  test("the pre-reconciliation checkpoint stays honestly INDETERMINATE, never auto-FAILED", () => {
+    const events = loadReconcileFixture();
+    // seq 8: ToolIndeterminate appended, reconciliation has not run yet.
+    const atIndeterminate = foldSessionEvents(events.slice(0, 8));
+    const dangling = atIndeterminate.toolExecutions.get(asToolExecutionId("tool-exec-1"));
+    expect(dangling?.status).toBe("INDETERMINATE");
+    expect(dangling?.reconciliationCount).toBe(0);
+    // seq 9: first attempt stays unknown; only the second settles.
+    const afterFirstAttempt = foldSessionEvents(events.slice(0, 9));
+    const stillUnknown = afterFirstAttempt.toolExecutions.get(asToolExecutionId("tool-exec-1"));
+    expect(stillUnknown?.status).toBe("INDETERMINATE");
+    expect(stillUnknown?.reconciliationCount).toBe(1);
+  });
+
+  test("folding the reconciliation fixture twice yields identical states", () => {
+    const events = loadReconcileFixture();
     expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
   });
 });
