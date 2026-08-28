@@ -1,0 +1,88 @@
+schema_version: 1
+id: M3-T005
+title: add adversarial capability and path escape tests
+milestone: M3
+status: acceptance_ready
+risk_class: D
+objective: "Prove M3's failure-acceptance item 'path/capability bypass attempts rejected' at the composition layer — attacks that cross the capability policy, the tools-local path policy, and the section 17 recovery orchestration in one stroke — and fix the one honest-semantics defect those attacks expose: writeFileTool.reconcile conflates 'the path policy refused to look' with 'the effect provably never happened' (write-tools.ts:113-119 returns failed for policy-rejected paths, and failed is the only outcome that unlocks re-execution per contracts tool.ts:75-77). The fix aligns the tool with its already-documented contract; everything else is adversarial tests."
+evidence: 
+  observed: 
+    - "packages/tools-local/src/write-tools.ts:113-119 — reconcile catches every resolveWithinRoot throw as `failed('the write did not take effect: <path> does not exist')`. The comment justifying it ('realpath of a missing file throws ENOENT') is stale since M3-T003's ancestor-walk: resolve now succeeds for missing targets, so the catch fires only on policy violations (lexical escape, symlink violation, root gone) — cases where reconcile refused to look and can prove nothing. The message also lies: an escaped path may well exist."
+    - "Symlink-state race defeats the 'execute would have refused too' inference: execute-time path in-root (write lands), crash before the fact, symlink retargeted outside, reconcile-time resolve rejects → today's code claims provable absence → failed unlocks re-execution of the effect. Path-policy realpaths are point-in-time (path-policy.ts), so determinism across the crash window cannot be assumed."
+    - "tests/security/tools-local-write.security.test.ts:73-87 pins the defect as expected behavior (escape reconcile → failed 'did not take effect')."
+    - "Existing adversarial coverage is per-layer only: capability unit matrix (T002), write-tool direct-call escapes (T003). No test attacks the composition: a granted capability plus an escape path through the real runtime, a forged INDETERMINATE stream with hostile recorded input through section 17 recovery, symlink-aliased roots against the lexical capability scope, or bash denied without its capability by name."
+    - "M3.yaml failure_acceptance: 'path/capability bypass attempts rejected'; forbidden_work: 'prompt-only security'."
+  expected: 
+    - "tools-local: writeFileTool.reconcile outcome matrix becomes — resolve rejected by the path policy → indeterminate 'cannot verify' (never failed, never unlocks re-execution); resolve OK + content match → succeeded; resolve OK + readable file with different content or absent target (ENOENT/EISDIR) → failed with a truthful provable-absence message; resolve OK + unreadable for other reasons (e.g. EACCES) → indeterminate."
+    - "security: end-to-end escape through the real runtime — granted capability + escape path → ToolFailed (provable non-effect), zero filesystem effect, session continues (never INDETERMINATE, never paused)."
+    - "security: symlink retargeting race — write landed, crash, symlink flipped, reconcile → indeterminate, recovery escalates to paused; the re-execution unlock attack is defeated."
+    - "security: forged stream — INDETERMINATE execution whose recorded input escapes → recovery reconcile leaves an honest indeterminate fact and pauses; nothing auto-fails or re-executes."
+    - "security: lexical capability scope — symlink-aliased roots (grant root and tool root are different lexical strings mapping to one physical dir) never satisfy scopeSatisfies; realpath'd vs raw root mismatches fail closed."
+    - "security: bash without a shell.exec grant is ToolRejected before ToolStarted (deny-by-default pinned by tool name, not only via generic write-tool tests)."
+    - "tests/security/tools-local-write.security.test.ts escape-reconcile expectation updated from failed to indeterminate — a deliberate correction toward the documented ReconciliationOutcome contract (tool.ts:73-77: failed asserts provable never-happened), recorded here, not a weakening."
+  references: 
+    - packages/contracts/src/ports/tool.ts
+    - packages/tools-local/src/write-tools.ts
+    - packages/tools-local/src/path-policy.ts
+    - docs/decisions/ADR-0011-tool-reconciliation-contract.md
+    - .praxis/milestones/M3.yaml
+    - .praxis/tasks/M3-T002.yaml
+    - .praxis/tasks/M3-T003.yaml
+hypothesis: "The bypass surface is already closed at each layer; what is missing is proof under composition and one tool-level epistemic fix. The reconcile fix needs no contract, core, or event change: indeterminate/failed ReconciliationOutcome branches already exist end to end (ADR-0011 vocabulary, T004 recovery treats indeterminate as unresolved → pause), so a policy-rejected reconcile flows honestly into the existing escalation path."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M3-T005.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/tools-local/src/write-tools.ts
+    - tests/**
+    - docs/subsystems/tools-local.md
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/contracts/**
+    - packages/core/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/testkit/**
+    - scripts/ai/**
+    - scripts/smoke/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/decisions/**
+    - docs/02-system-design.md
+  scope_notes: 
+    - "The reconcile outcome-matrix change is a bug fix against the documented ReconciliationOutcome contract, not a law change: contracts tool.ts already defines failed as provable-never-happened and verification-only reconciliation. No ADR needed (requires_adr false); risk D routes acceptance to human regardless."
+    - Updating the T003 escape-reconcile security expectation from failed to indeterminate is part of the same correction and is called out in the contract so the reviewer sees the test law change explicitly.
+    - "Authorization timing (decided once at proposal time, no mid-flight lease re-check between ToolAuthorized and ToolStarted) is out of scope: the appends are back-to-back in one in-process call and docs/02 section 9 places the decision at proposal. If the human wants a start-time re-check, that is a new task."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - security
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - "an escape path with the capability fully granted still never touches the filesystem outside the root, through the real runtime (executeToolCall), and lands as a provable ToolFailed"
+    - a crashed write whose symlinked path was retargeted after the crash reconciles to indeterminate and escalates to a paused session — the failed-unlocks-re-execution attack is closed
+    - symlink-aliased workspace roots cannot satisfy the lexical capability scope; mismatches fail closed
+  failure_cases: 
+    - "a forged INDETERMINATE execution with hostile recorded input (escape path, unparsable JSON, schema-violating shape) never produces a settled conclusion, a re-execution, or a filesystem effect — recovery pauses honestly"
+    - bash without its capability is rejected before ToolStarted even when other write capabilities are granted
+    - "reconcile never widens what it may look at: policy-rejected paths produce no stat/read outside the root"
+  artifacts: 
+    - packages/tools-local/src/write-tools.ts
+    - tests/security/path-escape.runtime.security.test.ts
+    - tests/security/tools-local-write.security.test.ts
+    - docs/subsystems/tools-local.md
+falsified_if: "Any bypass attempt reaches the filesystem outside the root or executes without its capability, any policy-rejected or unobservable reconcile outcome is recorded as failed (provably-absent), any adversarial path auto-retries or re-executes, or any security property depends on the model behaving."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Composition-focused by design: each layer already has unit matrices (T002 capability, T003 path policy); this task proves the layers compose under attack and closes the one epistemic hole the composition exposes. The reconcile fix deliberately makes recovery pause more often (symlink races become human decisions) — that is the section 17 law working as intended, not a regression."
