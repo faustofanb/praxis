@@ -39,6 +39,8 @@ export const ToolProposedPayloadSchema = z.object({
   name: z.string().min(1),
   argumentsJson: z.string(),
   effect: ToolEffectSchema,
+  /** Correlates the proposal with the model tool call that caused it. */
+  toolCallId: z.string().min(1).optional(),
 });
 export const ToolProposedEventSchema = sessionEventSchema(TOOL_PROPOSED, ToolProposedPayloadSchema);
 export type ToolProposedEvent = z.infer<typeof ToolProposedEventSchema>;

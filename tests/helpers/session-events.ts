@@ -1,4 +1,11 @@
-import type { EventActor, SessionEventUnion, SessionId, ToolEffect } from "@praxis/contracts";
+import type {
+  EventActor,
+  ModelProviderErrorKind,
+  SessionEventUnion,
+  SessionId,
+  ToolCallRequest,
+  ToolEffect,
+} from "@praxis/contracts";
 import {
   asEventId,
   asSessionId,
@@ -49,11 +56,11 @@ export function sessionCompleted(seq: number): SessionEventUnion {
   return { ...base(seq), type: "SessionCompleted", payload: {} };
 }
 
-export function turnStarted(seq: number, turn: number): SessionEventUnion {
+export function turnStarted(seq: number, turn: number, input?: string): SessionEventUnion {
   return {
     ...base(seq),
     type: "TurnStarted",
-    payload: { turnId: turnId(turn) },
+    payload: input === undefined ? { turnId: turnId(turn) } : { turnId: turnId(turn), input },
   };
 }
 
@@ -72,7 +79,12 @@ function toolExecutionId(execution: number) {
 export function toolProposed(
   seq: number,
   execution: number,
-  options: { name?: string; argumentsJson?: string; effect?: ToolEffect } = {},
+  options: {
+    name?: string;
+    argumentsJson?: string;
+    effect?: ToolEffect;
+    toolCallId?: string;
+  } = {},
 ): SessionEventUnion {
   return {
     ...base(seq),
@@ -82,6 +94,7 @@ export function toolProposed(
       name: options.name ?? "read_file",
       argumentsJson: options.argumentsJson ?? '{"path":"a.txt"}',
       effect: options.effect ?? "read_only",
+      ...(options.toolCallId === undefined ? {} : { toolCallId: options.toolCallId }),
     },
   };
 }
@@ -143,5 +156,42 @@ export function toolIndeterminate(
     ...base(seq),
     type: "ToolIndeterminate",
     payload: { toolExecutionId: toolExecutionId(execution), reason },
+  };
+}
+
+export function modelRequestStarted(seq: number, model = "test-model"): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ModelRequestStarted",
+    payload: { model },
+  };
+}
+
+export function modelResponseCompleted(
+  seq: number,
+  options: { text?: string; toolCalls?: ToolCallRequest[] } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ModelResponseCompleted",
+    payload: {
+      ...(options.text === undefined ? {} : { text: options.text }),
+      toolCalls: options.toolCalls ?? [],
+    },
+  };
+}
+
+export function modelRequestFailed(
+  seq: number,
+  options: { kind?: ModelProviderErrorKind; retryable?: boolean; message?: string } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ModelRequestFailed",
+    payload: {
+      kind: options.kind ?? "network",
+      retryable: options.retryable ?? false,
+      message: options.message ?? "provider exploded",
+    },
   };
 }

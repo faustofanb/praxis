@@ -33,5 +33,11 @@ export interface ToolDefinition {
   readonly description: string;
   readonly effect: ToolEffect;
   readonly inputSchema: z.ZodType<unknown>;
+  /**
+   * JSON-encoded JSON Schema advertised to the model (the parametersJson of
+   * ModelToolDefinition). Must be valid JSON; Core never parses it, providers
+   * pass it through verbatim.
+   */
+  readonly parametersJson: string;
   execute(context: ToolExecutionContext, input: unknown): Promise<ToolExecutionOutcome>;
 }

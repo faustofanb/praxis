@@ -71,6 +71,8 @@ function failed(message: string): ToolExecutionOutcome {
 }
 
 const ReadPathInputSchema = z.object({ path: z.string().min(1) });
+const READ_PATH_PARAMETERS_JSON =
+  '{"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}';
 
 export function readFileTool(root: string, options: LocalReadToolOptions = {}): ToolDefinition {
   const maxResultBytes = options.maxResultBytes ?? DEFAULT_MAX_RESULT_BYTES;
@@ -80,6 +82,7 @@ export function readFileTool(root: string, options: LocalReadToolOptions = {}): 
       "Read a UTF-8 text file inside the workspace root; large contents are head-truncated with a byte marker",
     effect: "read_only",
     inputSchema: ReadPathInputSchema,
+    parametersJson: READ_PATH_PARAMETERS_JSON,
     async execute(_context: ToolExecutionContext, input: unknown): Promise<ToolExecutionOutcome> {
       const { path } = ReadPathInputSchema.parse(input);
       try {
@@ -118,6 +121,7 @@ export function listDirTool(root: string): ToolDefinition {
     description: "List directory entries inside the workspace root, sorted by name",
     effect: "read_only",
     inputSchema: ReadPathInputSchema,
+    parametersJson: READ_PATH_PARAMETERS_JSON,
     async execute(_context: ToolExecutionContext, input: unknown): Promise<ToolExecutionOutcome> {
       const { path } = ReadPathInputSchema.parse(input);
       try {

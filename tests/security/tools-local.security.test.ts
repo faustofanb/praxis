@@ -137,6 +137,7 @@ describe("deny-by-default authorization", () => {
     description: "adversarial write tool",
     effect: "non_idempotent_write",
     inputSchema: z.object({}),
+    parametersJson: '{"type":"object"}',
     async execute() {
       return { status: "succeeded", resultJson: '"deleted"' };
     },

@@ -8,10 +8,10 @@ import type {
 } from "@praxis/contracts";
 
 /**
- * v1 StateReducer over the Session/Turn and tool-execution event slices
- * (docs/02 sections 7-8). Pure: no I/O, clock, randomness, or environment.
- * All nondeterministic inputs must already be facts inside the events.
- * Goal/epistemic/model projections join as their vocabulary lands in M2-M4.
+ * v1 StateReducer over the Session/Turn, tool-execution, and model-call event
+ * slices (docs/02 sections 6.2, 7-8, 10). Pure: no I/O, clock, randomness, or
+ * environment. All nondeterministic inputs must already be facts inside the
+ * events. Goal/epistemic projections join as their vocabulary lands in M3-M4.
  */
 
 export type SessionStatus = "EMPTY" | "ACTIVE" | "PAUSED" | "COMPLETED";
@@ -47,6 +47,8 @@ export type DerivedSessionState = {
   currentTurnId?: TurnId;
   turnIds: ReadonlySet<TurnId>;
   toolExecutions: ReadonlyMap<ToolExecutionId, ToolExecutionSnapshot>;
+  /** Set by ModelRequestStarted, cleared by ModelResponseCompleted/Failed. */
+  pendingModelRequest?: { readonly model: string };
 };
 
 export class IllegalTransitionError extends Error {
@@ -148,12 +150,14 @@ export function reduceSession(
         );
       }
       requireNoActiveToolExecutions(state, "TurnCompleted");
+      requireNoPendingModelRequest(state, "TurnCompleted");
       const { currentTurnId: _closed, ...rest } = advanced;
       return rest;
     }
     case "ToolProposed": {
       requireStatus(state, "ToolProposed", "ACTIVE");
       const turnId = requireOpenTurn(state, "ToolProposed");
+      requireNoPendingModelRequest(state, "ToolProposed");
       const { toolExecutionId } = event.payload;
       if (state.toolExecutions.has(toolExecutionId)) {
         throw new IllegalTransitionError(
@@ -181,11 +185,15 @@ export function reduceSession(
       return withTool(advanced, { ...snapshot, status: "AUTHORIZED" });
     }
     case "ToolRejected": {
+      // AUTHORIZED -> ToolRejected exists for crash recovery only: an
+      // authorization without a start provably never executed, so abandoning
+      // it is an honest rejection, not a coerced failure.
       const snapshot = requireTool(
         state,
         "ToolRejected",
         event.payload.toolExecutionId,
         "PROPOSED",
+        "AUTHORIZED",
       );
       return withTool(advanced, {
         ...snapshot,
@@ -236,6 +244,20 @@ export function reduceSession(
         indeterminateReason: event.payload.reason,
       });
     }
+    case "ModelRequestStarted": {
+      requireStatus(state, "ModelRequestStarted", "ACTIVE");
+      requireOpenTurn(state, "ModelRequestStarted");
+      requireNoPendingModelRequest(state, "ModelRequestStarted");
+      return { ...advanced, pendingModelRequest: { model: event.payload.model } };
+    }
+    case "ModelResponseCompleted":
+    case "ModelRequestFailed": {
+      requireStatus(state, event.type, "ACTIVE");
+      requireOpenTurn(state, event.type);
+      requirePendingModelRequest(state, event.type);
+      const { pendingModelRequest: _settled, ...rest } = advanced;
+      return rest;
+    }
   }
 }
 
@@ -274,11 +296,33 @@ function requireOpenTurn(state: DerivedSessionState, eventType: SessionEventUnio
   return state.currentTurnId;
 }
 
+function requireNoPendingModelRequest(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+): void {
+  if (state.pendingModelRequest !== undefined) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `model request to ${state.pendingModelRequest.model} is still pending`,
+    );
+  }
+}
+
+function requirePendingModelRequest(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+): void {
+  if (state.pendingModelRequest === undefined) {
+    throw new IllegalTransitionError(eventType, state.status, "no pending model request");
+  }
+}
+
 function requireTool(
   state: DerivedSessionState,
   eventType: SessionEventUnion["type"],
   toolExecutionId: ToolExecutionId,
-  expectedStatus: ToolExecutionStatus,
+  ...expectedStatuses: readonly ToolExecutionStatus[]
 ): ToolExecutionSnapshot {
   requireStatus(state, eventType, "ACTIVE");
   const turnId = requireOpenTurn(state, eventType);
@@ -297,11 +341,11 @@ function requireTool(
       `tool execution ${toolExecutionId} belongs to turn ${snapshot.turnId}, open turn is ${turnId}`,
     );
   }
-  if (snapshot.status !== expectedStatus) {
+  if (!expectedStatuses.includes(snapshot.status)) {
     throw new IllegalTransitionError(
       eventType,
       state.status,
-      `requires tool status ${expectedStatus}, is ${snapshot.status}`,
+      `requires tool status ${expectedStatuses.join(" or ")}, is ${snapshot.status}`,
     );
   }
   return snapshot;

@@ -49,6 +49,7 @@ function fakeTool(options: {
     description: "fault-injection fake",
     effect: options.effect ?? "read_only",
     inputSchema: z.object({}),
+    parametersJson: '{"type":"object"}',
     async execute(context: ToolExecutionContext, _input: unknown): Promise<ToolExecutionOutcome> {
       return options.behavior(context.signal);
     },

@@ -22,6 +22,24 @@ export {
 export type { EventEnvelopeBase, SessionEvent } from "./envelope";
 export { EVENT_SCHEMA_VERSION, sessionEventSchema } from "./envelope";
 export type {
+  ModelEventType,
+  ModelRequestFailedEvent,
+  ModelRequestStartedEvent,
+  ModelResponseCompletedEvent,
+} from "./events/model-events";
+export {
+  MODEL_EVENT_TYPES,
+  MODEL_REQUEST_FAILED,
+  MODEL_REQUEST_STARTED,
+  MODEL_RESPONSE_COMPLETED,
+  ModelRequestFailedEventSchema,
+  ModelRequestFailedPayloadSchema,
+  ModelRequestStartedEventSchema,
+  ModelRequestStartedPayloadSchema,
+  ModelResponseCompletedEventSchema,
+  ModelResponseCompletedPayloadSchema,
+} from "./events/model-events";
+export type {
   SessionCompletedEvent,
   SessionCreatedEvent,
   SessionEventType,
