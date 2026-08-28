@@ -522,6 +522,8 @@ type DerivedSessionState = {
 
 ## 8.1 Tool Definition
 
+v1 实际契约（非泛型：输入经 `inputSchema` 从 `unknown` 解析，输出是 opaque JSON 事实，见 ADR-0011）：
+
 ```ts
 type ToolEffect =
   | "read_only"
@@ -529,16 +531,40 @@ type ToolEffect =
   | "reconcilable_write"
   | "non_idempotent_write";
 
-type ToolDefinition<TInput, TOutput> = {
+type ToolExecutionOutcome =
+  | { status: "succeeded"; resultJson: string }
+  | { status: "failed"; error: { message: string } }
+  | { status: "indeterminate"; reason: string };
+
+// 同一认知规则：succeeded/failed 断言外部效果确实发生/确实未发生；不足为证保持 indeterminate。
+type ReconciliationOutcome = ToolExecutionOutcome;
+
+interface ToolDefinition {
   name: string;
   description: string;
-  inputSchema: z.ZodType<TInput>;
+  inputSchema: z.ZodType<unknown>;
   effect: ToolEffect;
-  requiredCapability?: CapabilityRequirement;
-  execute(ctx: ToolExecutionContext, input: TInput): Promise<ToolExecutionOutcome<TOutput>>;
-  reconcile?: (...args) => Promise<ReconciliationOutcome<TOutput>>;
-};
+  parametersJson: string; // 广告给模型的 JSON Schema（Core 不解析）
+  execute(ctx: ToolExecutionContext, input: unknown): Promise<ToolExecutionOutcome>;
+  reconcile?(ctx: ToolExecutionContext, input: unknown): Promise<ReconciliationOutcome>;
+}
 ```
+
+约束（ADR-0006/0011，注册时由 `validateToolDefinitions` fail-closed 强制）：
+
+- `reconcilable_write` 必须定义 `reconcile`，否则拒绝注册；
+- `reconcile` 只做验证（查外部状态/比对），不得产生新的外部效果；
+- `non_idempotent_write` 可定义 `reconcile` 用于澄清事实（供升级决策），但永不解锁自动重试——重试策略表见下。
+
+每个效果类对应的恢复/重试规则是一个全函数（core `retryPolicyForEffect`，ADR-0011）：
+
+| effect | retry policy |
+| --- | --- |
+| `read_only` / `idempotent_write` | `safe_to_repeat` |
+| `reconcilable_write` | `repeat_only_after_reconciled_absence` |
+| `non_idempotent_write` | `never_repeat`（重复执行是人工升级决策） |
+
+`requiredCapability?: CapabilityRequirement` 随 M3-T002（Capability 机制，section 9）加入。
 
 ## 8.2 Tool Execution State Machine
 
@@ -570,8 +596,9 @@ SUCCEEDED FAILED INDETERMINATE
 - timeout **不是自动 FAILED**；
 - request 已可能到达外部系统时，若无法判断结果，应 `INDETERMINATE`；
 - `INDETERMINATE` 不允许盲目 retry `non_idempotent_write`；
-- replay 不执行 `execute()`；
-- Tool 结果先作为事实 Event，再由 ContextBuilder 决定如何告诉模型。
+- replay 不执行 `execute()`（也不调用 `reconcile()`——其结论已是 `ToolReconciled` 事实）；
+- Tool 结果先作为事实 Event，再由 ContextBuilder 决定如何告诉模型；
+- reconcile 结论落盘为 `ToolReconciled` 事件（payload 按 `outcome` 判别：`succeeded`+`resultJson` / `failed`+`message` / `indeterminate`+`reason`），仅可从 `INDETERMINATE` 追加，未定论前可多次 reconcile；经 reconcile 达到的 `SUCCEEDED`/`FAILED` 与执行达到的终态同样不可复活（ADR-0011）。
 
 ## 8.3 Reconciliation
 
