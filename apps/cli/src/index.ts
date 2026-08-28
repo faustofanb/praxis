@@ -5,6 +5,7 @@ import type {
   EventActor,
   EventId,
   EventStore,
+  ModelProvider,
   SessionEventUnion,
   SessionId,
   ToolDefinition,
@@ -19,6 +20,7 @@ import {
   EVENT_SCHEMA_VERSION,
 } from "@praxis/contracts";
 import { type AgentLoopDeps, runTurn } from "@praxis/core";
+import { OpenAIChatProvider } from "@praxis/provider-openai";
 import { openSessionStore, type SessionStore } from "@praxis/store-sqlite";
 import { localReadTools } from "@praxis/tools-local";
 import { ScriptFileModelProvider } from "./scripted-provider";
@@ -74,12 +76,15 @@ function usage(io: CliIo): void {
   io.err(
     [
       "usage:",
-      "  praxis run [--db PATH] [--session ID] [--input TEXT] [--root DIR] --script FILE",
+      "  praxis run [--db PATH] [--session ID] [--input TEXT] [--root DIR]",
+      "            ( --script FILE | --model NAME [--api-key KEY] [--base-url URL] )",
       "  praxis sessions [--db PATH]",
       "",
       "run: create a session (no --session), send a prompt (--input), or",
-      "resume an open turn (--session without --input). Durable events",
-      "stream to stdout as they append.",
+      "resume an open turn (--session without --input). --script replays a",
+      "deterministic script file; --model uses an OpenAI-compatible Chat",
+      "Completions endpoint (key from --api-key or OPENAI_API_KEY). Durable",
+      "events stream to stdout as they append.",
       "sessions: list session ids with status and head seq.",
     ].join("\n"),
   );
@@ -168,18 +173,43 @@ async function runCommand(flags: readonly string[], io: CliIo): Promise<number> 
   const dbPath = options.get("db") ?? DEFAULT_DB_PATH;
   const root = resolve(options.get("root") ?? process.cwd());
   const scriptPath = options.get("script");
+  const modelFlag = options.get("model");
   const sessionFlag = options.get("session");
   const input = options.get("input");
 
-  if (scriptPath === undefined) {
-    throw new Error("run requires --script FILE (no live provider is configured until M2-T006)");
+  if (scriptPath !== undefined && modelFlag !== undefined) {
+    throw new Error("run takes either --script FILE or --model NAME, not both");
   }
+
+  let model: ModelProvider;
+  let modelId: string;
+  let providerFlags: string;
+  if (scriptPath !== undefined) {
+    const rawScripts: unknown = JSON.parse(await readFile(scriptPath, "utf8"));
+    model = new ScriptFileModelProvider(rawScripts, scriptPath);
+    modelId = "scripted-file";
+    providerFlags = `--script ${scriptPath}`;
+  } else if (modelFlag !== undefined) {
+    const apiKey = options.get("api-key") ?? process.env.OPENAI_API_KEY ?? "";
+    if (apiKey.trim() === "") {
+      throw new Error(
+        "run with --model requires --api-key KEY or the OPENAI_API_KEY environment variable",
+      );
+    }
+    const baseUrl = options.get("base-url");
+    model = new OpenAIChatProvider({
+      apiKey,
+      ...(baseUrl === undefined ? {} : { baseUrl }),
+    });
+    modelId = modelFlag;
+    providerFlags = `--model ${modelFlag}${baseUrl === undefined ? "" : ` --base-url ${baseUrl}`}`;
+  } else {
+    throw new Error("run requires a model source: --script FILE or --model NAME");
+  }
+
   if (sessionFlag === undefined && input === undefined) {
     throw new Error("run without --session requires --input to start the first turn");
   }
-
-  const rawScripts: unknown = JSON.parse(await readFile(scriptPath, "utf8"));
-  const model = new ScriptFileModelProvider(rawScripts, scriptPath);
 
   const store = observingStore(openSessionStore(dbPath), io);
   try {
@@ -191,7 +221,7 @@ async function runCommand(flags: readonly string[], io: CliIo): Promise<number> 
     process.on("SIGINT", onInterrupt);
     try {
       const outcome = await runTurn(
-        loopDeps(store, sessionId, model, root),
+        loopDeps(store, sessionId, model, modelId, root),
         input === undefined ? {} : { input },
         { signal: controller.signal },
       );
@@ -201,11 +231,11 @@ async function runCommand(flags: readonly string[], io: CliIo): Promise<number> 
           return 0;
         case "paused":
           io.err(`paused: ${outcome.reason}`);
-          io.err(`resume with: praxis run --session ${sessionId.valueOf()} --script ${scriptPath}`);
+          io.err(`resume with: praxis run --session ${sessionId.valueOf()} ${providerFlags}`);
           return 2;
         case "cancelled":
           io.err("cancelled: the attempt is recorded and the turn stays open");
-          io.err(`resume with: praxis run --session ${sessionId.valueOf()} --script ${scriptPath}`);
+          io.err(`resume with: praxis run --session ${sessionId.valueOf()} ${providerFlags}`);
           return 2;
       }
     } finally {
@@ -239,7 +269,8 @@ async function createSession(store: EventStore): Promise<SessionId> {
 function loopDeps(
   store: EventStore,
   sessionId: SessionId,
-  model: ScriptFileModelProvider,
+  model: ModelProvider,
+  modelId: string,
   root: string,
 ): AgentLoopDeps {
   const tools: readonly ToolDefinition[] = localReadTools(root);
@@ -247,7 +278,7 @@ function loopDeps(
     store,
     sessionId,
     model,
-    modelId: "scripted-file",
+    modelId,
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     tools,
     now: () => Date.now(),

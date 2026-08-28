@@ -221,6 +221,152 @@ describe("praxis sessions", () => {
   });
 });
 
+describe("praxis run --model", () => {
+  test("refuses --model together with --script", async () => {
+    const fx = fixture();
+    const script = fx.script([FINAL_STEP("x")]);
+    const result = await cli([
+      "run",
+      "--db",
+      fx.db,
+      "--script",
+      script,
+      "--model",
+      "test-model",
+      "--input",
+      "hi",
+    ]);
+    expect(result.code).toBe(1);
+    expect(result.err.join("\n")).toContain("not both");
+  });
+
+  test("refuses --model without --api-key or OPENAI_API_KEY", async () => {
+    const fx = fixture();
+    const previous = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const result = await cli(["run", "--db", fx.db, "--model", "test-model", "--input", "hi"]);
+      expect(result.code).toBe(1);
+      expect(result.err.join("\n")).toContain("OPENAI_API_KEY");
+    } finally {
+      if (previous !== undefined) {
+        process.env.OPENAI_API_KEY = previous;
+      }
+    }
+  });
+
+  test("runs the read_file vertical against a local OpenAI-compatible endpoint", async () => {
+    const fx = fixture();
+    let modelRequests = 0;
+    const server = Bun.serve({
+      port: 0,
+      fetch: async (request) => {
+        if (!request.url.endsWith("/chat/completions")) {
+          return new Response("not found", { status: 404 });
+        }
+        if (request.headers.get("authorization") !== "Bearer cli-test-key") {
+          return new Response(JSON.stringify({ error: { message: "bad key" } }), { status: 401 });
+        }
+        const body: unknown = await request.json();
+        if (!isObject(body) || body.model !== "test-model") {
+          return new Response(JSON.stringify({ error: { message: "wrong model" } }), {
+            status: 400,
+          });
+        }
+        modelRequests += 1;
+        const lastMessage = lastMessageRole(body);
+        const chunks =
+          lastMessage === "user"
+            ? [
+                {
+                  choices: [
+                    {
+                      index: 0,
+                      delta: {
+                        tool_calls: [
+                          {
+                            index: 0,
+                            id: "call-1",
+                            function: { name: "read_file", arguments: '{"path":"note.txt"}' },
+                          },
+                        ],
+                      },
+                      finish_reason: null,
+                    },
+                  ],
+                },
+                { choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] },
+              ]
+            : [
+                {
+                  choices: [
+                    {
+                      index: 0,
+                      delta: { content: "the note says: live note body" },
+                      finish_reason: null,
+                    },
+                  ],
+                },
+                { choices: [{ index: 0, delta: {}, finish_reason: "stop" }] },
+              ];
+        const sse = chunks
+          .map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`)
+          .concat("data: [DONE]\n\n")
+          .join("");
+        return new Response(sse, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        });
+      },
+    });
+
+    try {
+      const result = await cli([
+        "run",
+        "--db",
+        fx.db,
+        "--root",
+        fx.root,
+        "--model",
+        "test-model",
+        "--api-key",
+        "cli-test-key",
+        "--base-url",
+        `${server.url.origin}/v1`,
+        "--input",
+        "read the note",
+      ]);
+
+      expect(result.code).toBe(0);
+      expect(modelRequests).toBe(2);
+      const stream = result.out.filter((line) => line.startsWith("[")).join("\n");
+      expect(stream).toContain("ModelRequestStarted test-model");
+      expect(stream).toContain("ToolProposed read_file (read_only)");
+      expect(stream).toContain("ToolSucceeded");
+      expect(stream).toContain("TurnCompleted");
+      expect(result.out.at(-1)).toBe("the note says: live note body");
+    } finally {
+      server.stop(true);
+    }
+  });
+});
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function lastMessageRole(body: Record<string, unknown>): string {
+  const messages = body.messages;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error("expected chat messages in the request body");
+  }
+  const last = messages.at(-1);
+  if (!isObject(last) || typeof last.role !== "string") {
+    throw new Error("expected a role on the last message");
+  }
+  return last.role;
+}
+
 /**
  * Hand-append a legal crashed-run prefix: the model asked for read_file,
  * the runtime proposed/authorized/started it, then the process died —
