@@ -1,0 +1,92 @@
+schema_version: 1
+id: M4-T001
+title: define Observation Hypothesis Plan and Challenge contracts
+milestone: M4
+status: plan_ready
+risk_class: E
+objective: "Close the M4.1 contract gap: the docs/02 section 6.2 Goal/Epistemic slice (GoalSet, ObservationRecorded, HypothesisProposed, HypothesisStatusChanged, PlanSet, PlanInvalidated, ChallengeRaised, ChallengeResolved, VerificationRecorded) and the section 5 domain types exist only on paper — zero occurrences in code. Land the whole slice as pure contract + state work: branded ids, zod domain schemas (including the so-far-unnamed ObservationSource, HardConstraint, VerificationResult), nine durable events joined to the session union, and reducer folds into goal/observations/hypotheses/plans/challenges/lastVerification with transition laws. GoalSet is included because Plan.goalRef references it and M4-T002's projection reads it. No runtime behavior: context projection is M4-T002, falsification-driven invalidation orchestration is M4-T003, challenge-driven legal-next-action changes (including completion blocking) are M4-T004."
+evidence: 
+  observed: 
+    - "docs/02 section 6.2 lists the Goal/Epistemic vocabulary and section 5 defines GoalState/Observation/Hypothesis/Plan/Challenge, but grep confirms none of the nine event names appear anywhere in packages/ or tests/"
+    - "docs/02 sections 5.2/5.1/7 name ObservationSource, HardConstraint, and VerificationResult without defining them; core DerivedSessionState has no goal/activePlan/hypotheses/openChallenges/lastVerification members"
+    - "packages/contracts/src/events/session-events.ts header says \"Evidence events join this union as schema-versioned members in M3–M4\" — this task is that arrival"
+    - "docs/03 section 7 (M4.1) checkboxes are unchecked; M4.yaml required_deliverables starts with \"epistemic contracts/events\""
+  expected: 
+    - "four new branded ids (ObservationId, HypothesisId, PlanId, ChallengeId) and an epistemic domain module: GoalState/HardConstraint, Observation/ObservationSource, Hypothesis/HypothesisStatus, Plan/PlanStatus, Challenge/ChallengeStatus/ChallengeOutcome, VerificationResult — all with owning zod schemas"
+    - nine event schemas joined to SessionEventUnionSchema; pre-M4 replay fixtures and streams load unchanged (union only grew)
+    - "reducer laws: every epistemic event requires an ACTIVE session (PAUSED rejects — resume is the only unlock, mirroring the section 17 law) and does NOT require an open turn — they are session-level facts on the host/extension contribution channel (section 16), and turn-scoping would lock that channel out between turns"
+    - "GoalSet replaces goal latest-wins; PlanSet supersedes the previous active plan and becomes activePlan; PlanInvalidated is legal only on the active plan and is terminal; hypothesis status is monotonic (proposed -> supported -> falsified|superseded; falsified/superseded terminal) with status-change evidence landing in support (->supported) or conflicts (->falsified) and the from-status derived, never carried"
+    - ChallengeRaised validates hypothesis/plan targets against the registries and opens a challenge; ChallengeResolved is legal only while open with outcome accepted|rejected|resolved plus a required reason; VerificationRecorded keeps the latest result with outcome passed|failed|inconclusive — inconclusive is first-class and never coerced to failed
+    - replay fixture pins the fold; the contracts property suite covers the new members; payload variant mismatches fail schema parse at the untrusted boundary instead of coercing
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/00-praxis-whitepaper.md
+    - docs/decisions/ADR-0009-session-event-contracts-v1.md
+    - docs/decisions/ADR-0011-tool-reconciliation-contract.md
+    - .praxis/milestones/M4.yaml
+hypothesis: "The epistemic slice lands as a pure vocabulary + fold extension, exactly like M3-T001 did for reconciliation: hosts/models/extensions append facts, the reducer merely folds them, and replay determinism is preserved because nothing new reads the clock, randomness, or the environment. Every deferred behavior (projection, auto-invalidation, completion blocking) composes over these facts without needing changes to them."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M4-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/contracts/**
+    - packages/core/**
+    - tests/**
+    - docs/decisions/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+  scope_notes: 
+    - "docs/02 section 5.4 gives Plan a \"completed\" status, but the section 6.2 vocabulary has no event that produces it — completion is a session-level fact (SessionCompleted). The v1 PlanStatus union drops \"completed\" and section 5.4 is updated in this change; a dead discriminator value would violate the totality discipline."
+    - "DerivedSessionState grows observations/plans/challenges maps beyond the section 7 sketch under its explicit \"at least includes\" clause: the laws need id registries (uniqueness, terminal-target rejection, challenge target validation), and keeping them in the reducer preserves single-state-manager — M4-T002's projection will read state instead of maintaining a second fold."
+    - "evidenceEventIds are schema-validated references, not reducer-enforced existence: the reducer owns the id registries it keeps but does not index historical event ids; a forged evidence ref is a stream-authoring defect surfaced by replay tooling, not a transition error."
+    - "Challenge targetType completion/policy keeps a free-form targetId: v1 has no completion or policy registry to validate against; hypothesis/plan targets are registry-validated."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - reducer folds a full epistemic stream (GoalSet -> ObservationRecorded -> HypothesisProposed -> HypothesisStatusChanged supported -> PlanSet referencing the hypothesis -> ChallengeRaised against the plan -> ChallengeResolved rejected) and replaying the pinned fixture reproduces the state deterministically
+    - "a second PlanSet supersedes the old plan (status superseded, activePlan points at the new one); PlanInvalidated marks the active plan invalidated with its reason and a fresh PlanSet is required to act again"
+    - HypothesisStatusChanged appends evidence to support or conflicts per direction; falsified/superseded hypotheses reject further status changes; VerificationRecorded inconclusive stays inconclusive in lastVerification
+    - "epistemic events are legal with no open turn (host/extension channel, like ToolReconciled historical facts) and illegal in EMPTY/PAUSED/COMPLETED"
+  failure_cases: 
+    - duplicate observation/hypothesis/plan/challenge id and unknown or terminal targets for HypothesisStatusChanged/PlanInvalidated/ChallengeResolved are IllegalTransitionErrors; the property suite proves perturbed streams still throw
+    - ChallengeRaised against an unregistered hypothesis/plan target id is an IllegalTransitionError; completion/policy targets stay free-form
+    - "payload variant mismatch (unknown status, outcome, or targetType) fails schema parse at the untrusted boundary instead of coercing"
+    - pre-M4 replay fixtures and streams remain loadable unchanged — the event union only grew
+  artifacts: 
+    - tests/fixtures/replay/epistemic-v1.json
+    - tests/reducer-epistemic.test.ts
+    - tests/property/contracts-events.property.test.ts
+    - tests/replay/replay.test.ts
+    - tests/helpers/session-events.ts
+    - docs/decisions/ADR-0012-epistemic-event-contracts.md
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+falsified_if: "The contract needs runtime orchestration to be coherent (context projection, automatic invalidation of plans whose hypothesis was falsified, or completion blocking on open challenges — M4-T002/T003/T004), coerces inconclusive verification into failure, lets a terminal hypothesis/plan/challenge status resurrect, weakens replay of pre-M4 streams, or requires an open turn for host/extension epistemic facts."
+requires_adr: true
+requires_human_acceptance: true
+notes: "Risk E per backlog: durable vocabulary growth plus new state laws, hence ADR-0012 and human acceptance routing. Deliberately deferred: context projection (M4-T002), falsifiable-plan orchestration — the runtime that invalidates a plan when its hypothesis is falsified (M4-T003), the challenge path that changes legal next actions including completion blocking (M4-T004), and the comparative real-model eval (M4-T005)."
