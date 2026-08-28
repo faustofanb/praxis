@@ -1,3 +1,3 @@
 {
-  "entry": ["scripts/ai/*.ts"]
+  "entry": ["scripts/ai/*.ts", "scripts/smoke/*.ts"]
 }

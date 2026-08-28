@@ -64,6 +64,12 @@ run = "bun run test:fault"
 description = "Security tests for path confinement and deny-by-default policy"
 run = "bun run test:security"
 
+# Real-model provider smoke (M2 real_model_eval). Non-blocking by design:
+# skips with exit 0 when OPENAI_API_KEY is absent; never part of check.
+[tasks."smoke:openai"]
+description = "Non-blocking real-model smoke against the OpenAI-compatible endpoint"
+run = "bun scripts/smoke/openai-smoke.ts"
+
 [tasks."test:coverage"]
 run = "bun run test:coverage"
 
