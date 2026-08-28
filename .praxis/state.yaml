@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M3
 last_accepted_milestone: M2
-active_task: M3-T003
-development_state: ACCEPTANCE_READY
+active_task: null
+development_state: ACCEPTED
 blockers: 
   []
 open_adrs: 
@@ -15,9 +15,7 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-28
 next_legal_actions: 
-  - implement only within Task Contract scope
-  - run ai:guard
-  - run ai:verify
+  - select next eligible task in current milestone (M3-T004)
 last_verification: 
   task: M3-T003
   at: 2026-08-28T13:10:17.482Z

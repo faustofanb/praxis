@@ -84,3 +84,7 @@ falsified_if: "Any tool coerces an unknown outcome to failed, reconcile performs
 requires_adr: false
 requires_human_acceptance: true
 notes: "bash targets POSIX /bin/bash (darwin/linux); Windows is out of scope for v1. The .praxis-tmp-* leftover after a crashed write is a recorded known artifact — its cleanup belongs to M3-T004 recovery orchestration, not to reconcile. Timeout default 30s, capped at 120s; output budget defaults to the same 64 KiB marker style as read tools."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-28 — \"核验通过继续\" reply to the acceptance-ready report)"
+  evidence: ".praxis/state.yaml last_verification (14 gates PASS) + handoff M3-T003-1787922625325.md"
