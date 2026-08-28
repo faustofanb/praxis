@@ -626,14 +626,16 @@ type CapabilityRequirement = {
 };
 ```
 
-Policy 决策：
+Policy 决策（M3-T002 起按实现校准；判序与拒绝理由见 `docs/subsystems/core.md` capability 章节）：
 
 ```ts
-type AuthorizationDecision =
-  | { type: "allow"; lease?: CapabilityLease }
+type CapabilityDecision =
+  | { type: "allow"; via: { kind: "grant" } | { kind: "lease"; leaseId: CapabilityLeaseId } }
   | { type: "deny"; reason: string }
   | { type: "requires_approval"; request: ApprovalRequest };
 ```
+
+`allow` 以 `via` 指名满足来源（常设 grant 或某个具体 lease），按 leaseId 引用而非内嵌 lease 副本——决策里的证据不会与 host 侧配置漂移。`requires_approval` 在 v1 无审批 UX 时由运行时 fail-closed 拒绝（ADR-0007），不存在"先放行再补批"。
 
 ## 9.2 Lease
 
@@ -643,14 +645,14 @@ type AuthorizationDecision =
 type CapabilityLease = {
   id: CapabilityLeaseId;
   capability: string;
-  scope: CapabilityScope;
+  scope?: CapabilityScope;
   issuedAt: number;
   expiresAt: number;
   reason: string;
 };
 ```
 
-过期后 Runtime 无条件拒绝，不由 LLM 判断“应该还能用”。
+过期后 Runtime 无条件拒绝（`now === expiresAt` 即已过期，零宽限），不由 LLM 判断"应该还能用"。
 
 ## 9.3 Sandbox
 
