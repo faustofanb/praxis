@@ -8,10 +8,11 @@
 
 - **read_file**（`src/read-tools.ts`）：输入 `{path}`；UTF-8 文本读取，超出 `maxResultBytes`（默认 64 KiB）保头截断并附 `…[+N bytes truncated]` 标记，`truncatedBytes` 随结果记录。结果 JSON：`{path, content, truncatedBytes?}`。
 - **list_dir**：输入 `{path}`；列出目录条目并按名字排序（确定性），kind 归并为 `file | dir | symlink | other`。
+- **参数说明**（M2-T004 起）：两个工具都携带静态 `parametersJson`（与 `inputSchema` 同形的 JSON Schema 字符串），经 ContextBuilder/ModelRequest 原样透传给模型；Core 只校验其为合法 JSON，不解析其语义。
 - **路径约束**：`resolveWithinRoot` 先词法检查（resolve 后必须仍在 root 之下），再 realpath 双重检查（symlink 不能逃逸）。任何逃逸以 `failed`（"escapes the workspace root"）结束，绝不读外部。
 - 不存在/类型不符 → `failed`（read_only 可安全快速失败）；不产生 INDETERMINATE（本地读无外部副作用）。
 
 ## 测试
 
 - 安全：`tests/security/tools-local.security.test.ts`（相对/绝对路径逃逸、symlink 逃逸、越界 list_dir、root 内正常路径）。门：`mise run test:security`。
-- 集成：`tests/integration/tool-runtime.integration.test.ts`（read_file 经执行器成为 durable 事实并进入下一次 context）。门：`mise run test:integration`。
+- 集成：`tests/integration/tool-runtime.integration.test.ts`（read_file 经执行器成为 durable 事实并进入下一次 context）；`tests/integration/agent-loop-recovery.integration.test.ts`（read_file 经 runTurn 全链路 + 崩溃恢复不重执行）。门：`mise run test:integration`。
