@@ -44,6 +44,10 @@ gates:
   - mise
   - run
   - test:store
+  cli:
+  - mise
+  - run
+  - test:cli
   architecture:
   - mise
   - run
@@ -108,6 +112,13 @@ rules:
   - store
   - integration
   - replay
+- id: cli-app
+  match:
+  - apps/cli/**
+  require:
+  - cli
+  - integration
+  - store
 - id: migration
   match:
   - packages/store-sqlite/src/migrations/**

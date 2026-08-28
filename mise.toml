@@ -49,6 +49,11 @@ run = "bun run test:property"
 description = "SQLite EventStore adapter tests under the Bun runtime"
 run = "bun run test:store"
 
+# CLI tests drive @praxis/cli (which pulls bun:sqlite transitively) under Bun.
+[tasks."test:cli"]
+description = "CLI composition-root tests under the Bun runtime"
+run = "bun run test:cli"
+
 # Fault injection: crashes and unknown-outcome paths around the tool runtime.
 [tasks."test:fault"]
 description = "Fault-injection tests over crash and indeterminate-outcome paths"

@@ -5,5 +5,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@praxis/contracts": "0.0.0",
+    "@praxis/core": "0.0.0",
+    "@praxis/store-sqlite": "0.0.0",
+    "@praxis/tools-local": "0.0.0"
   }
 }

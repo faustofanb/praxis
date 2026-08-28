@@ -20,6 +20,7 @@
     "test:fault": "vitest run tests/fault",
     "test:security": "vitest run tests/security",
     "test:store": "bun test tests/store",
+    "test:cli": "bun test tests/cli",
     "test:coverage": "vitest run --coverage",
     "knip": "knip",
     "check": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run knip",
