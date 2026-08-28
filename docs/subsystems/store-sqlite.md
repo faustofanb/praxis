@@ -11,11 +11,12 @@
 - **session-store.ts**：`SqliteEventStore` 实现 contracts 的 EventStore port：
   - `append(events, expectedHeadSeq)` 单事务：head 检查（乐观并发，冲突抛 `EventStoreConflictError` 回滚）、seq 无间隙递增、事件插入、sessions 元数据（head_seq/status）同事务更新。新流先插入临时 sessions 行满足 FK，事务内不可观察。
   - `readStream(sessionId, afterSeq)`：按 seq 升序读 `seq > afterSeq`，每行经 `SessionEventUnionSchema.parse` 重校验（持久化字节是不可信边界）。
-  - append-only：公共面只有 `append/readStream/close`，无事件 UPDATE/DELETE 路径。
+  - append-only：公共面只有 `append/readStream/listSessions/close`，无事件 UPDATE/DELETE 路径。
+  - `listSessions()`（M2-T005 起）：sessions 元数据的只读投影（`SessionSummary {sessionId, status, headSeq, updatedAt}`，按 updatedAt/id 稳定排序），供 CLI `sessions` 命令使用；不读事件表。
   - sessions 行是元数据缓存（status 由 Session 生命周期事件类型映射 ACTIVE/PAUSED/COMPLETED），不是事实的替代。
 
 ## 测试与运行时
 
 store 套件使用 Bun 原生 test runner（`bun:sqlite` 需要 Bun 运行时；Node vitest 全量切 Bun 存在 zod CJS interop 缺陷，故双运行时分工）：`tests/store/store-sqlite.bun.test.ts`，`*.bun.test.ts` 已从 vitest 收集范围排除。门：`mise run test:store`。
 
-覆盖：分批 append+回读恒等、过期 head 冲突且零写入、间隙批次原子拒绝、重开库 migration 幂等+重放一致、全生命周期经 core reducer 折叠、afterSeq 检查点、损坏行（坏 JSON/未知类型）读取时校验失败、公共面仅三方法。
+覆盖：分批 append+回读恒等、过期 head 冲突且零写入、间隙批次原子拒绝、重开库 migration 幂等+重放一致、全生命周期经 core reducer 折叠、afterSeq 检查点、损坏行（坏 JSON/未知类型）读取时校验失败、公共面仅四方法（含 listSessions）。

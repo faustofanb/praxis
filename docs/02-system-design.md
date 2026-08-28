@@ -204,7 +204,7 @@ model believes=C
 
 职责：
 
-- 将 Praxis `ModelRequest` 转换为 OpenAI Responses 请求；
+- 将 Praxis `ModelRequest` 转换为 OpenAI **Chat Completions** 请求（"OpenAI-compatible" 生态的事实标准 wire 格式，`finish_reason` 与 v1 完成原因一一映射；不采用 Responses API——兼容端点普遍未实现，理由与映射细节见 `docs/subsystems/provider-openai.md`，未来可在同一 Port 后新增 Responses adapter）；
 - streaming 转换为统一 `ModelEvent`；
 - Tool schema 映射；
 - usage/finish/error 映射；
