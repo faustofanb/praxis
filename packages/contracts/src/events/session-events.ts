@@ -1,15 +1,16 @@
 import { z } from "zod";
 import { sessionEventSchema } from "../envelope";
 import { TurnIdSchema } from "../ids";
+import { EPISTEMIC_EVENT_SCHEMAS } from "./epistemic-events";
 import { MODEL_EVENT_SCHEMAS } from "./model-events";
 import { TOOL_EVENT_SCHEMAS } from "./tool-events";
 
 /**
  * v1 durable event vocabulary: the Session/Turn lifecycle slice
  * (docs/02 §6.2, ADR-0009), the tool execution lifecycle slice
- * (docs/02 §8.2, joined in M2-T003), and the model-call slice
- * (docs/02 §6.2, joined in M2-T004). Evidence events join this union
- * as schema-versioned members in M3–M4.
+ * (docs/02 §8.2, joined in M2-T003), the model-call slice
+ * (docs/02 §6.2, joined in M2-T004), and the Goal/Epistemic slice
+ * (docs/02 §5/§6.2, joined in M4-T001 per ADR-0012).
  */
 
 export const SESSION_CREATED = "SessionCreated";
@@ -85,5 +86,6 @@ export const SessionEventUnionSchema = z.discriminatedUnion("type", [
   TurnCompletedEventSchema,
   ...TOOL_EVENT_SCHEMAS,
   ...MODEL_EVENT_SCHEMAS,
+  ...EPISTEMIC_EVENT_SCHEMAS,
 ]);
 export type SessionEventUnion = z.infer<typeof SessionEventUnionSchema>;

@@ -41,3 +41,27 @@ export type CapabilityLeaseId = z.infer<typeof CapabilityLeaseIdSchema>;
 export function asCapabilityLeaseId(value: string): CapabilityLeaseId {
   return CapabilityLeaseIdSchema.parse(value);
 }
+
+export const ObservationIdSchema = z.string().min(1).brand<"ObservationId">();
+export type ObservationId = z.infer<typeof ObservationIdSchema>;
+export function asObservationId(value: string): ObservationId {
+  return ObservationIdSchema.parse(value);
+}
+
+export const HypothesisIdSchema = z.string().min(1).brand<"HypothesisId">();
+export type HypothesisId = z.infer<typeof HypothesisIdSchema>;
+export function asHypothesisId(value: string): HypothesisId {
+  return HypothesisIdSchema.parse(value);
+}
+
+export const PlanIdSchema = z.string().min(1).brand<"PlanId">();
+export type PlanId = z.infer<typeof PlanIdSchema>;
+export function asPlanId(value: string): PlanId {
+  return PlanIdSchema.parse(value);
+}
+
+export const ChallengeIdSchema = z.string().min(1).brand<"ChallengeId">();
+export type ChallengeId = z.infer<typeof ChallengeIdSchema>;
+export function asChallengeId(value: string): ChallengeId {
+  return ChallengeIdSchema.parse(value);
+}
