@@ -1,0 +1,89 @@
+schema_version: 1
+id: M3-T004
+title: implement reconciliation and crash-after-side-effect recovery
+milestone: M3
+status: acceptance_ready
+risk_class: D
+objective: "Make docs/02 section 17 steps 6-7 and section 8.3 real: a recovery orchestration in core that, at runTurn entry, folds the stream and runs reconciliation for every INDETERMINATE tool execution — parse the recorded input with the registered tool's schema, call its verification-only reconcile, and append the conclusion as a durable ToolReconciled fact (settled, settled-absent, or still-indeterminate with reason; a thrown or unparseable reconcile is recorded as an honest indeterminate attempt, never guessed). If indeterminates remain unresolved (no reconcile defined, tool not registered, or verification could not decide), escalate: close the open turn and append SessionPaused, returning paused — the model must never continue a turn over an unresolvable unknown effect, and nothing auto-retries. Reconcile orchestration is also exported standalone so a host can recover without running a turn."
+evidence: 
+  observed: 
+    - "packages/core/src/agent-loop/run-turn.ts recoverDanglingWork closes dangling EXECUTING as ToolIndeterminate but never reconciles it; docs/02 section 17 steps 6-7 (reconcile what can be reconciled, else SessionPaused) and section 8.3 step 4 (cannot confirm -> keep INDETERMINATE and escalate) are unimplemented"
+    - "ADR-0011 landed the full reconcile vocabulary (ToolReconciled event, reducer transitions, repeatable-while-indeterminate) and M3-T003 landed a real reconcilable tool (write_file content-comparison reconcile); nothing invokes reconcile at runtime"
+    - "tests/integration/agent-loop-recovery.integration.test.ts asserts the M2 stopgap semantics 'dangling EXECUTING becomes INDETERMINATE ... and the turn still completes' — a turn continuing over an unresolved unknown effect, which section 17 forbids and this task replaces"
+    - "M3.yaml failure acceptance: 'crash after side effect before result event -> indeterminate -> reconcile'; forbidden_work: 'blind retry of indeterminate writes'"
+  expected: 
+    - "core: reconcileIndeterminateExecutions(deps, {signal}) — for each INDETERMINATE execution in stream order: tool not registered -> unresolved; no reconcile defined -> unresolved; input no longer parses -> durable ToolReconciled indeterminate fact; reconcile thrown -> durable ToolReconciled indeterminate fact with the error; otherwise append ToolReconciled with the tool's outcome. Returns a report (settled / unresolved with reasons). Idempotent: executions already terminal are untouched; re-running settles nothing new"
+    - "core: runTurn entry (after recoverDanglingWork) runs the reconciliation pass; if unresolved indeterminates remain, it appends TurnCompleted (if a turn is open) then SessionPaused and returns {kind: 'paused'} with an explicit reason — never continues the loop over an unresolved unknown"
+    - "integration: the real write_file crash scenario end-to-end — rename happened, process died, next runTurn entry reconciles by content comparison, settles SUCCEEDED, and the turn proceeds with the model seeing the settled fact; a reconcile-less indeterminate (bash-class) pauses the session instead of continuing"
+    - existing recovery tests updated to the section 17 law (turn no longer completes over unresolved indeterminates); the still-completes expectation moves to the reconciled-settled path
+  references: 
+    - docs/02-system-design.md
+    - docs/decisions/ADR-0006-tool-effect-classes.md
+    - docs/decisions/ADR-0011-tool-reconciliation-contract.md
+    - .praxis/milestones/M3.yaml
+    - .praxis/tasks/M3-T001.yaml
+    - .praxis/tasks/M3-T003.yaml
+hypothesis: "Recovery closes as pure orchestration over existing facts: the reconcile pass is a loop of verification calls whose conclusions are already durable events (ToolReconciled, ADR-0011), escalation is two appends the reducer already legalizes (TurnCompleted ignores INDETERMINATE; SessionPaused needs no open turn), and no new vocabulary, port, or contract change is needed. Behavior change is confined to runTurn's treatment of unresolved indeterminates — pause instead of continue — which is the section 17 law the M2 stopgap deferred."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M3-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/**
+    - tests/**
+    - docs/subsystems/core.md
+    - docs/02-system-design.md
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/contracts/**
+    - packages/tools-local/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/testkit/**
+    - scripts/ai/**
+    - scripts/smoke/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/decisions/**
+  scope_notes: 
+    - "No durable-event or port changes: everything appended already exists in the vocabulary, so no new ADR (requires_adr false; the escalation semantics are docs/02 section 17 step 7 verbatim). Risk D routes acceptance to human regardless."
+    - "Updating tests/integration/agent-loop-recovery.integration.test.ts from 'turn still completes' to the section 17 pause law is a deliberate contract change, not a weakening: the completes-expectation moves to the reconciled-settled path in the same change."
+    - "One reducer transition-law relaxation discovered during implementation and in scope (packages/core/src/state/reducer.ts): ToolReconciled no longer requires an open turn (ACTIVE + INDETERMINATE remain required; PAUSED still rejects). Reason: section 17 escalation closes the turn before SessionPaused, so a resumed session has no open turn when reconciliation re-attempts — the human-gated resume loop is structurally impossible under the old law. The M2-era test 'reconciliation requires the execution's turn to still be open' pinned the old law and was updated to pin the new one in the same change; old streams cannot contain the new pattern, so replay compatibility is unaffected (existing replay fixtures pass unchanged)."
+    - "Deliberately deferred: .praxis-tmp-* leftover cleanup (needs its own concurrency-safe design across sessions; files are hidden and harmless in v1), approval-driven manual ToolReconciled UX, and CLI resume flow (M3 human-demo prep)."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - security
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - a crashed reconcilable write is settled at the next runTurn entry: "reconciliation appends the ToolReconciled fact, the turn proceeds, and the model sees the settled outcome in its context"
+    - the standalone reconcileIndeterminateExecutions recovers a session without running a turn and reports settled vs unresolved with reasons
+    - reconciliation is repeatable: a still-indeterminate conclusion can be re-attempted on a later entry and both attempts are durable facts (reconciliationCount grows)
+  failure_cases: 
+    - "unresolved indeterminate (no reconcile defined, tool unregistered, input unparsable, reconcile threw, or verification stayed undecided) closes the open turn and pauses the session — the loop never continues over an unknown effect, and nothing is auto-retried"
+    - a resolve-capable recovery never re-executes the original tool (execute call count stays zero; only reconcile runs)
+    - "pause then SessionResumed then runTurn re-attempts reconciliation before any model request — the human's resume is the only thing that unlocks the next attempt"
+  artifacts: 
+    - packages/core/src/agent-loop/recovery.ts
+    - packages/core/src/agent-loop/append-event.ts
+    - packages/core/src/agent-loop/run-turn.ts
+    - packages/core/src/state/reducer.ts
+    - tests/recovery.test.ts
+    - tests/reducer-tools.test.ts
+    - tests/integration/agent-loop-recovery.integration.test.ts
+    - docs/subsystems/core.md
+    - docs/02-system-design.md
+falsified_if: "Any path coerces an unresolved indeterminate into a failure or silently continues the turn over it, recovery re-executes the original effect instead of verifying, a reconcile conclusion is invented rather than observed, or the pause/resume loop can proceed without a human-initiated resume."
+requires_adr: false
+requires_human_acceptance: true
+notes: "The pause applies uniformly to unresolved indeterminates regardless of effect class — docs/02 section 17 makes no exception, and an idempotent tool's safe_to_repeat policy still holds: after the human resumes, the model may re-propose the call in a fresh turn. Known v1 edge: an indeterminate execution whose tool is absent from the current registry stays unresolved forever and pauses every entry until the host appends a ToolReconciled fact or drops the execution from the registry decision — recorded here, not solved here."
