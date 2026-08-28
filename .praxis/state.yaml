@@ -1,6 +1,6 @@
 schema_version: 1
-current_milestone: M3
-last_accepted_milestone: M2
+current_milestone: M4
+last_accepted_milestone: M3
 active_task: null
 development_state: ACCEPTED
 blockers: 
@@ -10,13 +10,12 @@ open_adrs:
 known_risks: 
   []
 last_acceptance: 
-  milestone: M2
+  milestone: M3
   result: ACCEPTED
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-28
 next_legal_actions: 
-  - prepare M3 milestone acceptance evidence (docs/acceptance/M3.md, Exit Decision PENDING)
-  - human demo of M3 scenarios, then human/independent M3 acceptance
+  - select next eligible task in current milestone (M4-T001)
 last_verification: 
   task: M3-T005
   at: 2026-08-28T14:22:21.218Z

@@ -1,6 +1,6 @@
 schema_version: 1
 id: M4
-status: planned
+status: active
 goal: 'Add lightweight epistemic primitives: Observation, Hypothesis, falsifiable
   Plan and Challenge that actually change runtime behavior.'
 prerequisites:
