@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M3
 last_accepted_milestone: M2
-active_task: null
-development_state: ACCEPTED
+active_task: M3-T001
+development_state: ACCEPTANCE_READY
 blockers: 
   []
 open_adrs: 
@@ -15,17 +15,37 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-28
 next_legal_actions: 
-  - select next eligible task in current milestone (M3-T001)
+  - implement only within Task Contract scope
+  - run ai:guard
+  - run ai:verify
 last_verification: 
-  task: M2-T006
-  at: 2026-08-28T11:17:41.794Z
+  task: M3-T001
+  at: 2026-08-28T11:53:17.364Z
   result: PASS
   gates: 
     - gate: architecture
       result: PASS
+    - gate: build
+      result: PASS
+    - gate: cli
+      result: PASS
+    - gate: fault
+      result: PASS
     - gate: format
+      result: PASS
+    - gate: integration
       result: PASS
     - gate: lint
       result: PASS
+    - gate: property
+      result: PASS
+    - gate: replay
+      result: PASS
+    - gate: security
+      result: PASS
+    - gate: store
+      result: PASS
     - gate: typecheck
+      result: PASS
+    - gate: unit
       result: PASS

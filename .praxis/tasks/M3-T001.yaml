@@ -1,0 +1,88 @@
+schema_version: 1
+id: M3-T001
+title: define tool effect classes and indeterminate execution contract
+milestone: M3
+status: acceptance_ready
+risk_class: E
+objective: "Close the M3.1/M3.4 contract gap: the four tool effect classes exist as types since M1, but nothing in code defines what each class promises at runtime. Land the indeterminate execution contract as pure contract + state work: a ToolReconciled durable event (already named in docs/02 section 6.2 vocabulary) with reducer transitions out of INDETERMINATE, a ReconciliationOutcome type plus optional verification-only reconcile on ToolDefinition, a deterministic per-effect retry policy table in core, and registration validation enforcing ADR-0006 (writes declare idempotency and/or reconciliation before merge). No runtime orchestration — who calls reconcile and when is M3-T004; capability enforcement is M3-T002."
+evidence: 
+  observed: 
+    - "packages/contracts/src/tools/tool-effect.ts defines the 4 effect classes and ToolProposed records effect, but no per-class runtime rule (retry safety, reconciliation requirement) exists anywhere in code"
+    - packages/contracts/src/ports/tool.ts has first-class indeterminate in ToolExecutionOutcome but no reconcile member; packages/core reducer treats INDETERMINATE as terminal
+    - docs/02 section 6.2 already lists ToolReconciled in the v1 event vocabulary; section 8.2 already specifies INDETERMINATE --reconcile--> SUCCEEDED|FAILED|INDETERMINATE; section 8.3 sets reconciliation priority; section 17 forbids assuming unexecuted and blind-retrying INDETERMINATE non-idempotent writes
+    - ADR-0006 requires writes to define idempotency and/or reconciliation behavior before merge; nothing validates it at tool registration
+  expected: 
+    - "ToolReconciled durable event with payload discriminated on outcome (succeeded+resultJson | failed+message | indeterminate+reason), legal only from INDETERMINATE; settled terminals never accept further events; repeated reconcile while still INDETERMINATE stays legal"
+    - reducer folds ToolReconciled into SUCCEEDED/FAILED/INDETERMINATE and tracks a reconciliationCount on the tool execution snapshot
+    - "ToolDefinition gains optional reconcile(context, input) returning ReconciliationOutcome, with the contract law that reconciliation verifies external state and performs no new effects"
+    - "core exports a pure effect->retry-policy table: read_only/idempotent_write safe to repeat; reconcilable_write repeatable only after a reconciliation proved absence; non_idempotent_write never auto-repeated"
+    - tool definition validation rejects reconcilable_write without reconcile (ADR-0006 enforcement at registration)
+    - replay fixture pins the reconcile stream; pre-M3 fixtures and streams remain loadable unchanged (union only grew)
+  references: 
+    - docs/02-system-design.md
+    - docs/decisions/ADR-0006-tool-effects.md
+    - docs/decisions/ADR-0007-capability-core.md
+    - docs/03-delivery-plan.md
+    - .praxis/milestones/M3.yaml
+hypothesis: "The indeterminate contract closes without any runtime behavior change: one new durable fact (ToolReconciled, discriminated on outcome, only from INDETERMINATE, repeatable while indeterminate), one port extension (ReconciliationOutcome + optional verification-only reconcile), one deterministic effect->retry-policy table, and registration validation. The reducer stays the single state manager; replay determinism is preserved because everything new is a pure fold over appended facts."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M3-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/contracts/**
+    - packages/core/**
+    - tests/**
+    - docs/decisions/**
+    - docs/02-system-design.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/ai/**
+    - scripts/smoke/**
+    - mise.toml
+    - package.json
+    - bun.lock
+  scope_notes: 
+    - "docs/02 section 8.1 sketches a generic ToolDefinition<TInput, TOutput>; the v1 port is deliberately non-generic (unknown in, opaque JSON out, per the results-are-opaque-JSON-facts law). Section 8.1 is updated in this change to describe the actual contract instead of the sketch."
+    - "ToolExecutionSnapshot gains reconciliationCount (derived state shape, not a durable schema change); old streams fold to count 0 via the ToolProposed default, so no migration is needed."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - security
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - "reducer folds ToolIndeterminate -> ToolReconciled{succeeded|failed|indeterminate} into SUCCEEDED(resultJson)/FAILED(message)/INDETERMINATE(new reason), each incrementing reconciliationCount"
+    - "reconcile while still INDETERMINATE repeats legally (escalate first, settle later); replaying the pinned fixture reproduces the reconciled state deterministically"
+    - conversation projection surfaces ToolReconciled as a tool-role fact so the model sees the settled outcome without re-execution
+    - registration validation rejects reconcilable_write without reconcile; the retry policy table maps all four effect classes deterministically and is total (no default arm guessing)
+  failure_cases: 
+    - ToolReconciled from PROPOSED/AUTHORIZED/EXECUTING/REJECTED or from an already-reconciled terminal is an IllegalTransitionError; property suite proves perturbed streams still throw
+    - "payload/variant mismatch (succeeded without resultJson, unknown outcome) fails schema parse at the untrusted boundary instead of coercing"
+    - pre-M3 replay fixtures and streams remain loadable unchanged — the event union only grew
+  artifacts: 
+    - tests/fixtures/replay/tool-reconciliation-v1.json
+    - tests/reducer.test.ts
+    - tests/property/reducer.property.test.ts
+    - tests/property/contracts-events.property.test.ts
+    - tests/replay/*.test.ts
+    - docs/decisions/ADR-0011-tool-reconciliation-contract.md
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+falsified_if: "The contract needs runtime orchestration to be coherent, coerces an unproven outcome into SUCCEEDED/FAILED, lets a terminal state resurrect, weakens replay of pre-M3 streams, or sneaks capability enforcement (M3-T002) or recovery orchestration (M3-T004) into this task."
+requires_adr: true
+requires_human_acceptance: true
+notes: "Deliberately deferred: requiredCapability on ToolDefinition (M3-T002, ADR-0007 seam already documented in docs/02 section 9), recovery orchestration — who invokes reconcile, when, and how escalation pauses the session (M3-T004, docs/02 section 17), and real write tools (M3-T003). This task is the vocabulary, state machine, and policy table those tasks build on. Risk E per backlog: durable event semantics change (INDETERMINATE stops being terminal), hence ADR-0011 and human acceptance routing."
