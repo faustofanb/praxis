@@ -72,6 +72,53 @@ export {
   ToolExecutionIdSchema,
   TurnIdSchema,
 } from "./ids";
+export type {
+  CompletedEvent,
+  ModelEvent,
+  ModelFinishReason,
+  ModelProviderErrorInfo,
+  ModelProviderErrorKind,
+  ProviderErrorEvent,
+  TextDeltaEvent,
+  ToolCallDeltaEvent,
+  ToolCallEndEvent,
+  ToolCallStartEvent,
+  UsageEvent,
+} from "./model/events";
+export {
+  CompletedEventSchema,
+  MODEL_FINISH_REASONS,
+  MODEL_PROVIDER_ERROR_KINDS,
+  ModelEventSchema,
+  ModelProviderErrorInfoSchema,
+  ProviderErrorEventSchema,
+  TextDeltaEventSchema,
+  ToolCallDeltaEventSchema,
+  ToolCallEndEventSchema,
+  ToolCallStartEventSchema,
+  UsageEventSchema,
+} from "./model/events";
+export type { ModelProvider } from "./model/provider";
+export type {
+  AssistantMessage,
+  ModelMessage,
+  ModelRequest,
+  ModelToolDefinition,
+  SystemMessage,
+  ToolCallRequest,
+  ToolResultMessage,
+  UserMessage,
+} from "./model/request";
+export {
+  AssistantMessageSchema,
+  ModelMessageSchema,
+  ModelRequestSchema,
+  ModelToolDefinitionSchema,
+  SystemMessageSchema,
+  ToolCallRequestSchema,
+  ToolResultMessageSchema,
+  UserMessageSchema,
+} from "./model/request";
 export type { EventStore } from "./ports/event-store";
 export {
   EMPTY_STREAM_HEAD_SEQ,
