@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { SessionEventUnion } from "@praxis/contracts";
-import { asToolExecutionId, SessionEventUnionSchema } from "@praxis/contracts";
+import {
+  asChallengeId,
+  asHypothesisId,
+  asObservationId,
+  asPlanId,
+  asToolExecutionId,
+  SessionEventUnionSchema,
+} from "@praxis/contracts";
 import { foldSessionEvents, reduceSession } from "@praxis/core";
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
@@ -24,6 +31,9 @@ const loopFixturePath = fileURLToPath(
 const reconcileFixturePath = fileURLToPath(
   new URL("../fixtures/replay/tool-reconciliation-v1.json", import.meta.url),
 );
+const epistemicFixturePath = fileURLToPath(
+  new URL("../fixtures/replay/epistemic-v1.json", import.meta.url),
+);
 
 function loadFixture(): SessionEventUnion[] {
   const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
@@ -37,6 +47,11 @@ function loadLoopFixture(): SessionEventUnion[] {
 
 function loadReconcileFixture(): SessionEventUnion[] {
   const raw: unknown = JSON.parse(readFileSync(reconcileFixturePath, "utf8"));
+  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+}
+
+function loadEpistemicFixture(): SessionEventUnion[] {
+  const raw: unknown = JSON.parse(readFileSync(epistemicFixturePath, "utf8"));
   return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
 }
 
@@ -127,6 +142,66 @@ describe("tool reconciliation fixture replay", () => {
 
   test("folding the reconciliation fixture twice yields identical states", () => {
     const events = loadReconcileFixture();
+    expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
+  });
+});
+
+describe("epistemic fixture replay", () => {
+  test("the epistemic stream loads through the public schema and folds to its recorded state", () => {
+    const events = loadEpistemicFixture();
+    expect(events).toHaveLength(23);
+    const state = foldSessionEvents(events);
+    expect(state.status).toBe("ACTIVE");
+    expect(state.headSeq).toBe(23);
+    expect(state.currentTurnId).toBeUndefined();
+
+    expect(state.goal?.goal).toBe("restore the missing payment record");
+    expect(state.observations.size).toBe(2);
+    expect(state.observations.get(asObservationId("obs-1"))?.observedAt).toBe(3013);
+
+    const hypothesis = state.hypotheses.get(asHypothesisId("hyp-1"));
+    expect(hypothesis?.status).toBe("falsified");
+    // support: proposed-with-evidence (seq 13) + supported-change evidence (seq 9).
+    expect(hypothesis?.support).toHaveLength(2);
+    expect(hypothesis?.conflicts).toHaveLength(1);
+
+    expect(state.plans.get(asPlanId("plan-1"))?.status).toBe("superseded");
+    expect(state.plans.get(asPlanId("plan-2"))?.status).toBe("invalidated");
+    expect(state.activePlan).toBeUndefined();
+
+    expect(state.challenges.get(asChallengeId("challenge-1"))?.status).toBe("rejected");
+    expect(state.openChallenges).toHaveLength(0);
+    expect(state.lastVerification?.outcome).toBe("inconclusive");
+  });
+
+  test("falsification is a fact, not an invalidation: the plan stays active until superseded", () => {
+    const events = loadEpistemicFixture();
+    // seq 20 falsifies hyp-1; the runtime (not the reducer) decides what
+    // happens to plan-1 — here PlanSet at seq 21 supersedes it. The reducer
+    // must not auto-invalidate on the fact alone (M4-T003 owns that policy).
+    const afterFalsification = foldSessionEvents(events.slice(0, 20));
+    expect(afterFalsification.hypotheses.get(asHypothesisId("hyp-1"))?.status).toBe("falsified");
+    expect(afterFalsification.activePlan?.planId).toEqual(asPlanId("plan-1"));
+    expect(afterFalsification.activePlan?.status).toBe("active");
+    const afterReplan = reduceSession(
+      afterFalsification,
+      events[20] as Extract<SessionEventUnion, { type: "PlanSet" }>,
+    );
+    expect(afterReplan.plans.get(asPlanId("plan-1"))?.status).toBe("superseded");
+    expect(afterReplan.activePlan?.planId).toEqual(asPlanId("plan-2"));
+  });
+
+  test("the mid-stream challenge checkpoint keeps the challenge open", () => {
+    const events = loadEpistemicFixture();
+    const atChallenge = foldSessionEvents(events.slice(0, 17));
+    expect(atChallenge.openChallenges).toHaveLength(1);
+    expect(atChallenge.openChallenges[0]?.claim).toBe("the plan trusts an unverified alias entry");
+    const resolved = foldSessionEvents(events.slice(0, 18));
+    expect(resolved.openChallenges).toHaveLength(0);
+  });
+
+  test("folding the epistemic fixture twice yields identical states", () => {
+    const events = loadEpistemicFixture();
     expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
   });
 });

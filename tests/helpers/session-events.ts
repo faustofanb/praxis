@@ -1,13 +1,22 @@
 import type {
+  ChallengeOutcome,
+  ChallengeTargetType,
   EventActor,
+  HypothesisStatusChange,
   ModelProviderErrorKind,
+  ObservationSource,
   SessionEventUnion,
   SessionId,
   ToolCallRequest,
   ToolEffect,
+  VerificationOutcome,
 } from "@praxis/contracts";
 import {
+  asChallengeId,
   asEventId,
+  asHypothesisId,
+  asObservationId,
+  asPlanId,
   asSessionId,
   asToolExecutionId,
   asTurnId,
@@ -208,6 +217,225 @@ export function modelRequestFailed(
       kind: options.kind ?? "network",
       retryable: options.retryable ?? false,
       message: options.message ?? "provider exploded",
+    },
+  };
+}
+
+function observationId(observation: number) {
+  return asObservationId(`obs-${observation}`);
+}
+
+function hypothesisId(hypothesis: number) {
+  return asHypothesisId(`hyp-${hypothesis}`);
+}
+
+function planId(plan: number) {
+  return asPlanId(`plan-${plan}`);
+}
+
+function challengeId(challenge: number) {
+  return asChallengeId(`challenge-${challenge}`);
+}
+
+export function goalSet(
+  seq: number,
+  options: {
+    goal?: string;
+    need?: string;
+    constraints?: readonly string[];
+    strategy?: string;
+    mission?: string;
+  } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "GoalSet",
+    payload: {
+      ...(options.need === undefined ? {} : { need: options.need }),
+      goal: options.goal ?? "answer the user question",
+      constraints: (options.constraints ?? ["stay read-only"]).map((description) => ({
+        description,
+      })),
+      ...(options.strategy === undefined ? {} : { strategy: options.strategy }),
+      ...(options.mission === undefined ? {} : { mission: options.mission }),
+    },
+  };
+}
+
+export function observationRecorded(
+  seq: number,
+  observation: number,
+  options: { claim?: string; source?: ObservationSource; evidence?: number[] } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ObservationRecorded",
+    payload: {
+      observationId: observationId(observation),
+      source: options.source ?? { kind: "system", detail: "test observation" },
+      claim: options.claim ?? "the note file exists",
+      evidenceEventIds: (options.evidence ?? [1]).map((n) => asEventId(`event-${n}`)),
+    },
+  };
+}
+
+export function hypothesisProposed(
+  seq: number,
+  hypothesis: number,
+  options: { statement?: string; support?: number[]; conflicts?: number[] } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "HypothesisProposed",
+    payload: {
+      hypothesisId: hypothesisId(hypothesis),
+      statement: options.statement ?? "the answer is inside the note file",
+      ...(options.support === undefined
+        ? {}
+        : { support: options.support.map((n) => asEventId(`event-${n}`)) }),
+      ...(options.conflicts === undefined
+        ? {}
+        : { conflicts: options.conflicts.map((n) => asEventId(`event-${n}`)) }),
+    },
+  };
+}
+
+export function hypothesisStatusChanged(
+  seq: number,
+  hypothesis: number,
+  to: HypothesisStatusChange,
+  options: { evidence?: number[]; reason?: string } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "HypothesisStatusChanged",
+    payload: {
+      hypothesisId: hypothesisId(hypothesis),
+      to,
+      ...(options.evidence === undefined
+        ? {}
+        : { evidenceEventIds: options.evidence.map((n) => asEventId(`event-${n}`)) }),
+      ...(options.reason === undefined ? {} : { reason: options.reason }),
+    },
+  };
+}
+
+export function planSet(
+  seq: number,
+  plan: number,
+  options: {
+    goalRef?: string;
+    hypothesis?: number;
+    nextAction?: string;
+    falsifiedIf?: string;
+    focus?: string;
+  } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "PlanSet",
+    payload: {
+      planId: planId(plan),
+      goalRef: options.goalRef ?? "answer the user question",
+      ...(options.focus === undefined ? {} : { focus: options.focus }),
+      ...(options.hypothesis === undefined
+        ? {}
+        : { hypothesisId: hypothesisId(options.hypothesis) }),
+      nextAction: options.nextAction ?? "read the note file",
+      ...(options.falsifiedIf === undefined ? {} : { falsifiedIf: options.falsifiedIf }),
+    },
+  };
+}
+
+export function planInvalidated(
+  seq: number,
+  plan: number,
+  reason = "the note file is gone",
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "PlanInvalidated",
+    payload: { planId: planId(plan), reason },
+  };
+}
+
+export function challengeRaised(
+  seq: number,
+  challenge: number,
+  options: {
+    targetType?: ChallengeTargetType;
+    target?: string;
+    claim?: string;
+    evidence?: number[];
+  } = {},
+): SessionEventUnion {
+  const targetType = options.targetType ?? "plan";
+  const challengeIdValue = challengeId(challenge);
+  const claim = options.claim ?? "the plan ignores the missing file";
+  const evidenceEventIds = (options.evidence ?? [2]).map((n) => asEventId(`event-${n}`));
+  const payload =
+    targetType === "hypothesis"
+      ? {
+          challengeId: challengeIdValue,
+          targetType,
+          targetId: asHypothesisId(options.target ?? "hyp-1"),
+          claim,
+          evidenceEventIds,
+        }
+      : targetType === "plan"
+        ? {
+            challengeId: challengeIdValue,
+            targetType,
+            targetId: asPlanId(options.target ?? "plan-1"),
+            claim,
+            evidenceEventIds,
+          }
+        : targetType === "completion"
+          ? {
+              challengeId: challengeIdValue,
+              targetType,
+              targetId: options.target ?? "session-completion",
+              claim,
+              evidenceEventIds,
+            }
+          : {
+              challengeId: challengeIdValue,
+              targetType,
+              targetId: options.target ?? "read-only boundary",
+              claim,
+              evidenceEventIds,
+            };
+  return {
+    ...base(seq),
+    type: "ChallengeRaised",
+    payload,
+  };
+}
+
+export function challengeResolved(
+  seq: number,
+  challenge: number,
+  outcome: ChallengeOutcome = "rejected",
+  reason = "the file exists under another name",
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ChallengeResolved",
+    payload: { challengeId: challengeId(challenge), outcome, reason },
+  };
+}
+
+export function verificationRecorded(
+  seq: number,
+  options: { outcome?: VerificationOutcome; summary?: string; evidence?: number[] } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "VerificationRecorded",
+    payload: {
+      outcome: options.outcome ?? "inconclusive",
+      summary: options.summary ?? "checker unavailable",
+      evidenceEventIds: (options.evidence ?? [1]).map((n) => asEventId(`event-${n}`)),
     },
   };
 }

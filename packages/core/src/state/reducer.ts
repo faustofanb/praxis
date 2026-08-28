@@ -1,17 +1,34 @@
 import type {
+  Challenge,
+  ChallengeId,
+  GoalState,
+  Hypothesis,
+  HypothesisId,
+  HypothesisStatus,
+  HypothesisStatusChange,
+  Observation,
+  ObservationId,
+  Plan,
+  PlanId,
+  PlanStatus,
   SessionEventUnion,
   SessionId,
   ToolEffect,
   ToolExecutionId,
   ToolExecutionStatus,
   TurnId,
+  VerificationResult,
 } from "@praxis/contracts";
 
 /**
- * v1 StateReducer over the Session/Turn, tool-execution, and model-call event
- * slices (docs/02 sections 6.2, 7-8, 10). Pure: no I/O, clock, randomness, or
- * environment. All nondeterministic inputs must already be facts inside the
- * events. Goal/epistemic projections join as their vocabulary lands in M3-M4.
+ * v1 StateReducer over the Session/Turn, tool-execution, model-call, and
+ * Goal/Epistemic event slices (docs/02 sections 5-8, 10, 13-14). Pure: no
+ * I/O, clock, randomness, or environment. All nondeterministic inputs must
+ * already be facts inside the events.
+ *
+ * Epistemic events are session-level facts, not turn actions: they require a
+ * live session but no open turn (docs/02 section 16 — the host/extension
+ * contribution channel), mirroring the ToolReconciled historical-fact law.
  */
 
 export type SessionStatus = "EMPTY" | "ACTIVE" | "PAUSED" | "COMPLETED";
@@ -42,9 +59,21 @@ const ACTIVE_TOOL_STATUSES: readonly ToolExecutionStatus[] = [
   "EXECUTING",
 ];
 
+/** Legal HypothesisStatusChanged targets per current status; empty is terminal. */
+const LEGAL_HYPOTHESIS_CHANGES: Readonly<
+  Record<HypothesisStatus, readonly HypothesisStatusChange[]>
+> = {
+  proposed: ["supported", "falsified", "superseded"],
+  supported: ["falsified", "superseded"],
+  falsified: [],
+  superseded: [],
+};
+
 /**
  * Derived, never persisted: recomputed by folding a session's event stream.
- * v1 slice of the DerivedSessionState shape in docs/02 section 7.
+ * The docs/02 section 7 shape plus the id registries its laws enforce
+ * ("at least includes" — uniqueness, terminal-target rejection, and challenge
+ * target validation all need the maps).
  */
 export type DerivedSessionState = {
   sessionId?: SessionId;
@@ -55,6 +84,15 @@ export type DerivedSessionState = {
   toolExecutions: ReadonlyMap<ToolExecutionId, ToolExecutionSnapshot>;
   /** Set by ModelRequestStarted, cleared by ModelResponseCompleted/Failed. */
   pendingModelRequest?: { readonly model: string };
+  goal?: GoalState;
+  observations: ReadonlyMap<ObservationId, Observation>;
+  hypotheses: ReadonlyMap<HypothesisId, Hypothesis>;
+  plans: ReadonlyMap<PlanId, Plan>;
+  /** Convenience view of the single plan with status "active". */
+  activePlan?: Plan;
+  challenges: ReadonlyMap<ChallengeId, Challenge>;
+  openChallenges: readonly Challenge[];
+  lastVerification?: VerificationResult;
 };
 
 export class IllegalTransitionError extends Error {
@@ -69,7 +107,17 @@ export class IllegalTransitionError extends Error {
 }
 
 export function initialSessionState(): DerivedSessionState {
-  return { status: "EMPTY", headSeq: 0, turnIds: new Set(), toolExecutions: new Map() };
+  return {
+    status: "EMPTY",
+    headSeq: 0,
+    turnIds: new Set(),
+    toolExecutions: new Map(),
+    observations: new Map(),
+    hypotheses: new Map(),
+    plans: new Map(),
+    challenges: new Map(),
+    openChallenges: [],
+  };
 }
 
 export function reduceSession(
@@ -104,6 +152,11 @@ export function reduceSession(
         sessionId: event.sessionId,
         turnIds: new Set(),
         toolExecutions: new Map(),
+        observations: new Map(),
+        hypotheses: new Map(),
+        plans: new Map(),
+        challenges: new Map(),
+        openChallenges: [],
       };
     }
     case "SessionResumed": {
@@ -304,6 +357,168 @@ export function reduceSession(
       const { pendingModelRequest: _settled, ...rest } = advanced;
       return rest;
     }
+    case "GoalSet": {
+      // Latest-wins: a goal is strategy, replaceable by new evidence; the
+      // superseded goal remains reconstructable from the event stream.
+      requireStatus(state, "GoalSet", "ACTIVE");
+      return { ...advanced, goal: event.payload };
+    }
+    case "ObservationRecorded": {
+      requireStatus(state, "ObservationRecorded", "ACTIVE");
+      const { observationId } = event.payload;
+      if (state.observations.has(observationId)) {
+        throw new IllegalTransitionError(
+          "ObservationRecorded",
+          state.status,
+          `observation id ${observationId} already used`,
+        );
+      }
+      const observations = new Map(state.observations);
+      observations.set(observationId, { ...event.payload, observedAt: event.occurredAt });
+      return { ...advanced, observations };
+    }
+    case "HypothesisProposed": {
+      requireStatus(state, "HypothesisProposed", "ACTIVE");
+      const { hypothesisId } = event.payload;
+      if (state.hypotheses.has(hypothesisId)) {
+        throw new IllegalTransitionError(
+          "HypothesisProposed",
+          state.status,
+          `hypothesis id ${hypothesisId} already used`,
+        );
+      }
+      const hypotheses = new Map(state.hypotheses);
+      hypotheses.set(hypothesisId, {
+        hypothesisId,
+        statement: event.payload.statement,
+        status: "proposed",
+        support: event.payload.support ?? [],
+        conflicts: event.payload.conflicts ?? [],
+      });
+      return { ...advanced, hypotheses };
+    }
+    case "HypothesisStatusChanged": {
+      requireStatus(state, "HypothesisStatusChanged", "ACTIVE");
+      const hypothesis = requireHypothesis(
+        state,
+        "HypothesisStatusChanged",
+        event.payload.hypothesisId,
+      );
+      if (!LEGAL_HYPOTHESIS_CHANGES[hypothesis.status].includes(event.payload.to)) {
+        throw new IllegalTransitionError(
+          "HypothesisStatusChanged",
+          state.status,
+          `hypothesis ${hypothesis.hypothesisId} is ${hypothesis.status}, cannot become ${event.payload.to}`,
+        );
+      }
+      // Evidence direction follows the change: support grows toward
+      // "supported", conflicts toward "falsified"; supersession carries a
+      // reason, not evidence, so its refs are not filed.
+      const evidence = event.payload.evidenceEventIds ?? [];
+      const hypotheses = new Map(state.hypotheses);
+      hypotheses.set(hypothesis.hypothesisId, {
+        ...hypothesis,
+        status: event.payload.to,
+        support:
+          event.payload.to === "supported"
+            ? [...hypothesis.support, ...evidence]
+            : hypothesis.support,
+        conflicts:
+          event.payload.to === "falsified"
+            ? [...hypothesis.conflicts, ...evidence]
+            : hypothesis.conflicts,
+      });
+      return { ...advanced, hypotheses };
+    }
+    case "PlanSet": {
+      requireStatus(state, "PlanSet", "ACTIVE");
+      const { planId, hypothesisId } = event.payload;
+      if (state.plans.has(planId)) {
+        throw new IllegalTransitionError("PlanSet", state.status, `plan id ${planId} already used`);
+      }
+      if (hypothesisId !== undefined && !state.hypotheses.has(hypothesisId)) {
+        throw new IllegalTransitionError(
+          "PlanSet",
+          state.status,
+          `references unknown hypothesis ${hypothesisId}`,
+        );
+      }
+      const plans = new Map(state.plans);
+      if (state.activePlan !== undefined) {
+        plans.set(state.activePlan.planId, { ...state.activePlan, status: "superseded" });
+      }
+      const plan: Plan = { ...event.payload, status: "active" };
+      plans.set(planId, plan);
+      return { ...advanced, plans, activePlan: plan };
+    }
+    case "PlanInvalidated": {
+      requireStatus(state, "PlanInvalidated", "ACTIVE");
+      const plan = requirePlan(state, "PlanInvalidated", event.payload.planId, "active");
+      const plans = new Map(state.plans);
+      plans.set(plan.planId, { ...plan, status: "invalidated" });
+      const { activePlan: _invalidated, ...rest } = advanced;
+      return { ...rest, plans };
+    }
+    case "ChallengeRaised": {
+      requireStatus(state, "ChallengeRaised", "ACTIVE");
+      const { challengeId, targetType, targetId } = event.payload;
+      if (state.challenges.has(challengeId)) {
+        throw new IllegalTransitionError(
+          "ChallengeRaised",
+          state.status,
+          `challenge id ${challengeId} already used`,
+        );
+      }
+      if (targetType === "hypothesis" && !state.hypotheses.has(targetId)) {
+        throw new IllegalTransitionError(
+          "ChallengeRaised",
+          state.status,
+          `unknown hypothesis target ${targetId}`,
+        );
+      }
+      if (targetType === "plan" && !state.plans.has(targetId)) {
+        throw new IllegalTransitionError(
+          "ChallengeRaised",
+          state.status,
+          `unknown plan target ${targetId}`,
+        );
+      }
+      const challenge: Challenge = {
+        challengeId,
+        targetType,
+        targetId,
+        claim: event.payload.claim,
+        evidenceEventIds: event.payload.evidenceEventIds,
+        status: "open",
+      };
+      const challenges = new Map(state.challenges);
+      challenges.set(challengeId, challenge);
+      return { ...advanced, challenges, openChallenges: [...state.openChallenges, challenge] };
+    }
+    case "ChallengeResolved": {
+      requireStatus(state, "ChallengeResolved", "ACTIVE");
+      const challenge = requireChallenge(
+        state,
+        "ChallengeResolved",
+        event.payload.challengeId,
+        "open",
+      );
+      const challenges = new Map(state.challenges);
+      challenges.set(challenge.challengeId, { ...challenge, status: event.payload.outcome });
+      return {
+        ...advanced,
+        challenges,
+        openChallenges: state.openChallenges.filter(
+          (open) => open.challengeId !== challenge.challengeId,
+        ),
+      };
+    }
+    case "VerificationRecorded": {
+      // Latest-wins; "inconclusive" is an honest terminal reading of the
+      // recorded evidence and is never coerced to "failed".
+      requireStatus(state, "VerificationRecorded", "ACTIVE");
+      return { ...advanced, lastVerification: event.payload };
+    }
   }
 }
 
@@ -437,6 +652,61 @@ function withTool(
   const toolExecutions = new Map(state.toolExecutions);
   toolExecutions.set(snapshot.toolExecutionId, snapshot);
   return { ...state, toolExecutions };
+}
+
+function requireHypothesis(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+  hypothesisId: HypothesisId,
+): Hypothesis {
+  requireStatus(state, eventType, "ACTIVE");
+  const hypothesis = state.hypotheses.get(hypothesisId);
+  if (hypothesis === undefined) {
+    throw new IllegalTransitionError(eventType, state.status, `unknown hypothesis ${hypothesisId}`);
+  }
+  return hypothesis;
+}
+
+function requirePlan(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+  planId: PlanId,
+  ...expectedStatuses: readonly PlanStatus[]
+): Plan {
+  requireStatus(state, eventType, "ACTIVE");
+  const plan = state.plans.get(planId);
+  if (plan === undefined) {
+    throw new IllegalTransitionError(eventType, state.status, `unknown plan ${planId}`);
+  }
+  if (!expectedStatuses.includes(plan.status)) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `requires plan status ${expectedStatuses.join(" or ")}, is ${plan.status}`,
+    );
+  }
+  return plan;
+}
+
+function requireChallenge(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+  challengeId: ChallengeId,
+  ...expectedStatuses: readonly Challenge["status"][]
+): Challenge {
+  requireStatus(state, eventType, "ACTIVE");
+  const challenge = state.challenges.get(challengeId);
+  if (challenge === undefined) {
+    throw new IllegalTransitionError(eventType, state.status, `unknown challenge ${challengeId}`);
+  }
+  if (!expectedStatuses.includes(challenge.status)) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `requires challenge status ${expectedStatuses.join(" or ")}, is ${challenge.status}`,
+    );
+  }
+  return challenge;
 }
 
 function requireNoActiveToolExecutions(

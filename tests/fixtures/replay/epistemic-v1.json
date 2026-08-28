@@ -1,0 +1,396 @@
+[
+  {
+    "id": "fixture-event-1",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 1,
+    "schemaVersion": 1,
+    "occurredAt": 3001,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "SessionCreated",
+    "payload": {
+      "reason": "restoration task"
+    }
+  },
+  {
+    "id": "fixture-event-2",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 2,
+    "schemaVersion": 1,
+    "occurredAt": 3002,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "GoalSet",
+    "payload": {
+      "goal": "restore the missing payment record",
+      "constraints": [
+        {
+          "description": "no writes to the ledger"
+        }
+      ]
+    }
+  },
+  {
+    "id": "fixture-event-3",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 3,
+    "schemaVersion": 1,
+    "occurredAt": 3003,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-1",
+      "input": "find the payment"
+    }
+  },
+  {
+    "id": "fixture-event-4",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 4,
+    "schemaVersion": 1,
+    "occurredAt": 3004,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "fixture-model"
+    }
+  },
+  {
+    "id": "fixture-event-5",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 5,
+    "schemaVersion": 1,
+    "occurredAt": 3005,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-1",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"ledger.txt\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "fixture-event-6",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 6,
+    "schemaVersion": 1,
+    "occurredAt": 3006,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"ledger.txt\"}",
+      "effect": "read_only",
+      "toolCallId": "call-1"
+    }
+  },
+  {
+    "id": "fixture-event-7",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 7,
+    "schemaVersion": 1,
+    "occurredAt": 3007,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "fixture-event-8",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 8,
+    "schemaVersion": 1,
+    "occurredAt": 3008,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "fixture-event-9",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 9,
+    "schemaVersion": 1,
+    "occurredAt": 3009,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "resultJson": "{\"content\":\"payment moved to alias inv-1a\"}"
+    }
+  },
+  {
+    "id": "fixture-event-10",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 10,
+    "schemaVersion": 1,
+    "occurredAt": 3010,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "fixture-model"
+    }
+  },
+  {
+    "id": "fixture-event-11",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 11,
+    "schemaVersion": 1,
+    "occurredAt": 3011,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "the ledger shows the payment under alias inv-1a",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "fixture-event-12",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 12,
+    "schemaVersion": 1,
+    "occurredAt": 3012,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-1"
+    }
+  },
+  {
+    "id": "fixture-event-13",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 13,
+    "schemaVersion": 1,
+    "occurredAt": 3013,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-1",
+      "source": {
+        "kind": "tool",
+        "toolExecutionId": "tool-exec-1"
+      },
+      "claim": "the ledger shows the payment under alias inv-1a",
+      "evidenceEventIds": ["fixture-event-9"]
+    }
+  },
+  {
+    "id": "fixture-event-14",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 14,
+    "schemaVersion": 1,
+    "occurredAt": 3014,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-1",
+      "statement": "the missing payment was recorded under alias inv-1a",
+      "support": ["fixture-event-13"]
+    }
+  },
+  {
+    "id": "fixture-event-15",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 15,
+    "schemaVersion": 1,
+    "occurredAt": 3015,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "HypothesisStatusChanged",
+    "payload": {
+      "hypothesisId": "hyp-1",
+      "to": "supported",
+      "evidenceEventIds": ["fixture-event-9"]
+    }
+  },
+  {
+    "id": "fixture-event-16",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 16,
+    "schemaVersion": 1,
+    "occurredAt": 3016,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-1",
+      "goalRef": "restore the missing payment record",
+      "hypothesisId": "hyp-1",
+      "nextAction": "reconcile the alias entry with the bank statement",
+      "falsifiedIf": "the bank statement has no matching entry"
+    }
+  },
+  {
+    "id": "fixture-event-17",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 17,
+    "schemaVersion": 1,
+    "occurredAt": 3017,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "ChallengeRaised",
+    "payload": {
+      "challengeId": "challenge-1",
+      "targetType": "plan",
+      "targetId": "plan-1",
+      "claim": "the plan trusts an unverified alias entry",
+      "evidenceEventIds": ["fixture-event-9"]
+    }
+  },
+  {
+    "id": "fixture-event-18",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 18,
+    "schemaVersion": 1,
+    "occurredAt": 3018,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "ChallengeResolved",
+    "payload": {
+      "challengeId": "challenge-1",
+      "outcome": "rejected",
+      "reason": "bank statement line 42 matches the alias amount"
+    }
+  },
+  {
+    "id": "fixture-event-19",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 19,
+    "schemaVersion": 1,
+    "occurredAt": 3019,
+    "actor": {
+      "kind": "user"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-2",
+      "source": {
+        "kind": "user"
+      },
+      "claim": "the bank statement has no matching entry",
+      "evidenceEventIds": []
+    }
+  },
+  {
+    "id": "fixture-event-20",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 20,
+    "schemaVersion": 1,
+    "occurredAt": 3020,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "HypothesisStatusChanged",
+    "payload": {
+      "hypothesisId": "hyp-1",
+      "to": "falsified",
+      "evidenceEventIds": ["fixture-event-19"],
+      "reason": "the bank statement contradicts the alias entry"
+    }
+  },
+  {
+    "id": "fixture-event-21",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 21,
+    "schemaVersion": 1,
+    "occurredAt": 3021,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-2",
+      "goalRef": "restore the missing payment record",
+      "nextAction": "request the payment provider transaction log",
+      "falsifiedIf": "the provider log has no alias entry"
+    }
+  },
+  {
+    "id": "fixture-event-22",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 22,
+    "schemaVersion": 1,
+    "occurredAt": 3022,
+    "actor": {
+      "kind": "model",
+      "provider": "fixture-provider",
+      "model": "fixture-model"
+    },
+    "type": "PlanInvalidated",
+    "payload": {
+      "planId": "plan-2",
+      "reason": "the provider log is unavailable this quarter"
+    }
+  },
+  {
+    "id": "fixture-event-23",
+    "sessionId": "session-epistemic-fixture",
+    "seq": 23,
+    "schemaVersion": 1,
+    "occurredAt": 3023,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "VerificationRecorded",
+    "payload": {
+      "outcome": "inconclusive",
+      "summary": "provider log unreachable; restoration unverifiable",
+      "evidenceEventIds": ["fixture-event-19"]
+    }
+  }
+]
