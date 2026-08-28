@@ -236,13 +236,14 @@ user -> model -> read_file -> model -> final
 
 ### M4.1 Events/State
 
-- [ ] `ObservationRecorded`；
-- [ ] `HypothesisProposed`；
-- [ ] `HypothesisStatusChanged`；
-- [ ] `PlanSet`；
-- [ ] `PlanInvalidated`；
-- [ ] `ChallengeRaised/Resolved`；
-- [ ] `VerificationRecorded`。
+- [x] `GoalSet`（M4-T001，ADR-0012——Plan.goalRef 需要它，M4.2 投影读取它）；
+- [x] `ObservationRecorded`；
+- [x] `HypothesisProposed`；
+- [x] `HypothesisStatusChanged`；
+- [x] `PlanSet`；
+- [x] `PlanInvalidated`；
+- [x] `ChallengeRaised/Resolved`；
+- [x] `VerificationRecorded`。
 
 ### M4.2 Context Projection
 

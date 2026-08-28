@@ -303,15 +303,20 @@ type GoalState = {
 
 ## 5.2 Observation
 
-表示从 Tool/用户/Runtime 外部取得的事实材料：
+表示从 Tool/用户/Runtime 外部取得的事实材料（v1 实际契约，ADR-0012）：
 
 ```ts
+type ObservationSource =
+  | { kind: "tool"; toolExecutionId: ToolExecutionId }
+  | { kind: "user" }
+  | { kind: "system"; detail: string };
+
 type Observation = {
-  id: ObservationId;
+  observationId: ObservationId;
   source: ObservationSource;
   claim: string;
   evidenceEventIds: readonly EventId[];
-  observedAt: number;
+  observedAt: number; // envelope.occurredAt of the recording event; payload 不携带时间
 };
 ```
 
@@ -339,19 +344,21 @@ v1 不使用模型生成的浮点 confidence 作为真理依据；可选显示 c
 
 ## 5.4 Plan
 
-Plan 是**当前行动假设**，不是 TODO 清单：
+Plan 是**当前行动假设**，不是 TODO 清单（v1 实际契约，ADR-0012）：
 
 ```ts
 type Plan = {
-  id: PlanId;
+  planId: PlanId;
   goalRef: string;
   focus?: string;
   hypothesisId?: HypothesisId;
   nextAction: string;
   falsifiedIf?: string;
-  status: "active" | "invalidated" | "completed" | "superseded";
+  status: "active" | "invalidated" | "superseded";
 };
 ```
+
+v1 无 `"completed"`：事件词汇表（§6.2）没有任何事件产生它，plan 的完成是 session 级事实（`SessionCompleted`）。新的 `PlanSet` 自动将旧 active plan 置为 `superseded`。
 
 ## 5.5 Challenge
 
@@ -498,7 +505,7 @@ reduce(state, event) -> nextState
 
 所有不确定输入必须先作为 Event 进入。
 
-Derived State 至少包括：
+Derived State 至少包括（v1 实际形状，ADR-0012——`observations`/`plans`/`challenges` 注册表是法则执行所需：id 唯一性、终态目标拒绝、Challenge 目标校验）：
 
 ```ts
 type DerivedSessionState = {
@@ -506,8 +513,11 @@ type DerivedSessionState = {
   headSeq: number;
   currentTurnId?: TurnId;
   goal?: GoalState;
-  activePlan?: Plan;
+  observations: ReadonlyMap<ObservationId, Observation>;
   hypotheses: ReadonlyMap<HypothesisId, Hypothesis>;
+  plans: ReadonlyMap<PlanId, Plan>;
+  activePlan?: Plan;
+  challenges: ReadonlyMap<ChallengeId, Challenge>;
   openChallenges: readonly Challenge[];
   toolExecutions: ReadonlyMap<ToolExecutionId, ToolExecutionState>;
   lastVerification?: VerificationResult;
