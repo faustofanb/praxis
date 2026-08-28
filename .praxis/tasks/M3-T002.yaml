@@ -1,0 +1,86 @@
+schema_version: 1
+id: M3-T002
+title: implement runtime capability policy and leases
+milestone: M3
+status: acceptance_ready
+risk_class: D
+objective: "Make docs/02 section 9 and ADR-0007 executable: capability requirements and scopes as contracts, a pure allow/deny/requires_approval decision table in core covering standing grants, time-bounded leases (expired = unconditional deny, never LLM judgment), and workspace scope containment; wire it into the tool runtime through the existing authorizer seam; enforce at registration that write-effect tools declare requiredCapability (fail closed — no prompt-only security); and expose a model-visible policy projection. Enforcement lives in Core; approval UX stays an extension and fails closed. No new tools — write_file/bash are M3-T003."
+evidence: 
+  observed: 
+    - "packages/core/src/tools/tool-runtime.ts has only readOnlyAuthorizer (deny-by-default, read_only only) with ToolAuthorizer as the documented 'M3 capability seam'; nothing implements grants, leases, or requires_approval"
+    - "ToolDefinition has no requiredCapability (deliberately deferred from M3-T001); docs/02 section 8.1 sketch includes requiredCapability?: CapabilityRequirement"
+    - "docs/02 section 9.1-9.2 specifies CapabilityRequirement {name, scope?}, AuthorizationDecision allow(+lease)/deny/requires_approval, CapabilityLease {id, capability, scope, issuedAt, expiresAt, reason}; ADR-0007 requires fail-closed approval-unavailability and security tests for direct/delegated bypass, expired lease, scope escape, fail-open"
+    - "M3 milestone scenario acceptance: 'expired capability cannot execute'; failure acceptance: 'path/capability bypass attempts rejected'; docs/03 M3.2 checklist: fs.read/fs.write/shell.exec, workspace scope, all three decisions, lease expiration, model-visible policy projection"
+  expected: 
+    - "contracts: CapabilityScope (workspace root, lexically normalized, '..' rejected), CapabilityRequirement, CapabilityGrant, CapabilityLease with branded CapabilityLeaseId and numeric issuedAt/expiresAt, ApprovalRequest, and the three-way CapabilityDecision (allow | deny+reason | requires_approval+request)"
+    - "core: capabilityDecision(requirement, policy, now) — a pure total decision table: scope outside workspace roots -> deny; standing grant covering -> allow; unexpired lease covering -> allow; expired lease -> deny (never silently renewable); approvable capability without grant/lease -> requires_approval; anything else -> deny"
+    - "core: capabilityAuthorizer maps decisions onto the existing ToolAuthorizationDecision seam; requires_approval rejects fail-closed with an explicit reason (ADR-0007) until an approval extension exists"
+    - "core: validateToolDefinitions extends M3-T001 registration law — write-effect tools without requiredCapability are rejected; capability policy summary projection for model-visible context"
+    - "security suite: bypass attempts (scope escape via '..' and sibling-prefix, expired lease, ungranted capability, fail-open attempts) all rejected"
+  references: 
+    - docs/02-system-design.md
+    - docs/decisions/ADR-0007-capability-core.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M3.yaml
+    - .praxis/tasks/M3-T001.yaml
+hypothesis: "Capability enforcement closes as a pure decision table plus a thin adapter onto the existing authorizer seam: the runtime calls capabilityDecision before ToolAuthorized, never lets a lease past its expiresAt regardless of what the model or tool claims, and treats undeclared write capabilities as registration errors. Because decisions are facts already (ToolAuthorized/ToolRejected with reasons) and requirements are static tool metadata, no durable event vocabulary changes are needed."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M3-T002.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/contracts/**
+    - packages/core/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/ai/**
+    - scripts/smoke/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/decisions/**
+  scope_notes: 
+    - "ADR-0007 already owns the capability-in-core decision; this task adds no new durable event semantics, so no new ADR (requires_adr false). Risk D routes acceptance to human regardless."
+    - "ToolProposed payload stays unchanged: capability requirements are static tool metadata replayable from the registry; the stream records decisions (ToolAuthorized/ToolRejected) as it already does. Deliberate non-change, documented in notes."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - security
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - a tool with requiredCapability fs.read under a standing workspace grant is authorized and executes
+    - a write capability covered by an unexpired lease is allowed; the same lease after expiresAt is denied unconditionally
+    - "an approvable write capability without grant/lease yields requires_approval, which the runtime records as ToolRejected fail-closed with an explicit reason"
+    - the policy summary projection renders grants and active leases (with expiry) deterministically for model-visible context
+    - write-effect tool definitions without requiredCapability fail registration
+  failure_cases: 
+    - "scope escape is denied: '..' segments rejected at scope normalization; sibling-prefix roots (/work vs /workspace) never satisfy containment"
+    - "expired lease never authorizes, and an unknown/ungranted capability is denied rather than ignored (fail closed)"
+    - approval unavailability cannot open the gate — requires_approval always rejects at the v1 seam; the model cannot self-grant by re-proposing
+    - read-only tools keep working unchanged (no requiredCapability required); existing replay fixtures still fold
+  artifacts: 
+    - tests/capability-policy.test.ts
+    - tests/security/capability-policy.security.test.ts
+    - tests/integration/capability-runtime.integration.test.ts
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+falsified_if: "Any capability check depends on prompt/model behavior, a lease outlives its expiresAt through any code path, approval unavailability allows execution, scope containment is syntactic rather than normalized, or write tools without declared capabilities can execute."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Deliberately deferred: write_file/bash tools and CLI lease flags/wiring (M3-T003), broader adversarial suite (M3-T005), OS-level sandbox (docs/02 section 9.3 — v1.1 direction, explicitly not claimed for v1). The requires_approval -> ToolRejected mapping is the fail-closed headless behavior; an approval extension later turns that request into a lease without touching the decision table."
