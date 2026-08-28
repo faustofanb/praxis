@@ -2,7 +2,7 @@ schema_version: 1
 id: M3-T001
 title: define tool effect classes and indeterminate execution contract
 milestone: M3
-status: acceptance_ready
+status: accepted
 risk_class: E
 objective: "Close the M3.1/M3.4 contract gap: the four tool effect classes exist as types since M1, but nothing in code defines what each class promises at runtime. Land the indeterminate execution contract as pure contract + state work: a ToolReconciled durable event (already named in docs/02 section 6.2 vocabulary) with reducer transitions out of INDETERMINATE, a ReconciliationOutcome type plus optional verification-only reconcile on ToolDefinition, a deterministic per-effect retry policy table in core, and registration validation enforcing ADR-0006 (writes declare idempotency and/or reconciliation before merge). No runtime orchestration — who calls reconcile and when is M3-T004; capability enforcement is M3-T002."
 evidence: 
@@ -86,3 +86,7 @@ falsified_if: "The contract needs runtime orchestration to be coherent, coerces 
 requires_adr: true
 requires_human_acceptance: true
 notes: "Deliberately deferred: requiredCapability on ToolDefinition (M3-T002, ADR-0007 seam already documented in docs/02 section 9), recovery orchestration — who invokes reconcile, when, and how escalation pauses the session (M3-T004, docs/02 section 17), and real write tools (M3-T003). This task is the vocabulary, state machine, and policy table those tasks build on. Risk E per backlog: durable event semantics change (INDETERMINATE stops being terminal), hence ADR-0011 and human acceptance routing."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-28 — \"继续\" reply to the acceptance-ready report)"
+  evidence: ".praxis/state.yaml last_verification (14 gates PASS) + handoff M3-T001-1787918008675.md"
