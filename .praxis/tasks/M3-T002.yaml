@@ -84,3 +84,7 @@ falsified_if: "Any capability check depends on prompt/model behavior, a lease ou
 requires_adr: false
 requires_human_acceptance: true
 notes: "Deliberately deferred: write_file/bash tools and CLI lease flags/wiring (M3-T003), broader adversarial suite (M3-T005), OS-level sandbox (docs/02 section 9.3 — v1.1 direction, explicitly not claimed for v1). The requires_approval -> ToolRejected mapping is the fail-closed headless behavior; an approval extension later turns that request into a lease without touching the decision table."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-28 — \"核验通过继续\" reply to the acceptance-ready report)"
+  evidence: ".praxis/state.yaml last_verification (14 gates PASS) + handoff M3-T002-1787921838381.md"
