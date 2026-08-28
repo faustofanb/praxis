@@ -12,7 +12,7 @@
 | 文档 | Package | 状态 |
 | --- | --- | --- |
 | `contracts.md` | `packages/contracts` | 进行中（M2：ids/信封/Session-Turn 词汇/EventStore port/Model 边界已落地） |
-| `core.md` | `packages/core` | 进行中（M1：Session/Turn StateReducer 已落地） |
+| `core.md` | `packages/core` | 进行中（M2：Session/Turn StateReducer、ContextBuilder v0 已落地） |
 | `store-sqlite.md` | `packages/store-sqlite` | 进行中（M1：SQLite EventStore 适配器已落地） |
 | `provider-openai.md` | `packages/provider-openai` | 未开始（M2.4） |
 | `tools-local.md` | `packages/tools-local` | 未开始（M2.3） |

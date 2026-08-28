@@ -5,6 +5,23 @@ import { packageName as contractsPackageName } from "@praxis/contracts";
  * modules live under src/ and are reachable only through this entry.
  */
 
+export type { ContextBudget } from "./context/budget";
+export {
+  DEFAULT_CONTEXT_BUDGET,
+  InvalidContextBudgetError,
+  MIN_FRAGMENT_CAP_BYTES,
+  validateContextBudget,
+} from "./context/budget";
+export type {
+  BuiltContext,
+  ContextBuildInput,
+  ContextEstimate,
+} from "./context/builder";
+export {
+  buildContext,
+  ContextBudgetExceededError,
+  InvalidContextError,
+} from "./context/builder";
 export type {
   DerivedSessionState,
   SessionStatus,
