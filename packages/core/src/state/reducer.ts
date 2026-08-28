@@ -256,7 +256,7 @@ export function reduceSession(
       // must never resurrect a terminal reached by execution or by an earlier
       // reconciliation, and a still-indeterminate attempt stays honest for a
       // later retry or escalation.
-      const snapshot = requireTool(
+      const snapshot = requireHistoricalTool(
         state,
         "ToolReconciled",
         event.payload.toolExecutionId,
@@ -385,6 +385,39 @@ function requireTool(
       eventType,
       state.status,
       `tool execution ${toolExecutionId} belongs to turn ${snapshot.turnId}, open turn is ${turnId}`,
+    );
+  }
+  if (!expectedStatuses.includes(snapshot.status)) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `requires tool status ${expectedStatuses.join(" or ")}, is ${snapshot.status}`,
+    );
+  }
+  return snapshot;
+}
+
+/**
+ * Historical tool facts (ToolReconciled) describe a past execution, not a
+ * turn-scoped action: section 17 escalation closes the open turn before
+ * SessionPaused, so a resumed session has no open turn when reconciliation
+ * re-attempts. Requiring one would make the human-gated resume loop
+ * structurally impossible; a live session and an INDETERMINATE execution
+ * remain the invariants.
+ */
+function requireHistoricalTool(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+  toolExecutionId: ToolExecutionId,
+  ...expectedStatuses: readonly ToolExecutionStatus[]
+): ToolExecutionSnapshot {
+  requireStatus(state, eventType, "ACTIVE");
+  const snapshot = state.toolExecutions.get(toolExecutionId);
+  if (snapshot === undefined) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `unknown tool execution ${toolExecutionId}`,
     );
   }
   if (!expectedStatuses.includes(snapshot.status)) {

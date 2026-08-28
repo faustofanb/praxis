@@ -7,7 +7,6 @@ import type {
   ModelProviderErrorInfo,
   ModelRequest,
   ModelToolDefinition,
-  SessionEventUnion,
   SessionId,
   ToolCallRequest,
   ToolDefinition,
@@ -22,7 +21,9 @@ import { foldSessionEvents } from "../state/reducer";
 import { validateToolDefinitions } from "../tools/effect-policy";
 import type { ToolAuthorizer } from "../tools/tool-runtime";
 import { executeToolCall } from "../tools/tool-runtime";
+import { appendEvent, eventEnvelope } from "./append-event";
 import { projectConversation } from "./conversation";
+import { pauseForUnresolvedIndeterminates, reconcileIndeterminateExecutions } from "./recovery";
 
 /**
  * Minimal recoverable Agent Loop (docs/02 sections 10-12, 16-17). One
@@ -103,9 +104,6 @@ export type RunTurnOptions = {
   readonly budget?: ContextBudget;
 };
 
-type EventInit<T> = T extends { seq: number } ? Omit<T, "seq"> : never;
-type SessionEventInit = EventInit<SessionEventUnion>;
-
 export async function runTurn(
   deps: AgentLoopDeps,
   input: { readonly input?: string },
@@ -125,6 +123,23 @@ export async function runTurn(
 
   if (await recoverDanglingWork(deps, state)) {
     state = foldSessionEvents(await deps.store.readStream(deps.sessionId));
+  }
+
+  // Crash-after-side-effect recovery (docs/02 section 17 steps 6-7): verify
+  // what can be verified, then escalate instead of continuing a turn over an
+  // unresolvable unknown effect. Only a human-initiated resume re-attempts.
+  const reconciliation = await reconcileIndeterminateExecutions(deps, {
+    signal: options.signal,
+  });
+  if (reconciliation.unresolved.length > 0) {
+    await pauseForUnresolvedIndeterminates(deps, reconciliation.unresolved);
+    const ids = reconciliation.unresolved
+      .map((entry) => entry.toolExecutionId.valueOf())
+      .join(", ");
+    return {
+      kind: "paused",
+      reason: `${reconciliation.unresolved.length} indeterminate tool execution(s) could not be reconciled (${ids}); session paused for human decision`,
+    };
   }
 
   if (state.currentTurnId === undefined) {
@@ -296,13 +311,6 @@ async function recoverDanglingWork(
   deps: AgentLoopDeps,
   state: DerivedSessionState,
 ): Promise<boolean> {
-  const envelope = () => ({
-    id: deps.newEventId(),
-    sessionId: deps.sessionId,
-    schemaVersion: EVENT_SCHEMA_VERSION,
-    occurredAt: deps.now(),
-    actor: deps.actor ?? { kind: "system" },
-  });
   let appended = false;
 
   const dangling = [...state.toolExecutions.values()].filter(
@@ -314,7 +322,7 @@ async function recoverDanglingWork(
   for (const snapshot of dangling) {
     if (snapshot.status === "EXECUTING") {
       await appendEvent(deps, {
-        ...envelope(),
+        ...eventEnvelope(deps),
         type: "ToolIndeterminate",
         payload: {
           toolExecutionId: snapshot.toolExecutionId,
@@ -324,7 +332,7 @@ async function recoverDanglingWork(
     } else {
       const stage = snapshot.status === "AUTHORIZED" ? "authorization" : "proposal";
       await appendEvent(deps, {
-        ...envelope(),
+        ...eventEnvelope(deps),
         type: "ToolRejected",
         payload: {
           toolExecutionId: snapshot.toolExecutionId,
@@ -338,7 +346,7 @@ async function recoverDanglingWork(
   const afterTools = foldSessionEvents(await deps.store.readStream(deps.sessionId));
   if (afterTools.pendingModelRequest !== undefined) {
     await appendEvent(deps, {
-      ...envelope(),
+      ...eventEnvelope(deps),
       type: "ModelRequestFailed",
       payload: {
         kind: "unknown",
@@ -349,16 +357,6 @@ async function recoverDanglingWork(
     appended = true;
   }
   return appended;
-}
-
-async function appendEvent(
-  deps: AgentLoopDeps,
-  init: SessionEventInit,
-): Promise<DerivedSessionState> {
-  const head = foldSessionEvents(await deps.store.readStream(deps.sessionId)).headSeq;
-  const event: SessionEventUnion = { ...init, seq: head + 1 };
-  await deps.store.append([event], head);
-  return foldSessionEvents(await deps.store.readStream(deps.sessionId));
 }
 
 async function consumeModelStream(stream: AsyncIterable<ModelEvent>): Promise<ModelStreamResult> {

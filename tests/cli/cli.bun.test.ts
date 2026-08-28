@@ -111,12 +111,13 @@ describe("praxis run", () => {
     }
   });
 
-  test("resumes a crashed open turn, marks the dangling execution INDETERMINATE, never re-runs it", async () => {
+  test("escalates an unresolvable dangling execution to a paused session, never re-runs it", async () => {
     const fx = fixture();
     seedDanglingExecution(fx.db, fx.root);
 
-    // Exactly one script: a second model call (which re-running history or
-    // an extra loop step would trigger) would exhaust the script and fail.
+    // read_file declares no reconcile, so section 17 escalation applies: the
+    // turn closes, the session pauses (CLI exit code 2), and the model is
+    // never consulted — the script stays unconsumed.
     const script = fx.script([FINAL_STEP("recovered after crash")]);
     const result = await cli([
       "run",
@@ -130,13 +131,16 @@ describe("praxis run", () => {
       SESSION_ID.valueOf(),
     ]);
 
-    expect(result.code).toBe(0);
+    expect(result.code).toBe(2);
+    expect(result.err.join("\n")).toMatch(/paused: .*could not be reconciled/u);
     expect(result.out.some((line) => line.includes("ToolIndeterminate"))).toBe(true);
-    expect(result.out.at(-1)).toBe("recovered after crash");
+    expect(result.out.some((line) => line.includes("SessionPaused"))).toBe(true);
+    expect(result.out.some((line) => line === "recovered after crash")).toBe(false);
 
     const store = openSessionStore(fx.db);
     try {
       const state = foldSessionEvents(await store.readStream(SESSION_ID));
+      expect(state.status).toBe("PAUSED");
       expect(state.currentTurnId).toBeUndefined();
       const dangling = state.toolExecutions.get(asToolExecutionId("tool-exec-cli-1"));
       expect(dangling?.status).toBe("INDETERMINATE");
@@ -147,7 +151,10 @@ describe("praxis run", () => {
 
   test("sending input to an open turn is rejected with a CLI error", async () => {
     const fx = fixture();
-    seedDanglingExecution(fx.db, fx.root);
+    // A dangling model request leaves an open turn with no indeterminates:
+    // recovery closes the request fact, then the input-on-open-turn guard
+    // fires — the section 17 pause path is not taken.
+    seedDanglingModelRequest(fx.db);
     const script = fx.script([FINAL_STEP("irrelevant")]);
     const result = await cli([
       "run",
@@ -372,6 +379,47 @@ function lastMessageRole(body: Record<string, unknown>): string {
  * the runtime proposed/authorized/started it, then the process died —
  * leaving the turn open with a dangling EXECUTING execution.
  */
+function seedDanglingModelRequest(dbPath: string): void {
+  const events: SessionEventUnion[] = [
+    {
+      id: asEventId("cli-seed-mr-1"),
+      sessionId: SESSION_ID,
+      seq: 1,
+      schemaVersion: 1,
+      occurredAt: 1,
+      actor: { kind: "user" },
+      type: "SessionCreated",
+      payload: {},
+    },
+    {
+      id: asEventId("cli-seed-mr-2"),
+      sessionId: SESSION_ID,
+      seq: 2,
+      schemaVersion: 1,
+      occurredAt: 2,
+      actor: { kind: "user" },
+      type: "TurnStarted",
+      payload: { turnId: asTurnId("turn-cli-1"), input: "read the note" },
+    },
+    {
+      id: asEventId("cli-seed-mr-3"),
+      sessionId: SESSION_ID,
+      seq: 3,
+      schemaVersion: 1,
+      occurredAt: 3,
+      actor: { kind: "system" },
+      type: "ModelRequestStarted",
+      payload: { model: "scripted-file" },
+    },
+  ];
+  const store = openSessionStore(dbPath);
+  try {
+    store.append(events, 0);
+  } finally {
+    store.close();
+  }
+}
+
 function seedDanglingExecution(dbPath: string, root: string): void {
   writeFileSync(join(root, "note.txt"), "cli note body");
   const events: SessionEventUnion[] = [

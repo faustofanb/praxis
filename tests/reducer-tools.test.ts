@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import {
   sessionCreated,
   sessionPaused,
+  sessionResumed,
   toolAuthorized,
   toolFailed,
   toolIndeterminate,
@@ -228,6 +229,20 @@ describe("reconciliation transitions", () => {
     expect(snapshot.resultJson).toBe('{"ok":true}');
   });
 
+  test("reconciled succeeded settles after the pause closed the turn (post-resume)", () => {
+    // Section 17 escalation closes the turn before SessionPaused, so the
+    // resumed session has no open turn; the settling fact is still legal.
+    const resumed = [turnCompleted(7, 1), sessionPaused(8), sessionResumed(9)].reduce(
+      reduceSession,
+      indeterminate(1),
+    );
+    const state = reduceSession(resumed, toolReconciled(10, 1, "succeeded", '{"verified":true}'));
+    const snapshot = snapshotOf(state, 1);
+    expect(snapshot.status).toBe("SUCCEEDED");
+    expect(snapshot.resultJson).toBe('{"verified":true}');
+    expect(snapshot.reconciliationCount).toBe(1);
+  });
+
   test("reconciliation count starts at zero for ordinary executions", () => {
     const state = foldSessionEvents([
       sessionCreated(1),
@@ -320,7 +335,10 @@ describe("illegal reconciliation transitions", () => {
     expect(() => reduceSession(state, toolReconciled(3, 99))).toThrow(/unknown tool execution/u);
   });
 
-  test("reconciliation requires the execution's turn to still be open", () => {
+  test("reconciliation is a historical fact: a closed turn does not block it", () => {
+    // Section 17 escalation closes the turn before SessionPaused; a resumed
+    // session (no open turn) must still be able to settle its indeterminates,
+    // so ToolReconciled must not require the execution's turn to be open.
     const closedTurn = foldSessionEvents([
       sessionCreated(1),
       turnStarted(2, 1),
@@ -330,7 +348,8 @@ describe("illegal reconciliation transitions", () => {
       toolIndeterminate(6, 1, "unknown"),
       turnCompleted(7, 1),
     ]);
-    expect(() => reduceSession(closedTurn, toolReconciled(8, 1))).toThrow(/requires an open turn/u);
+    const state = reduceSession(closedTurn, toolReconciled(8, 1, "succeeded", '{"ok":true}'));
+    expect(snapshotOf(state, 1).status).toBe("SUCCEEDED");
   });
 
   test("reconciliation requires an ACTIVE session", () => {

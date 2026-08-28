@@ -6,6 +6,11 @@ import { packageName as contractsPackageName } from "@praxis/contracts";
  */
 
 export { projectConversation } from "./agent-loop/conversation";
+export type { ReconciliationReport, RecoveryDeps } from "./agent-loop/recovery";
+export {
+  pauseForUnresolvedIndeterminates,
+  reconcileIndeterminateExecutions,
+} from "./agent-loop/recovery";
 export type {
   AgentLoopDeps,
   RunTurnOptions,
