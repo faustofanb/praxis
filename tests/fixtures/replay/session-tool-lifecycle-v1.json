@@ -1,0 +1,132 @@
+[
+  {
+    "id": "fixture-tool-event-1",
+    "sessionId": "session-tool-fixture",
+    "seq": 1,
+    "type": "SessionCreated",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000001,
+    "actor": { "kind": "user" },
+    "payload": { "reason": "fixture: read-only tool lifecycle" }
+  },
+  {
+    "id": "fixture-tool-event-2",
+    "sessionId": "session-tool-fixture",
+    "seq": 2,
+    "type": "TurnStarted",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000002,
+    "actor": { "kind": "model", "provider": "scripted", "model": "scripted-1" },
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": { "turnId": "turn-1" }
+  },
+  {
+    "id": "fixture-tool-event-3",
+    "sessionId": "session-tool-fixture",
+    "seq": 3,
+    "type": "ToolProposed",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000003,
+    "actor": { "kind": "model", "provider": "scripted", "model": "scripted-1" },
+    "causationId": "fixture-tool-event-2",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"docs/note.txt\"}",
+      "effect": "read_only"
+    }
+  },
+  {
+    "id": "fixture-tool-event-4",
+    "sessionId": "session-tool-fixture",
+    "seq": 4,
+    "type": "ToolAuthorized",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000004,
+    "actor": { "kind": "system" },
+    "causationId": "fixture-tool-event-3",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": { "toolExecutionId": "tool-exec-1" }
+  },
+  {
+    "id": "fixture-tool-event-5",
+    "sessionId": "session-tool-fixture",
+    "seq": 5,
+    "type": "ToolStarted",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000005,
+    "actor": { "kind": "tool", "toolExecutionId": "tool-exec-1" },
+    "causationId": "fixture-tool-event-4",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": { "toolExecutionId": "tool-exec-1" }
+  },
+  {
+    "id": "fixture-tool-event-6",
+    "sessionId": "session-tool-fixture",
+    "seq": 6,
+    "type": "ToolSucceeded",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000006,
+    "actor": { "kind": "tool", "toolExecutionId": "tool-exec-1" },
+    "causationId": "fixture-tool-event-5",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "resultJson": "{\"path\":\"docs/note.txt\",\"content\":\"fixture note body\"}"
+    }
+  },
+  {
+    "id": "fixture-tool-event-7",
+    "sessionId": "session-tool-fixture",
+    "seq": 7,
+    "type": "ToolProposed",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000007,
+    "actor": { "kind": "model", "provider": "scripted", "model": "scripted-1" },
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "name": "shell_exec",
+      "argumentsJson": "{\"cmd\":\"rm -rf /\"}",
+      "effect": "non_idempotent_write"
+    }
+  },
+  {
+    "id": "fixture-tool-event-8",
+    "sessionId": "session-tool-fixture",
+    "seq": 8,
+    "type": "ToolRejected",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000008,
+    "actor": { "kind": "system" },
+    "causationId": "fixture-tool-event-7",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "reason": "effect non_idempotent_write is not permitted in a read-only session"
+    }
+  },
+  {
+    "id": "fixture-tool-event-9",
+    "sessionId": "session-tool-fixture",
+    "seq": 9,
+    "type": "TurnCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000009,
+    "actor": { "kind": "model", "provider": "scripted", "model": "scripted-1" },
+    "causationId": "fixture-tool-event-2",
+    "correlationId": "fixture-tool-correlation-1",
+    "payload": { "turnId": "turn-1" }
+  },
+  {
+    "id": "fixture-tool-event-10",
+    "sessionId": "session-tool-fixture",
+    "seq": 10,
+    "type": "SessionCompleted",
+    "schemaVersion": 1,
+    "occurredAt": 1777778000010,
+    "actor": { "kind": "user" },
+    "payload": {}
+  }
+]
