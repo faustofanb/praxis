@@ -35,3 +35,9 @@ export type ToolExecutionId = z.infer<typeof ToolExecutionIdSchema>;
 export function asToolExecutionId(value: string): ToolExecutionId {
   return ToolExecutionIdSchema.parse(value);
 }
+
+export const CapabilityLeaseIdSchema = z.string().min(1).brand<"CapabilityLeaseId">();
+export type CapabilityLeaseId = z.infer<typeof CapabilityLeaseIdSchema>;
+export function asCapabilityLeaseId(value: string): CapabilityLeaseId {
+  return CapabilityLeaseIdSchema.parse(value);
+}

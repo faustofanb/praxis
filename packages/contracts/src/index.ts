@@ -19,6 +19,27 @@ export {
   ToolActorSchema,
   UserActorSchema,
 } from "./actor";
+export type {
+  ApprovalRequest,
+  CapabilityDecision,
+  CapabilityGrant,
+  CapabilityLease,
+  CapabilityRequirement,
+  CapabilityScope,
+  CapabilityVia,
+} from "./capability/capability";
+export {
+  ApprovalRequestSchema,
+  CapabilityDecisionSchema,
+  CapabilityGrantSchema,
+  CapabilityLeaseSchema,
+  CapabilityRequirementSchema,
+  CapabilityScopeSchema,
+  CapabilityViaSchema,
+  normalizeWorkspaceRoot,
+  scopeSatisfies,
+  workspaceRootCovers,
+} from "./capability/capability";
 export type { EventEnvelopeBase, SessionEvent } from "./envelope";
 export { EVENT_SCHEMA_VERSION, sessionEventSchema } from "./envelope";
 export type {
@@ -111,6 +132,7 @@ export {
   ToolSucceededPayloadSchema,
 } from "./events/tool-events";
 export type {
+  CapabilityLeaseId,
   EventId,
   SessionId,
   StepId,
@@ -118,11 +140,13 @@ export type {
   TurnId,
 } from "./ids";
 export {
+  asCapabilityLeaseId,
   asEventId,
   asSessionId,
   asStepId,
   asToolExecutionId,
   asTurnId,
+  CapabilityLeaseIdSchema,
   EventIdSchema,
   SessionIdSchema,
   StepIdSchema,

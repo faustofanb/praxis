@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { CapabilityRequirement } from "../capability/capability";
 import type { ToolEffect } from "../tools/tool-effect";
 
 /**
@@ -44,6 +45,13 @@ export interface ToolDefinition {
   readonly name: string;
   readonly description: string;
   readonly effect: ToolEffect;
+  /**
+   * Capability this tool needs before it may execute (docs/02 section 9).
+   * Required for every write-effect tool — registration rejects a write tool
+   * without one, so enforcement never depends on tool-author discipline.
+   * Read-only tools may omit it.
+   */
+  readonly requiredCapability?: CapabilityRequirement;
   readonly inputSchema: z.ZodType<unknown>;
   /**
    * JSON-encoded JSON Schema advertised to the model (the parametersJson of
