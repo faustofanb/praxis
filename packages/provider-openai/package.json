@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@praxis/contracts": "0.0.0"
+    "@praxis/contracts": "0.0.0",
+    "zod": "4.4.3"
   }
 }

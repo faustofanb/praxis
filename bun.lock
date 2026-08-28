@@ -28,6 +28,13 @@
     "apps/cli": {
       "name": "@praxis/cli",
       "version": "0.0.0",
+      "dependencies": {
+        "@praxis/contracts": "0.0.0",
+        "@praxis/core": "0.0.0",
+        "@praxis/provider-openai": "0.0.0",
+        "@praxis/store-sqlite": "0.0.0",
+        "@praxis/tools-local": "0.0.0",
+      },
     },
     "packages/contracts": {
       "name": "@praxis/contracts",
@@ -48,6 +55,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@praxis/contracts": "0.0.0",
+        "zod": "4.4.3",
       },
     },
     "packages/store-sqlite": {
