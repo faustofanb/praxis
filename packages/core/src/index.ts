@@ -25,6 +25,7 @@ export {
 export type {
   DerivedSessionState,
   SessionStatus,
+  ToolExecutionSnapshot,
 } from "./state/reducer";
 export {
   foldSessionEvents,

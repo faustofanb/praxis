@@ -1,5 +1,11 @@
-import type { EventActor, SessionEventUnion, SessionId } from "@praxis/contracts";
-import { asEventId, asSessionId, asTurnId, EVENT_SCHEMA_VERSION } from "@praxis/contracts";
+import type { EventActor, SessionEventUnion, SessionId, ToolEffect } from "@praxis/contracts";
+import {
+  asEventId,
+  asSessionId,
+  asToolExecutionId,
+  asTurnId,
+  EVENT_SCHEMA_VERSION,
+} from "@praxis/contracts";
 
 export const TEST_SESSION_ID: SessionId = asSessionId("session-test");
 
@@ -56,5 +62,86 @@ export function turnCompleted(seq: number, turn: number): SessionEventUnion {
     ...base(seq),
     type: "TurnCompleted",
     payload: { turnId: turnId(turn) },
+  };
+}
+
+function toolExecutionId(execution: number) {
+  return asToolExecutionId(`tool-exec-${execution}`);
+}
+
+export function toolProposed(
+  seq: number,
+  execution: number,
+  options: { name?: string; argumentsJson?: string; effect?: ToolEffect } = {},
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolProposed",
+    payload: {
+      toolExecutionId: toolExecutionId(execution),
+      name: options.name ?? "read_file",
+      argumentsJson: options.argumentsJson ?? '{"path":"a.txt"}',
+      effect: options.effect ?? "read_only",
+    },
+  };
+}
+
+export function toolAuthorized(seq: number, execution: number): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolAuthorized",
+    payload: { toolExecutionId: toolExecutionId(execution) },
+  };
+}
+
+export function toolRejected(
+  seq: number,
+  execution: number,
+  reason = "not permitted",
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolRejected",
+    payload: { toolExecutionId: toolExecutionId(execution), reason },
+  };
+}
+
+export function toolStarted(seq: number, execution: number): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolStarted",
+    payload: { toolExecutionId: toolExecutionId(execution) },
+  };
+}
+
+export function toolSucceeded(
+  seq: number,
+  execution: number,
+  resultJson = '{"content":"ok"}',
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolSucceeded",
+    payload: { toolExecutionId: toolExecutionId(execution), resultJson },
+  };
+}
+
+export function toolFailed(seq: number, execution: number, message = "boom"): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolFailed",
+    payload: { toolExecutionId: toolExecutionId(execution), message },
+  };
+}
+
+export function toolIndeterminate(
+  seq: number,
+  execution: number,
+  reason = "outcome unknown",
+): SessionEventUnion {
+  return {
+    ...base(seq),
+    type: "ToolIndeterminate",
+    payload: { toolExecutionId: toolExecutionId(execution), reason },
   };
 }

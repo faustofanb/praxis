@@ -1,13 +1,40 @@
-import type { SessionEventUnion, SessionId, TurnId } from "@praxis/contracts";
+import type {
+  SessionEventUnion,
+  SessionId,
+  ToolEffect,
+  ToolExecutionId,
+  ToolExecutionStatus,
+  TurnId,
+} from "@praxis/contracts";
 
 /**
- * v1 StateReducer over the Session/Turn event slice (docs/02 section 7).
- * Pure: no I/O, clock, randomness, or environment. All nondeterministic
- * inputs must already be facts inside the events. Goal/epistemic/model/tool
- * projections join as their event vocabulary lands in M2-M4.
+ * v1 StateReducer over the Session/Turn and tool-execution event slices
+ * (docs/02 sections 7-8). Pure: no I/O, clock, randomness, or environment.
+ * All nondeterministic inputs must already be facts inside the events.
+ * Goal/epistemic/model projections join as their vocabulary lands in M2-M4.
  */
 
 export type SessionStatus = "EMPTY" | "ACTIVE" | "PAUSED" | "COMPLETED";
+
+/** Per-execution projection of the docs/02 section 8.2 state machine. */
+export type ToolExecutionSnapshot = {
+  readonly toolExecutionId: ToolExecutionId;
+  readonly turnId: TurnId;
+  readonly name: string;
+  readonly argumentsJson: string;
+  readonly effect: ToolEffect;
+  readonly status: ToolExecutionStatus;
+  readonly resultJson?: string;
+  readonly rejectionReason?: string;
+  readonly failureMessage?: string;
+  readonly indeterminateReason?: string;
+};
+
+const ACTIVE_TOOL_STATUSES: readonly ToolExecutionStatus[] = [
+  "PROPOSED",
+  "AUTHORIZED",
+  "EXECUTING",
+];
 
 /**
  * Derived, never persisted: recomputed by folding a session's event stream.
@@ -19,6 +46,7 @@ export type DerivedSessionState = {
   headSeq: number;
   currentTurnId?: TurnId;
   turnIds: ReadonlySet<TurnId>;
+  toolExecutions: ReadonlyMap<ToolExecutionId, ToolExecutionSnapshot>;
 };
 
 export class IllegalTransitionError extends Error {
@@ -33,7 +61,7 @@ export class IllegalTransitionError extends Error {
 }
 
 export function initialSessionState(): DerivedSessionState {
-  return { status: "EMPTY", headSeq: 0, turnIds: new Set() };
+  return { status: "EMPTY", headSeq: 0, turnIds: new Set(), toolExecutions: new Map() };
 }
 
 export function reduceSession(
@@ -67,6 +95,7 @@ export function reduceSession(
         headSeq: advanced.headSeq,
         sessionId: event.sessionId,
         turnIds: new Set(),
+        toolExecutions: new Map(),
       };
     }
     case "SessionResumed": {
@@ -118,8 +147,94 @@ export function reduceSession(
           `open turn is ${state.currentTurnId}, event completes ${event.payload.turnId}`,
         );
       }
+      requireNoActiveToolExecutions(state, "TurnCompleted");
       const { currentTurnId: _closed, ...rest } = advanced;
       return rest;
+    }
+    case "ToolProposed": {
+      requireStatus(state, "ToolProposed", "ACTIVE");
+      const turnId = requireOpenTurn(state, "ToolProposed");
+      const { toolExecutionId } = event.payload;
+      if (state.toolExecutions.has(toolExecutionId)) {
+        throw new IllegalTransitionError(
+          "ToolProposed",
+          state.status,
+          `tool execution id ${toolExecutionId} already used`,
+        );
+      }
+      return withTool(advanced, {
+        toolExecutionId,
+        turnId,
+        name: event.payload.name,
+        argumentsJson: event.payload.argumentsJson,
+        effect: event.payload.effect,
+        status: "PROPOSED",
+      });
+    }
+    case "ToolAuthorized": {
+      const snapshot = requireTool(
+        state,
+        "ToolAuthorized",
+        event.payload.toolExecutionId,
+        "PROPOSED",
+      );
+      return withTool(advanced, { ...snapshot, status: "AUTHORIZED" });
+    }
+    case "ToolRejected": {
+      const snapshot = requireTool(
+        state,
+        "ToolRejected",
+        event.payload.toolExecutionId,
+        "PROPOSED",
+      );
+      return withTool(advanced, {
+        ...snapshot,
+        status: "REJECTED",
+        rejectionReason: event.payload.reason,
+      });
+    }
+    case "ToolStarted": {
+      const snapshot = requireTool(
+        state,
+        "ToolStarted",
+        event.payload.toolExecutionId,
+        "AUTHORIZED",
+      );
+      return withTool(advanced, { ...snapshot, status: "EXECUTING" });
+    }
+    case "ToolSucceeded": {
+      const snapshot = requireTool(
+        state,
+        "ToolSucceeded",
+        event.payload.toolExecutionId,
+        "EXECUTING",
+      );
+      return withTool(advanced, {
+        ...snapshot,
+        status: "SUCCEEDED",
+        resultJson: event.payload.resultJson,
+      });
+    }
+    case "ToolFailed": {
+      const snapshot = requireTool(state, "ToolFailed", event.payload.toolExecutionId, "EXECUTING");
+      return withTool(advanced, {
+        ...snapshot,
+        status: "FAILED",
+        failureMessage: event.payload.message,
+      });
+    }
+    case "ToolIndeterminate": {
+      const snapshot = requireTool(
+        state,
+        "ToolIndeterminate",
+        event.payload.toolExecutionId,
+        "EXECUTING",
+      );
+      return withTool(advanced, {
+        ...snapshot,
+        status: "INDETERMINATE",
+        indeterminateReason: event.payload.reason,
+      });
     }
   }
 }
@@ -149,5 +264,72 @@ function requireNoOpenTurn(state: DerivedSessionState, eventType: SessionEventUn
       state.status,
       `turn ${state.currentTurnId} is still open`,
     );
+  }
+}
+
+function requireOpenTurn(state: DerivedSessionState, eventType: SessionEventUnion["type"]): TurnId {
+  if (state.currentTurnId === undefined) {
+    throw new IllegalTransitionError(eventType, state.status, "requires an open turn");
+  }
+  return state.currentTurnId;
+}
+
+function requireTool(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+  toolExecutionId: ToolExecutionId,
+  expectedStatus: ToolExecutionStatus,
+): ToolExecutionSnapshot {
+  requireStatus(state, eventType, "ACTIVE");
+  const turnId = requireOpenTurn(state, eventType);
+  const snapshot = state.toolExecutions.get(toolExecutionId);
+  if (snapshot === undefined) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `unknown tool execution ${toolExecutionId}`,
+    );
+  }
+  if (snapshot.turnId !== turnId) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `tool execution ${toolExecutionId} belongs to turn ${snapshot.turnId}, open turn is ${turnId}`,
+    );
+  }
+  if (snapshot.status !== expectedStatus) {
+    throw new IllegalTransitionError(
+      eventType,
+      state.status,
+      `requires tool status ${expectedStatus}, is ${snapshot.status}`,
+    );
+  }
+  return snapshot;
+}
+
+function withTool(
+  state: DerivedSessionState,
+  snapshot: ToolExecutionSnapshot,
+): DerivedSessionState {
+  const toolExecutions = new Map(state.toolExecutions);
+  toolExecutions.set(snapshot.toolExecutionId, snapshot);
+  return { ...state, toolExecutions };
+}
+
+function requireNoActiveToolExecutions(
+  state: DerivedSessionState,
+  eventType: SessionEventUnion["type"],
+): void {
+  for (const snapshot of state.toolExecutions.values()) {
+    if (snapshot.turnId !== state.currentTurnId) {
+      continue;
+    }
+    if (ACTIVE_TOOL_STATUSES.includes(snapshot.status)) {
+      throw new IllegalTransitionError(
+        eventType,
+        state.status,
+        `tool execution ${snapshot.toolExecutionId} is still ${snapshot.status}`,
+      );
+    }
   }
 }
