@@ -2,7 +2,9 @@ schema_version: 1
 id: M1-T003
 title: implement SQLite EventStore append load and replay
 milestone: M1
-status: acceptance_ready
+status: accepted
+accepted_by: 樊彪 (human)
+accepted_at: 2026-08-27
 risk_class: E
 objective: "Implement the local SQLite EventStore adapter in packages/store-sqlite per docs/02 section 6.3 and ADR-0003: monotonic explicit migrations, transactional append with optimistic concurrency and (session_id, seq) uniqueness, readStream with schema validation on read, append-only with no UPDATE/DELETE event API, covered by a Bun-native store test suite."
 evidence: 
