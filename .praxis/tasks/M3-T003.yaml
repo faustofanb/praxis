@@ -1,0 +1,86 @@
+schema_version: 1
+id: M3-T003
+title: implement safe write_file and bash tools
+milestone: M3
+status: acceptance_ready
+risk_class: D
+objective: "Land the docs/02 section 4.5 first-batch write tools as pure layer-2 implementations (section 9.3): write_file as reconcilable_write with requiredCapability fs.write — atomic temp+rename inside the workspace root (lexical + realpath confinement shared with the read tools), plus a verification-only reconcile that settles INDETERMINATE writes by content comparison (ADR-0011: match -> the write happened; absent/mismatch -> it provably did not; never cleans up, never writes); bash as non_idempotent_write with requiredCapability shell.exec — cwd pinned to the workspace root, hard timeout, byte-truncated stdout/stderr, completed non-zero exit -> failed, timeout/abort -> INDETERMINATE (effects unknown, never coerced to failed per section 8.2). No contracts/core changes — capability enforcement is M3-T002 policy consumed as static tool metadata. No CLI wiring (not an M3 required deliverable; deferred to human-demo prep)."
+evidence: 
+  observed: 
+    - "packages/tools-local has only read_file/list_dir (src/read-tools.ts); no write tool exists, and resolveWithinRoot confinement lives privately in read-tools.ts"
+    - "docs/02 section 4.5: write_file is 'reconcilable write', bash is 'high-risk, needs capability'; shell tools must have cwd, timeout, output truncation; v1 workspace-root-外读写受限"
+    - "M3 milestone scenario acceptance: 'authorized write succeeds and verifies'; failure acceptance: 'crash after side effect before result event -> indeterminate -> reconcile' and 'path/capability bypass attempts rejected'"
+    - "M3-T002 landed requiredCapability registration enforcement (write tools must declare) and capabilityAuthorizer; ADR-0011 landed the ToolReconciled event, reducer transitions, and the verification-only reconcile contract; nothing exercises them with a real tool yet"
+  expected: 
+    - "packages/tools-local: shared path policy extracted (resolveWithinRoot) and reused; write-tools.ts with writeFileTool(root) — {path, content} input, parent must exist, temp file in the target directory + atomic rename, result {path, bytes}; reconcile reads and compares content (match -> succeeded+verified, absent/different -> failed with explicit message); no side effects from reconcile"
+    - "packages/tools-local: bashTool(root, options) — {command, timeoutMs?} input, cwd = realpath workspace root, default/capped timeout, SIGKILL on timeout, stdout/stderr each byte-truncated with the shared marker; exit 0 -> succeeded {exitCode, stdout, stderr, truncated flags}; non-zero completed exit -> failed message 'command exited with code N' (+stderr tail); timeout or turn abort -> indeterminate with explicit reason"
+    - tools declare requiredCapability (fs.write / shell.exec scoped to the bound root) so M3-T002 policy gates them; registration passes validateToolDefinitions
+    - "tests: unit (write/reconcile/bash happy paths, truncation determinism), security (write escape attempts: traversal, absolute outside, symlink, parent-dir write, root itself; reconcile verification-only), integration (authorized write executes end-to-end through executeToolCall with capabilityAuthorizer; crash-after-rename -> INDETERMINATE -> reconcile settles SUCCEEDED; unauthorized write rejected before execution)"
+  references: 
+    - docs/02-system-design.md
+    - docs/decisions/ADR-0006-tool-effect-classes.md
+    - docs/decisions/ADR-0007-capability-core.md
+    - docs/decisions/ADR-0011-tool-reconciliation-contract.md
+    - .praxis/milestones/M3.yaml
+    - .praxis/tasks/M3-T002.yaml
+hypothesis: "The write tools close without touching contracts or core: confinement reuses the read tools' lexical+realpath policy (extracted, not duplicated), atomicity comes from temp+rename on the same filesystem, reconcile is a read-and-compare that follows the ADR-0011 epistemic rule, and bash maps process outcomes honestly (completed exit -> fact, killed/aborted -> indeterminate). Every guarantee is enforced by tool implementation and registration metadata, never by model discipline."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M3-T003.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/tools-local/**
+    - tests/**
+    - docs/subsystems/tools-local.md
+    - docs/02-system-design.md
+  forbidden_paths: 
+    - apps/cli/**
+    - packages/contracts/**
+    - packages/core/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/testkit/**
+    - scripts/ai/**
+    - scripts/smoke/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/decisions/**
+  scope_notes: 
+    - "No new durable event semantics, no port changes, no core changes: write tools are pure adapters over M3-T001/002 contracts, so no new ADR (requires_adr false). Risk D routes acceptance to human regardless."
+    - "CLI wiring for write tools (lease flags, capability config) is deliberately deferred: M3.yaml required_deliverables lists the tools, not CLI integration; the M3 human demo prepares it. OS-level sandbox stays out of scope per docs/02 section 9.3 (v1.1 direction, not claimed for v1)."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - security
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - an authorized write_file under a standing fs.write grant executes and its reconcile verifies the content (succeeded with verified flag)
+    - "a crashed write_file (killed after rename, before the result event) folds to INDETERMINATE and reconcile settles it to SUCCEEDED by content comparison"
+    - "bash runs with cwd at the workspace root and returns captured, byte-truncated stdout/stderr with exit code; a completed non-zero exit is a failed fact"
+    - "a bash timeout lands INDETERMINATE with an explicit effects-unknown reason, never failed"
+  failure_cases: 
+    - write path escapes rejected: "relative traversal, absolute outside root, symlink escape, writing the root directory itself, missing parent directory"
+    - write_file/bash without a granted capability are rejected by capabilityAuthorizer before any execute (durable ToolRejected)
+    - reconcile never mutates: "a crashed write's leftover temp file is reported factually but not cleaned up (verification only)"
+    - bash output truncation is deterministic and the truncation markers are recorded in the result
+  artifacts: 
+    - packages/tools-local/src/write-tools.ts
+    - packages/tools-local/src/path-policy.ts
+    - tests/tools-local-write.test.ts
+    - tests/security/tools-local-write.security.test.ts
+    - tests/integration/write-tools.integration.test.ts
+    - docs/subsystems/tools-local.md
+falsified_if: "Any tool coerces an unknown outcome to failed, reconcile performs a new external effect (including cleanup), a path escape reaches the filesystem, a write tool executes without its required capability being granted, bash treats timeout as failure, or any safety property depends on model behavior."
+requires_adr: false
+requires_human_acceptance: true
+notes: "bash targets POSIX /bin/bash (darwin/linux); Windows is out of scope for v1. The .praxis-tmp-* leftover after a crashed write is a recorded known artifact — its cleanup belongs to M3-T004 recovery orchestration, not to reconcile. Timeout default 30s, capped at 120s; output budget defaults to the same 64 KiB marker style as read tools."
