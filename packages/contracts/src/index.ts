@@ -54,6 +54,40 @@ export {
   TurnStartedPayloadSchema,
 } from "./events/session-events";
 export type {
+  ToolAuthorizedEvent,
+  ToolEventType,
+  ToolFailedEvent,
+  ToolIndeterminateEvent,
+  ToolProposedEvent,
+  ToolRejectedEvent,
+  ToolStartedEvent,
+  ToolSucceededEvent,
+} from "./events/tool-events";
+export {
+  TOOL_AUTHORIZED,
+  TOOL_EVENT_TYPES,
+  TOOL_FAILED,
+  TOOL_INDETERMINATE,
+  TOOL_PROPOSED,
+  TOOL_REJECTED,
+  TOOL_STARTED,
+  TOOL_SUCCEEDED,
+  ToolAuthorizedEventSchema,
+  ToolAuthorizedPayloadSchema,
+  ToolFailedEventSchema,
+  ToolFailedPayloadSchema,
+  ToolIndeterminateEventSchema,
+  ToolIndeterminatePayloadSchema,
+  ToolProposedEventSchema,
+  ToolProposedPayloadSchema,
+  ToolRejectedEventSchema,
+  ToolRejectedPayloadSchema,
+  ToolStartedEventSchema,
+  ToolStartedPayloadSchema,
+  ToolSucceededEventSchema,
+  ToolSucceededPayloadSchema,
+} from "./events/tool-events";
+export type {
   EventId,
   SessionId,
   StepId,
@@ -124,8 +158,15 @@ export {
   EMPTY_STREAM_HEAD_SEQ,
   EventStoreConflictError,
 } from "./ports/event-store";
+export type {
+  ToolDefinition,
+  ToolExecutionContext,
+  ToolExecutionOutcome,
+} from "./ports/tool";
 export type { ToolExecutionStatus } from "./tool-state";
 export {
   TOOL_EXECUTION_STATUSES,
   ToolExecutionStatusSchema,
 } from "./tool-state";
+export type { ToolEffect } from "./tools/tool-effect";
+export { TOOL_EFFECTS, ToolEffectSchema } from "./tools/tool-effect";

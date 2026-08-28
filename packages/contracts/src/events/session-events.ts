@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { sessionEventSchema } from "../envelope";
 import { TurnIdSchema } from "../ids";
+import { TOOL_EVENT_SCHEMAS } from "./tool-events";
 
 /**
- * v1 durable event vocabulary: the Session/Turn lifecycle slice only
- * (docs/02 §6.2, ADR-0009). Model-call, evidence, and tool-execution events
- * join this union as schema-versioned members in M2–M4.
+ * v1 durable event vocabulary: the Session/Turn lifecycle slice
+ * (docs/02 §6.2, ADR-0009) plus the tool execution lifecycle slice
+ * (docs/02 §8.2, joined in M2-T003). Model-call and evidence events join
+ * this union as schema-versioned members in M2–M4.
  */
 
 export const SESSION_CREATED = "SessionCreated";
@@ -77,5 +79,6 @@ export const SessionEventUnionSchema = z.discriminatedUnion("type", [
   SessionCompletedEventSchema,
   TurnStartedEventSchema,
   TurnCompletedEventSchema,
+  ...TOOL_EVENT_SCHEMAS,
 ]);
 export type SessionEventUnion = z.infer<typeof SessionEventUnionSchema>;
