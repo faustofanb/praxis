@@ -2,7 +2,9 @@ schema_version: 1
 id: M2-T001
 title: define ModelProvider and ScriptedModel with cancellation
 milestone: M2
-status: acceptance_ready
+status: accepted
+accepted_by: 樊彪 (human)
+accepted_at: 2026-08-28
 risk_class: B
 objective: "Define the v1 ModelProvider contract in packages/contracts per ADR-0010 (ModelRequest, ModelEvent stream vocabulary, normalized provider errors, AbortSignal cancellation semantics) and implement the deterministic ScriptedModelProvider in packages/testkit with script order, request recording, script-exhaustion failure, and cancellation/error injection, covered by unit tests."
 evidence: 
