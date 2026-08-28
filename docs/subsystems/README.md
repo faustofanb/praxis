@@ -11,10 +11,10 @@
 
 | 文档 | Package | 状态 |
 | --- | --- | --- |
-| `contracts.md` | `packages/contracts` | 进行中（M2：ids/信封/Session-Turn 词汇/EventStore port/Model 边界已落地） |
-| `core.md` | `packages/core` | 进行中（M2：Session/Turn StateReducer、ContextBuilder v0 已落地） |
+| `contracts.md` | `packages/contracts` | 进行中（M2：ids/信封/Session-Turn 与工具事件词汇/EventStore/Tool/Model 边界已落地） |
+| `core.md` | `packages/core` | 进行中（M2：StateReducer（含工具投影）、ContextBuilder v0、只读工具执行器已落地） |
 | `store-sqlite.md` | `packages/store-sqlite` | 进行中（M1：SQLite EventStore 适配器已落地） |
 | `provider-openai.md` | `packages/provider-openai` | 未开始（M2.4） |
-| `tools-local.md` | `packages/tools-local` | 未开始（M2.3） |
+| `tools-local.md` | `packages/tools-local` | 进行中（M2：read_file/list_dir 已落地） |
 | `testkit.md` | `packages/testkit` | 进行中（M2：ScriptedModelProvider 已落地） |
 | `cli.md` | `apps/cli` | 未开始（M2.5） |
