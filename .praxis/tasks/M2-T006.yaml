@@ -1,0 +1,76 @@
+schema_version: 1
+id: M2-T006
+title: add OpenAI-compatible provider adapter and non-blocking real-model smoke
+milestone: M2
+status: accepted
+risk_class: B
+objective: "Deliver the M2 real-model boundary: an OpenAI-compatible Chat Completions adapter in packages/provider-openai (SSE -> ModelEvent mapping, provider error taxonomy, adapter-owned retry, cooperative cancellation and read timeout), CLI `run --model` wiring so the demo can use a live endpoint or any OpenAI-compatible base URL, and a non-blocking smoke (skips without OPENAI_API_KEY) that is NOT part of the check chain. Correctness tests stay deterministic: the adapter is tested against injected fetch responses, never the network (docs/02 section 4.4)."
+evidence: 
+  observed: 
+    - "packages/provider-openai is still the `export const packageName` stub"
+    - "CLI `run` refuses without --script (\"no live provider is configured until M2-T006\")"
+    - "M2 required_deliverables include \"OpenAI-compatible adapter smoke\" and real_model_eval is \"non-blocking provider smoke\""
+    - "ADR-0010: adapters own retry; provider API errors are normalized events, not throws; cancellation is a silent stream end"
+  expected: 
+    - "docs/02 section 4.4 fixes the adapter package; .praxis/architecture.yaml allows provider-openai -> [contracts] only"
+    - "wire format verified against openai-node types (generated from the OpenAPI spec): choices[].delta.{content,tool_calls[{index,id,function.{name,arguments}}]}, finish_reason, stream_options.include_usage, [DONE] sentinel"
+    - "apps-cli may_depend_on includes provider-openai, so CLI wiring needs no architecture change"
+  references: 
+    - docs/02-system-design.md
+    - docs/decisions/ADR-0010-model-provider-contract-v1.md
+    - .praxis/architecture.yaml
+    - .praxis/milestones/M2.yaml
+hypothesis: "One adapter maps the Chat Completions wire format onto the v1 ModelEvent set without loss: delta.content -> textDelta, indexed tool-call fragments -> toolCallStart/Delta/End, finish_reason -> completed (stop|toolCalls|length; others surface honestly as providerError unknown, never coerced), HTTP status + body -> normalized {kind, retryable}; retry of retryable kinds lives in the adapter behind injectable fetch/sleep so tests stay deterministic, and the caller's AbortSignal always wins (silent end, no throw)."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M2-T006.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/provider-openai/**
+    - apps/cli/**
+    - tests/provider-openai/**
+    - tests/cli/cli.bun.test.ts
+    - scripts/smoke/**
+    - knip.json
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/subsystems/**
+    - docs/02-system-design.md
+    - README.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/**
+    - packages/testkit/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - scripts/ai/**
+  scope_notes: 
+    - "docs/subsystems/store-sqlite.md is an owning-doc gap left by M2-T005: listSessions() landed but the doc still says the public surface is append/readStream/close only. This change corrects that sentence; it records no new design fact of T006."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  []
+acceptance: 
+  scenarios: 
+    - "happy path: SSE text deltas + usage + finish_reason=stop stream as normalized ModelEvents in order, and the request body carries mapped messages/tools/stream_options"
+    - tool-call fragments across chunks become toolCallStart/Delta/End and completed(toolCalls)
+    - "HTTP 429 then success: the adapter retries once (sleep injected), then completes; adapter owns retry per ADR-0010"
+    - CLI run --model against a local fake OpenAI-compatible server completes the read_file vertical end to end
+  failure_cases: 
+    - HTTP 401 maps to providerError auth non-retryable with zero retries; 5xx exhausts retries then providerError overloaded
+    - network throw and read timeout map to retryable kinds without ever throwing to the consumer
+    - "caller abort mid-stream or mid-backoff ends the stream silently (no completed, no providerError, no throw)"
+    - finish_reason values outside stop|toolCalls|length and malformed SSE payloads surface as providerError unknown non-retryable
+    - "CLI refuses --model without --api-key/OPENAI_API_KEY, and --model together with --script"
+    - smoke without OPENAI_API_KEY prints a skip notice and exits 0 (non-blocking)
+  artifacts: 
+    - tests/provider-openai/chat-provider.test.ts
+    - tests/cli/cli.bun.test.ts
+    - scripts/smoke/openai-smoke.ts
+    - docs/subsystems/provider-openai.md
+falsified_if: "The adapter needs a third-party SDK dependency, leaks OpenAI types into contracts/core, throws instead of emitting providerError, retries non-retryable kinds, or turns a caller cancellation into a failure fact."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Wire protocol is Chat Completions, not Responses: docs/02 section 4.4 said Responses, but the backlog title demands OpenAI-*compatible* (vLLM/Ollama/OpenRouter/DeepSeek speak chat completions) and finish_reason maps 1:1. Section 4.4 is corrected in this change; a Responses adapter can be added later behind the same port (ADR-0010 revisit trigger)."
