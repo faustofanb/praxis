@@ -52,6 +52,13 @@ function reconcileFailed(message: string): ReconciliationOutcome {
   return { status: "failed", error: { message } };
 }
 
+function errnoCode(error: unknown): string | undefined {
+  if (error instanceof Error && "code" in error && typeof error.code === "string") {
+    return error.code;
+  }
+  return undefined;
+}
+
 const WriteFileInputSchema = z.object({
   path: z.string().min(1),
   content: z.string(),
@@ -112,10 +119,17 @@ export function writeFileTool(root: string): ToolDefinition {
       let target: string;
       try {
         target = await resolveWithinRoot(root, path);
-      } catch {
-        // realpath of a missing file throws ENOENT; either way the write
-        // provably did not take effect at the requested location.
-        return reconcileFailed(`the write did not take effect: ${path} does not exist`);
+      } catch (error) {
+        // The path policy refused to resolve the recorded path (escape,
+        // symlink violation, or the root is gone). Symlink state may have
+        // changed since the execution, so the refusal proves nothing about
+        // the effect: reporting failed would claim provable absence — the
+        // only outcome that unlocks re-execution (contracts tool port).
+        const detail = error instanceof Error ? error.message : String(error);
+        return {
+          status: "indeterminate",
+          reason: `cannot verify: the recorded path is not reachable inside the root (${detail})`,
+        };
       }
       try {
         const actual = await readFile(target, "utf8");
@@ -132,10 +146,21 @@ export function writeFileTool(root: string): ToolDefinition {
         return reconcileFailed(
           `the write did not take effect: ${path} exists with different content`,
         );
-      } catch {
-        // Exists per realpath but is unreadable (e.g. a directory): the
-        // content write is not there, which is provable non-effect.
-        return reconcileFailed(`the write did not take effect: ${path} is not a readable file`);
+      } catch (error) {
+        const code = errnoCode(error);
+        if (code === "ENOENT") {
+          // Resolved inside the root but absent: provable non-effect.
+          return reconcileFailed(`the write did not take effect: no file at ${path}`);
+        }
+        if (code === "EISDIR") {
+          // A directory occupies the target: the content write is not there.
+          return reconcileFailed(`the write did not take effect: a directory occupies ${path}`);
+        }
+        const detail = error instanceof Error ? error.message : String(error);
+        return {
+          status: "indeterminate",
+          reason: `cannot verify: ${path} is not readable (${detail})`,
+        };
       }
     },
   };

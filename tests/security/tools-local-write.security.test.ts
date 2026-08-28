@@ -70,7 +70,7 @@ describe("write_file escape attempts", () => {
     expect(await readdir(outsideRoot)).toEqual(["secret.txt"]);
   });
 
-  test("reconcile on an escape path never grants or writes anything", async () => {
+  test("reconcile on an escape path claims nothing and never unlocks re-execution", async () => {
     const tool = writeFileTool(root);
     if (tool.reconcile === undefined) {
       throw new Error("write_file must define reconcile");
@@ -79,9 +79,12 @@ describe("write_file escape attempts", () => {
       path: "../../outside.txt",
       content: "escaped",
     });
+    // The policy refused to look, and symlink state may have changed since
+    // the execution, so absence is not provable. Only an observed conclusion
+    // may be failed — the one outcome that unlocks re-execution.
     expect(outcome).toMatchObject({
-      status: "failed",
-      error: { message: expect.stringContaining("did not take effect") },
+      status: "indeterminate",
+      reason: expect.stringContaining("cannot verify") as unknown as string,
     });
   });
 });
