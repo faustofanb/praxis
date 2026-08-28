@@ -86,3 +86,7 @@ falsified_if: "Any bypass attempt reaches the filesystem outside the root or exe
 requires_adr: false
 requires_human_acceptance: true
 notes: "Composition-focused by design: each layer already has unit matrices (T002 capability, T003 path policy); this task proves the layers compose under attack and closes the one epistemic hole the composition exposes. The reconcile fix deliberately makes recovery pause more often (symlink races become human decisions) — that is the section 17 law working as intended, not a regression."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-28 — \"继续\" reply to the acceptance-ready report, which explicitly surfaced the reconcile failed-vs-indeterminate correction and the T003 test-law update)"
+  evidence: ".praxis/state.yaml last_verification (14 gates PASS) + handoff M3-T005-1787926941249.md"

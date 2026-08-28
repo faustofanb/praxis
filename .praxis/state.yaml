@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M3
 last_accepted_milestone: M2
-active_task: M3-T005
-development_state: ACCEPTANCE_READY
+active_task: null
+development_state: ACCEPTED
 blockers: 
   []
 open_adrs: 
@@ -15,9 +15,8 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-28
 next_legal_actions: 
-  - implement only within Task Contract scope
-  - run ai:guard
-  - run ai:verify
+  - prepare M3 milestone acceptance evidence (docs/acceptance/M3.md, Exit Decision PENDING)
+  - human demo of M3 scenarios, then human/independent M3 acceptance
 last_verification: 
   task: M3-T005
   at: 2026-08-28T14:22:21.218Z
