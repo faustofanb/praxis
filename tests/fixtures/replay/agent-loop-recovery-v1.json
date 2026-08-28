@@ -1,0 +1,307 @@
+[
+  {
+    "id": "fixture-event-1",
+    "sessionId": "session-loop-fixture",
+    "seq": 1,
+    "schemaVersion": 1,
+    "occurredAt": 1001,
+    "actor": { "kind": "system" },
+    "type": "SessionCreated",
+    "payload": {}
+  },
+  {
+    "id": "fixture-event-2",
+    "sessionId": "session-loop-fixture",
+    "seq": 2,
+    "schemaVersion": 1,
+    "occurredAt": 1002,
+    "actor": { "kind": "user" },
+    "type": "TurnStarted",
+    "payload": { "turnId": "turn-1", "input": "list the workspace" }
+  },
+  {
+    "id": "fixture-event-3",
+    "sessionId": "session-loop-fixture",
+    "seq": 3,
+    "schemaVersion": 1,
+    "occurredAt": 1003,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-4",
+    "sessionId": "session-loop-fixture",
+    "seq": 4,
+    "schemaVersion": 1,
+    "occurredAt": 1004,
+    "actor": { "kind": "system" },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [{ "id": "call-1", "name": "list_dir", "argumentsJson": "{\"path\":\".\"}" }]
+    }
+  },
+  {
+    "id": "fixture-event-5",
+    "sessionId": "session-loop-fixture",
+    "seq": 5,
+    "schemaVersion": 1,
+    "occurredAt": 1005,
+    "actor": { "kind": "system" },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "name": "list_dir",
+      "argumentsJson": "{\"path\":\".\"}",
+      "effect": "read_only",
+      "toolCallId": "call-1"
+    }
+  },
+  {
+    "id": "fixture-event-6",
+    "sessionId": "session-loop-fixture",
+    "seq": 6,
+    "schemaVersion": 1,
+    "occurredAt": 1006,
+    "actor": { "kind": "system" },
+    "type": "ToolAuthorized",
+    "payload": { "toolExecutionId": "tool-exec-1" }
+  },
+  {
+    "id": "fixture-event-7",
+    "sessionId": "session-loop-fixture",
+    "seq": 7,
+    "schemaVersion": 1,
+    "occurredAt": 1007,
+    "actor": { "kind": "system" },
+    "type": "ToolStarted",
+    "payload": { "toolExecutionId": "tool-exec-1" }
+  },
+  {
+    "id": "fixture-event-8",
+    "sessionId": "session-loop-fixture",
+    "seq": 8,
+    "schemaVersion": 1,
+    "occurredAt": 1008,
+    "actor": { "kind": "tool", "toolExecutionId": "tool-exec-1" },
+    "type": "ToolSucceeded",
+    "payload": { "toolExecutionId": "tool-exec-1", "resultJson": "{\"entries\":[]}" }
+  },
+  {
+    "id": "fixture-event-9",
+    "sessionId": "session-loop-fixture",
+    "seq": 9,
+    "schemaVersion": 1,
+    "occurredAt": 1009,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-10",
+    "sessionId": "session-loop-fixture",
+    "seq": 10,
+    "schemaVersion": 1,
+    "occurredAt": 1010,
+    "actor": { "kind": "system" },
+    "type": "ModelResponseCompleted",
+    "payload": { "text": "workspace is empty", "toolCalls": [] }
+  },
+  {
+    "id": "fixture-event-11",
+    "sessionId": "session-loop-fixture",
+    "seq": 11,
+    "schemaVersion": 1,
+    "occurredAt": 1011,
+    "actor": { "kind": "user" },
+    "type": "TurnCompleted",
+    "payload": { "turnId": "turn-1" }
+  },
+  {
+    "id": "fixture-event-12",
+    "sessionId": "session-loop-fixture",
+    "seq": 12,
+    "schemaVersion": 1,
+    "occurredAt": 1012,
+    "actor": { "kind": "user" },
+    "type": "TurnStarted",
+    "payload": { "turnId": "turn-2", "input": "read the config" }
+  },
+  {
+    "id": "fixture-event-13",
+    "sessionId": "session-loop-fixture",
+    "seq": 13,
+    "schemaVersion": 1,
+    "occurredAt": 1013,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-14",
+    "sessionId": "session-loop-fixture",
+    "seq": 14,
+    "schemaVersion": 1,
+    "occurredAt": 1014,
+    "actor": { "kind": "system" },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        { "id": "call-2", "name": "read_file", "argumentsJson": "{\"path\":\"config.json\"}" }
+      ]
+    }
+  },
+  {
+    "id": "fixture-event-15",
+    "sessionId": "session-loop-fixture",
+    "seq": 15,
+    "schemaVersion": 1,
+    "occurredAt": 1015,
+    "actor": { "kind": "system" },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"config.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-2"
+    }
+  },
+  {
+    "id": "fixture-event-16",
+    "sessionId": "session-loop-fixture",
+    "seq": 16,
+    "schemaVersion": 1,
+    "occurredAt": 1016,
+    "actor": { "kind": "system" },
+    "type": "ToolAuthorized",
+    "payload": { "toolExecutionId": "tool-exec-2" }
+  },
+  {
+    "id": "fixture-event-17",
+    "sessionId": "session-loop-fixture",
+    "seq": 17,
+    "schemaVersion": 1,
+    "occurredAt": 1017,
+    "actor": { "kind": "system" },
+    "type": "ToolStarted",
+    "payload": { "toolExecutionId": "tool-exec-2" }
+  },
+  {
+    "id": "fixture-event-18",
+    "sessionId": "session-loop-fixture",
+    "seq": 18,
+    "schemaVersion": 1,
+    "occurredAt": 1018,
+    "actor": { "kind": "system" },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "reason": "process crashed before a terminal tool event; outcome unknown"
+    }
+  },
+  {
+    "id": "fixture-event-19",
+    "sessionId": "session-loop-fixture",
+    "seq": 19,
+    "schemaVersion": 1,
+    "occurredAt": 1019,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-20",
+    "sessionId": "session-loop-fixture",
+    "seq": 20,
+    "schemaVersion": 1,
+    "occurredAt": 1020,
+    "actor": { "kind": "system" },
+    "type": "ModelResponseCompleted",
+    "payload": { "text": "config is unreadable, outcome unknown", "toolCalls": [] }
+  },
+  {
+    "id": "fixture-event-21",
+    "sessionId": "session-loop-fixture",
+    "seq": 21,
+    "schemaVersion": 1,
+    "occurredAt": 1021,
+    "actor": { "kind": "user" },
+    "type": "TurnCompleted",
+    "payload": { "turnId": "turn-2" }
+  },
+  {
+    "id": "fixture-event-22",
+    "sessionId": "session-loop-fixture",
+    "seq": 22,
+    "schemaVersion": 1,
+    "occurredAt": 1022,
+    "actor": { "kind": "user" },
+    "type": "TurnStarted",
+    "payload": { "turnId": "turn-3", "input": "summarize" }
+  },
+  {
+    "id": "fixture-event-23",
+    "sessionId": "session-loop-fixture",
+    "seq": 23,
+    "schemaVersion": 1,
+    "occurredAt": 1023,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-24",
+    "sessionId": "session-loop-fixture",
+    "seq": 24,
+    "schemaVersion": 1,
+    "occurredAt": 1024,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestFailed",
+    "payload": {
+      "kind": "unknown",
+      "retryable": false,
+      "message": "process crashed before the model stream finished; response unknown"
+    }
+  },
+  {
+    "id": "fixture-event-25",
+    "sessionId": "session-loop-fixture",
+    "seq": 25,
+    "schemaVersion": 1,
+    "occurredAt": 1025,
+    "actor": { "kind": "system" },
+    "type": "ModelRequestStarted",
+    "payload": { "model": "fixture-model" }
+  },
+  {
+    "id": "fixture-event-26",
+    "sessionId": "session-loop-fixture",
+    "seq": 26,
+    "schemaVersion": 1,
+    "occurredAt": 1026,
+    "actor": { "kind": "system" },
+    "type": "ModelResponseCompleted",
+    "payload": { "text": "summary after recovery", "toolCalls": [] }
+  },
+  {
+    "id": "fixture-event-27",
+    "sessionId": "session-loop-fixture",
+    "seq": 27,
+    "schemaVersion": 1,
+    "occurredAt": 1027,
+    "actor": { "kind": "user" },
+    "type": "TurnCompleted",
+    "payload": { "turnId": "turn-3" }
+  },
+  {
+    "id": "fixture-event-28",
+    "sessionId": "session-loop-fixture",
+    "seq": 28,
+    "schemaVersion": 1,
+    "occurredAt": 1028,
+    "actor": { "kind": "user" },
+    "type": "SessionCompleted",
+    "payload": {}
+  }
+]

@@ -5,6 +5,19 @@ import { packageName as contractsPackageName } from "@praxis/contracts";
  * modules live under src/ and are reachable only through this entry.
  */
 
+export { projectConversation } from "./agent-loop/conversation";
+export type {
+  AgentLoopDeps,
+  RunTurnOptions,
+  TurnGuards,
+  TurnOutcome,
+} from "./agent-loop/run-turn";
+export {
+  DEFAULT_TURN_GUARDS,
+  InvalidTurnGuardsError,
+  runTurn,
+  validateTurnGuards,
+} from "./agent-loop/run-turn";
 export type { ContextBudget } from "./context/budget";
 export {
   DEFAULT_CONTEXT_BUDGET,

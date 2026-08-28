@@ -67,7 +67,12 @@ type SessionEventInit = EventInit<SessionEventUnion>;
 
 export async function executeToolCall(
   deps: ToolRuntimeDeps,
-  proposal: { readonly name: string; readonly argumentsJson: string },
+  proposal: {
+    readonly name: string;
+    readonly argumentsJson: string;
+    /** Optional correlation with the model tool call that caused this. */
+    readonly toolCallId?: string;
+  },
   options: {
     readonly signal: AbortSignal;
     readonly authorizer?: ToolAuthorizer;
@@ -113,6 +118,7 @@ export async function executeToolCall(
       name: proposal.name,
       argumentsJson: proposal.argumentsJson,
       effect,
+      ...(proposal.toolCallId === undefined ? {} : { toolCallId: proposal.toolCallId }),
     },
   });
 

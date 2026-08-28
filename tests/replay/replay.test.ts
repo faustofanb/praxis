@@ -18,9 +18,17 @@ import { sessionCreated, TEST_SESSION_ID } from "../helpers/session-events";
 const fixturePath = fileURLToPath(
   new URL("../fixtures/replay/session-lifecycle-v1.json", import.meta.url),
 );
+const loopFixturePath = fileURLToPath(
+  new URL("../fixtures/replay/agent-loop-recovery-v1.json", import.meta.url),
+);
 
 function loadFixture(): SessionEventUnion[] {
   const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
+  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+}
+
+function loadLoopFixture(): SessionEventUnion[] {
+  const raw: unknown = JSON.parse(readFileSync(loopFixturePath, "utf8"));
   return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
 }
 
@@ -38,6 +46,39 @@ describe("historical fixture replay", () => {
 
   test("folding the fixture twice yields identical states", () => {
     const events = loadFixture();
+    expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
+  });
+});
+
+describe("agent-loop recovery fixture replay", () => {
+  test("the crashed-and-recovered loop stream loads through the public schema", () => {
+    const events = loadLoopFixture();
+    expect(events).toHaveLength(28);
+    const state = foldSessionEvents(events);
+    expect(state.status).toBe("COMPLETED");
+    expect(state.headSeq).toBe(28);
+    expect(state.pendingModelRequest).toBeUndefined();
+    expect(state.currentTurnId).toBeUndefined();
+  });
+
+  test("the mid-stream crash checkpoint folds to a recoverable dangling state", () => {
+    const events = loadLoopFixture();
+    // seq 17: ToolStarted appended, process crashed before a terminal event.
+    const atCrash = foldSessionEvents(events.slice(0, 17));
+    expect(atCrash.currentTurnId?.valueOf()).toBe("turn-2");
+    const started = events[16];
+    if (started?.type !== "ToolStarted") {
+      throw new Error("fixture shape changed: seq 17 must be ToolStarted");
+    }
+    const dangling = atCrash.toolExecutions.get(started.payload.toolExecutionId);
+    expect(dangling?.status).toBe("EXECUTING");
+    // The pending model request checkpoint (seq 23) also stays recoverable.
+    const atRequestCrash = foldSessionEvents(events.slice(0, 23));
+    expect(atRequestCrash.pendingModelRequest).toEqual({ model: "fixture-model" });
+  });
+
+  test("folding the loop fixture twice yields identical states", () => {
+    const events = loadLoopFixture();
     expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
   });
 });
