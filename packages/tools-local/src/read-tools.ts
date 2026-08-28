@@ -1,7 +1,7 @@
-import { readdir, readFile, realpath, stat } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+import { readdir, readFile, stat } from "node:fs/promises";
 import type { ToolDefinition, ToolExecutionContext, ToolExecutionOutcome } from "@praxis/contracts";
 import { z } from "zod";
+import { resolveWithinRoot } from "./path-policy";
 
 /**
  * Local read-only tools (docs/03 M2.3). Every path is confined to the
@@ -52,18 +52,6 @@ export function truncateContent(
     content: `${kept}…[+${truncatedBytes} bytes truncated]`,
     truncatedBytes,
   };
-}
-
-async function resolveWithinRoot(root: string, relative: string): Promise<string> {
-  const resolved = resolve(root, relative);
-  if (resolved !== root && !resolved.startsWith(`${root}${sep}`)) {
-    throw new Error(`path escapes the workspace root: ${relative}`);
-  }
-  const [realRoot, realResolved] = await Promise.all([realpath(root), realpath(resolved)]);
-  if (realResolved !== realRoot && !realResolved.startsWith(`${realRoot}${sep}`)) {
-    throw new Error(`path escapes the workspace root via symlink: ${relative}`);
-  }
-  return realResolved;
 }
 
 function failed(message: string): ToolExecutionOutcome {
