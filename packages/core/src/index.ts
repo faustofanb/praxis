@@ -33,6 +33,17 @@ export {
   initialSessionState,
   reduceSession,
 } from "./state/reducer";
+export type {
+  ExecutedToolSummary,
+  ToolAuthorizationDecision,
+  ToolAuthorizer,
+  ToolRuntimeDeps,
+} from "./tools/tool-runtime";
+export {
+  executeToolCall,
+  projectSessionState,
+  readOnlyAuthorizer,
+} from "./tools/tool-runtime";
 
 export const packageName = "@praxis/core";
 export const workspaceDependencies = [contractsPackageName] as const;
