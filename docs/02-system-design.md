@@ -814,6 +814,16 @@ max total estimated tokens
 
 v1 先实现简单 deterministic projection；自动 semantic retrieval 后置。
 
+## 12.4 v1 实现（M4-T002）
+
+- `projectEpistemicBrief(state, budget)`：纯函数渲染器，从 `DerivedSessionState` 生成结构化 brief——同一状态与 budget 永远渲染同一字符串；不读时钟/随机/环境。
+- 分节优先级即 12.2 法则的落地顺序：goal + hard constraints → active plan（含 falsifiedIf 与 hypothesis 引用）→ open challenges → pending `INDETERMINATE` executions → latest verification（`inconclusive` 一等公民，原样呈现）→ active hypotheses（仅 proposed/supported；falsified/superseded 永不进入）→ observations（按 `maxActiveObservations` 截取最新 N 条，最旧先丢）。
+- 每行独立过 `maxFragmentBytes` 截断（带 `…[+N bytes truncated]` 标记），单条病态 claim 无法挤掉后面的分节；组合后的 system 片段仍受整体 fitText 与 token 上限约束，超限 fail closed（`ContextBudgetExceededError`）。
+- brief 组合进**单一** system 片段（systemPrompt + 空行 + brief），不新增第二条 system 消息；`buildContext` 的 no-system-in-history 法则不变。
+- 认识论切片为空且无 pending indeterminate 时返回 `undefined`，brief 整体省略——无认识论事实的会话构建出与 M4 之前逐字节相同的上下文。
+- `runTurn` 每步重新折叠流并重建 brief，turn 中途落地的认识论事实下一步即到达模型。
+- v1 无 mode 字段，故 12.2 中的 "current mode" 在 v1 无对应分节（有意省略，非遗漏）。
+
 ---
 
 # 13. Completion / Verification

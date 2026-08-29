@@ -247,13 +247,13 @@ user -> model -> read_file -> model -> final
 
 ### M4.2 Context Projection
 
-模型明确看到：
+模型明确看到（M4-T002，`projectEpistemicBrief` 结构化分节，详见 docs/02 §12.4）：
 
-- current goal/constraints；
-- active plan；
-- observations 与 hypotheses 分区；
-- open challenge；
-- pending indeterminate action。
+- [x] current goal/constraints；
+- [x] active plan；
+- [x] observations 与 hypotheses 分区（inactive hypothesis 不进入；observations 按 cap 取最新）；
+- [x] open challenge；
+- [x] pending indeterminate action。
 
 ### M4.3 Plan semantics
 
