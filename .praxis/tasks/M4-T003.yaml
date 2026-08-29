@@ -84,3 +84,7 @@ falsified_if: "The reducer starts auto-invalidating on HypothesisStatusChanged (
 requires_adr: false
 requires_human_acceptance: true
 notes: "Risk C per backlog: runtime behavior over settled contracts, no vocabulary growth. ADR-0012 reserved this exact decision for orchestration; this task delivers it. Deliberately deferred: challenge-driven legal-next-action changes and completion blocking (M4-T004), comparative real-model eval (M4-T005)."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-29 — \"核验通过继续\" reply to the acceptance-ready report, which explicitly surfaced the fact-vs-decision law preserved at the seq-20 checkpoint, the idempotent deterministic entry pass, and the zero-contract-change boundary)"
+  evidence: ".praxis/state.yaml last_verification (12 gates PASS) + handoff M4-T003-1787974965470.md"
