@@ -1,0 +1,97 @@
+schema_version: 1
+id: M5-T001
+title: implement context hard bounds and structured non-compactable state
+milestone: M5
+status: plan_ready
+risk_class: C
+objective: "Close the M5.1 'context hard bounds and structured non-compactable state' obligation (.praxis/milestones/M5.yaml; docs/03 section 8 M5.1). ContextBudget already caps maxRecentMessages/maxFragmentBytes/maxToolResultBytes/maxActiveObservations/maxEstimatedTokens (M2-T002) and the epistemic brief caps every line (M4-T002), but two hard-bound gaps remain. (1) Active hypotheses render unbounded: every proposed/supported hypothesis line enters the brief with no count cap, so N hypotheses produce N lines. (2) The composed system fragment (systemPrompt + brief) is bounded only by a single tail-truncating fitText in buildContext — count pressure from lower-priority sections can silently evict docs/02 section 12.2 non-compactable content (pending INDETERMINATE, latest verification, open challenges) from the tail, and overflow truncates silently instead of failing closed. Deliverables: a maxActiveHypotheses count cap (newest-N with honest omission marker, mirroring observations); a tiered brief-assembly law in projectEpistemicBrief — non-compactable tier (goal+constraints, active plan, open challenges, completion block, pending indeterminate, latest verification) is never evicted, compactable tier (hypotheses, observations) evicts whole sections with an omission count, and a non-compactable tier that alone cannot fit throws ContextBudgetExceededError; buildContext fails closed when a brief is present and the composed system fragment exceeds maxFragmentBytes (brief-less path stays byte-identical to v0). Adversarial unit/property/integration tests prove section-12.2 survival under count pressure."
+evidence: 
+  observed: 
+    - "packages/core/src/context/budget.ts: ContextBudget has five caps (maxRecentMessages=64, maxFragmentBytes=16KiB, maxToolResultBytes=8KiB, maxActiveObservations=8, maxEstimatedTokens=32KiB) — hypotheses have no count cap; docs/02 section 12.3 likewise lists no hypotheses cap"
+    - "packages/core/src/context/epistemic-brief.ts renders ALL proposed/supported hypotheses (no cap) while observations are capped at maxActiveObservations (line 164); every line passes fitLine so single pathological lines are bounded, but section COUNTS are not"
+    - "packages/core/src/context/builder.ts composes systemPrompt + brief into one fragment and passes it through tail-truncating fitText (line 174): a brief whose later sections sit past maxFragmentBytes loses them silently; no existing test pins brief-present composed overflow (tests/context-builder.test.ts only pins small-brief composition and brief-less byte identity)"
+    - "tests/property/context-builder.property.test.ts pins never-exceeds-caps, preserved-suffix, and determinism over a budget arbitrary enumerating exactly the five existing fields"
+  expected: 
+    - "ContextBudget gains maxActiveHypotheses (default 8), validated like maxActiveObservations (positive integer); DEFAULT_CONTEXT_BUDGET updated"
+    - "projectEpistemicBrief(state, budget) signature unchanged; assembly becomes tiered: non-compactable sections first (goal+constraints, active plan, open challenges, completion block, pending indeterminate, latest verification), then compactable (newest maxActiveHypotheses active hypotheses with an honest '+K older active hypotheses omitted' marker, newest maxActiveObservations observations); total brief bytes stay within maxFragmentBytes by evicting whole compactable sections with an omission count; a non-compactable tier that alone exceeds the cap throws ContextBudgetExceededError"
+    - "buildContext: when epistemicBrief is present and the composed system fragment exceeds maxFragmentBytes, throw ContextBudgetExceededError (silent tail truncation would eat non-compactable state); when absent, the v0 fitText behavior is unchanged and existing tests pass with only mechanical extensions (the property budget arbitrary and the context-builder tinyBudget literal gain the new field)"
+    - "adversarial tests: a hypothesis flood keeps every non-compactable section present with honest omission counts; runTurn integration (ScriptedModel) shows the flood still delivering goal + omission marker under the default budget, and a tiny budget whose non-compactable tier alone cannot fit failing closed before any ModelRequestStarted fact"
+    - "docs/02 section 12.3/12.4 record the hypotheses cap, the tiered assembly law, and fail-closed composition; docs/03 M5.1 ticks max fragments / max tool output / max history / structured non-compactable state (deterministic summarization stays for M5-T002); docs/subsystems/core.md context section updated"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M5.yaml
+    - packages/core/src/context/budget.ts
+    - packages/core/src/context/builder.ts
+    - packages/core/src/context/epistemic-brief.ts
+    - tests/context-epistemic.test.ts
+    - tests/property/context-builder.property.test.ts
+hypothesis: "Bounded context needs exactly one more count cap (active hypotheses) plus an assembly law that makes section 12.2 non-compactable state immune to count pressure: if the brief evicts only its compactable tier, reports omissions honestly, and fails closed beyond that, then adversarial sessions cannot silently hide a pending INDETERMINATE or a blocking challenge from the model — enforceable in a pure renderer with the existing signature, inherited by runTurn without edits, and provable with adversarial tests."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M5-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/src/context/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/src/state/**
+    - packages/core/src/agent-loop/**
+    - packages/core/src/capability/**
+    - packages/core/src/tools/**
+    - packages/core/src/index.ts
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "No contracts change and no ADR: ContextBudget is core-internal and no durable event changes; the law is recorded in docs/02 section 12 (ADR territory starts at durable-contract changes per docs/07 section 4)."
+    - "run-turn.ts and reducer are deliberately forbidden: projectEpistemicBrief(state, budget) keeps its signature so the loop inherits the law without edits; if implementation evidence contradicts this, amend the contract first."
+    - "The brief-less buildContext path must stay byte-identical to v0 (M4-T002 pin); only brief-present overflow changes, from silent truncation to fail-closed."
+    - "The property budget arbitrary gains maxActiveHypotheses — an extension, not a relaxation; all existing pinned properties (never-exceeds-caps, preserved-suffix, determinism) must still hold."
+    - "Amended during implementation: compactable sections evict as WHOLE sections (header + lines), not line-granular, so a section header can never dangle without content; later compactable sections are still evaluated after an earlier one fails (order stable, smaller sections may survive). Consequence recorded in docs/02 section 12.4: a line needing per-line truncation occupies ~cap bytes by itself, so it can never coexist with the fixed tier inside one fragment cap — the pre-M5 test 'caps a pathological observation line without evicting later sections' was rewritten to the new mechanism (whole-section eviction with an honest omission count, replacing truncated-into-view). Its invariant — pathological content cannot evict fixed sections — is preserved and strengthened; this is a mechanism change, not a weakening."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - integration
+  - property
+  - build
+acceptance: 
+  scenarios: 
+    - "hypothesis flood: a folded state with many more active hypotheses than maxActiveHypotheses renders a brief containing the newest maxActiveHypotheses, an honest omission count, and every non-compactable section (goal+constraints, active plan, open challenges, completion block, pending indeterminate, latest verification); total brief bytes stay within maxFragmentBytes"
+    - "runTurn integration (ScriptedModel): the flood under the default budget still delivers the system brief with the goal and omission marker to the model; a tiny budget whose non-compactable tier alone cannot fit fails closed with ContextBudgetExceededError before any ModelRequestStarted fact is appended"
+    - validateContextBudget rejects non-positive and non-integer maxActiveHypotheses; DEFAULT_CONTEXT_BUDGET.maxActiveHypotheses is 8
+    - brief-present composed system overflow throws ContextBudgetExceededError while the brief-less path keeps exact v0 truncation behavior (existing tests unmodified)
+  failure_cases: 
+    - "count pressure must not evict non-compactable sections: a brief that dropped '## Pending indeterminate action' or challenge lines to fit hypotheses/observations would silently hide governance state — rejected by adversarial tests"
+    - silently tail-truncating the composed system fragment when a brief is present could hide a completion-blocking challenge — now fail-closed; a regression to silent truncation must fail the new builder test
+    - "weakening existing pinned tests (property never-exceeds-caps / preserved-suffix / determinism, v0 byte identity, per-line cap) to make the change pass is forbidden"
+  artifacts: 
+    - packages/core/src/context/budget.ts
+    - packages/core/src/context/builder.ts
+    - packages/core/src/context/epistemic-brief.ts
+    - tests/context-builder.test.ts
+    - tests/context-epistemic.test.ts
+    - tests/property/context-builder.property.test.ts
+    - tests/integration/epistemic-context.integration.test.ts
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+falsified_if: "The tiered assembly cannot be implemented without touching run-turn, the reducer, or contracts; existing pinned tests must be weakened to pass; the brief cannot both bound its total bytes and retain every non-compactable section under adversarial counts; or the brief-less projection stops being byte-identical to v0."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog (core behavior over settled runtime; no contract change). Reaches ACCEPTANCE_READY; human sign-off required per ai-policy. Deferred to M5-T002: deterministic conversation summarization/compaction and the 1000-turn bounded-session proof. Deferred beyond v1: tool-result artifact/reference truncation markers, semantic retrieval."
