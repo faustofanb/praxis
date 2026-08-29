@@ -84,3 +84,7 @@ falsified_if: "The block needs a new event, schema change, policy object, or mod
 requires_adr: false
 requires_human_acceptance: true
 notes: "Risk C per backlog: reducer law + brief section over settled contracts, no vocabulary growth. Deliberately deferred: configurable CompletionPolicy (docs/02 section 13, post-v1), challenge appeal hierarchy (section 14 explicit non-goal), comparative real-model eval (M4-T005)."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-29 — \"核验通过继续\" reply to the acceptance-ready report, which explicitly surfaced the target-scoped completion-blocking law with any-outcome resolution, the brief's Completion blocked section, the 9-test pin of the raise→block→resolve→complete path, and the guard-blocking foreign draft which the user then directed to commit as b4c0d23)"
+  evidence: ".praxis/state.yaml last_verification (12 gates PASS) + handoff M4-T004-1787996426698.md"
