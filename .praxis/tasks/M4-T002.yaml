@@ -86,3 +86,7 @@ falsified_if: "The projection reads the clock, randomness, or the environment; r
 requires_adr: false
 requires_human_acceptance: true
 notes: "Risk C per backlog: core behavior composition over settled contracts. Human acceptance per the M3 rhythm (every task signed in-session). Deliberately deferred: falsifiable-plan orchestration (M4-T003), challenge-driven legal-next-action and completion blocking (M4-T004), semantic retrieval and conversation summarization (post-v1 per docs/02 section 12.3)."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-29 — \"继续\" reply to the acceptance-ready report, which explicitly surfaced the section-priority brief, per-line caps, byte-identical omission for pre-M4 sessions, and the re-fold-per-step runTurn wiring)"
+  evidence: ".praxis/state.yaml last_verification (12 gates PASS) + handoff M4-T002-1787974129560.md"
