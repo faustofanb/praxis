@@ -13,7 +13,12 @@ import { EventIdSchema, SessionIdSchema } from "./ids";
 
 export const EVENT_SCHEMA_VERSION = 1;
 
-const envelopeBase = z.object({
+/**
+ * Bare envelope fields shared by every session event. Exported so the
+ * versioned replay seam (`./replay`) can validate envelope identity —
+ * including the schemaVersion window — before payload parsing.
+ */
+export const EventEnvelopeBaseSchema = z.object({
   id: EventIdSchema,
   sessionId: SessionIdSchema,
   seq: z.number().int().positive(),
@@ -25,7 +30,7 @@ const envelopeBase = z.object({
 });
 
 /** Bare envelope fields shared by every session event. */
-export type EventEnvelopeBase = z.infer<typeof envelopeBase>;
+export type EventEnvelopeBase = z.infer<typeof EventEnvelopeBaseSchema>;
 
 /**
  * Generic event shape for consumers that already know the payload type.
@@ -48,7 +53,7 @@ export function sessionEventSchema<TType extends string, TPayloadSchema extends 
   type: TType,
   payloadSchema: TPayloadSchema,
 ) {
-  return envelopeBase.extend({
+  return EventEnvelopeBaseSchema.extend({
     type: z.literal(type),
     payload: payloadSchema,
   });

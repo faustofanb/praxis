@@ -1,0 +1,7590 @@
+[
+  {
+    "id": "event-1",
+    "sessionId": "session-test",
+    "seq": 1,
+    "schemaVersion": 1,
+    "occurredAt": 1,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "SessionCreated",
+    "payload": {
+      "reason": "regression collection"
+    }
+  },
+  {
+    "id": "event-2",
+    "sessionId": "session-test",
+    "seq": 2,
+    "schemaVersion": 1,
+    "occurredAt": 2,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "GoalSet",
+    "payload": {
+      "goal": "restore the quarterly ledger",
+      "constraints": [
+        {
+          "description": "never write without a matching invoice"
+        },
+        {
+          "description": "keep every tool effect reconciled"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-3",
+    "sessionId": "session-test",
+    "seq": 3,
+    "schemaVersion": 1,
+    "occurredAt": 3,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-1",
+      "input": "step 1 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-4",
+    "sessionId": "session-test",
+    "seq": 4,
+    "schemaVersion": 1,
+    "occurredAt": 4,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-5",
+    "sessionId": "session-test",
+    "seq": 5,
+    "schemaVersion": 1,
+    "occurredAt": 5,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-1",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-1.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-6",
+    "sessionId": "session-test",
+    "seq": 6,
+    "schemaVersion": 1,
+    "occurredAt": 6,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-1.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-1"
+    }
+  },
+  {
+    "id": "event-7",
+    "sessionId": "session-test",
+    "seq": 7,
+    "schemaVersion": 1,
+    "occurredAt": 7,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "event-8",
+    "sessionId": "session-test",
+    "seq": 8,
+    "schemaVersion": 1,
+    "occurredAt": 8,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-1"
+    }
+  },
+  {
+    "id": "event-9",
+    "sessionId": "session-test",
+    "seq": 9,
+    "schemaVersion": 1,
+    "occurredAt": 9,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-1",
+      "resultJson": "{\"content\":\"entry-1 ok\"}"
+    }
+  },
+  {
+    "id": "event-10",
+    "sessionId": "session-test",
+    "seq": 10,
+    "schemaVersion": 1,
+    "occurredAt": 10,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-11",
+    "sessionId": "session-test",
+    "seq": 11,
+    "schemaVersion": 1,
+    "occurredAt": 11,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 1 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-12",
+    "sessionId": "session-test",
+    "seq": 12,
+    "schemaVersion": 1,
+    "occurredAt": 12,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-1"
+    }
+  },
+  {
+    "id": "event-13",
+    "sessionId": "session-test",
+    "seq": 13,
+    "schemaVersion": 1,
+    "occurredAt": 13,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-2",
+      "input": "step 2 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-14",
+    "sessionId": "session-test",
+    "seq": 14,
+    "schemaVersion": 1,
+    "occurredAt": 14,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-15",
+    "sessionId": "session-test",
+    "seq": 15,
+    "schemaVersion": 1,
+    "occurredAt": 15,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-2",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-2.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-16",
+    "sessionId": "session-test",
+    "seq": 16,
+    "schemaVersion": 1,
+    "occurredAt": 16,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-2.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-2"
+    }
+  },
+  {
+    "id": "event-17",
+    "sessionId": "session-test",
+    "seq": 17,
+    "schemaVersion": 1,
+    "occurredAt": 17,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-2"
+    }
+  },
+  {
+    "id": "event-18",
+    "sessionId": "session-test",
+    "seq": 18,
+    "schemaVersion": 1,
+    "occurredAt": 18,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-2"
+    }
+  },
+  {
+    "id": "event-19",
+    "sessionId": "session-test",
+    "seq": 19,
+    "schemaVersion": 1,
+    "occurredAt": 19,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-2",
+      "resultJson": "{\"content\":\"entry-2 ok\"}"
+    }
+  },
+  {
+    "id": "event-20",
+    "sessionId": "session-test",
+    "seq": 20,
+    "schemaVersion": 1,
+    "occurredAt": 20,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-21",
+    "sessionId": "session-test",
+    "seq": 21,
+    "schemaVersion": 1,
+    "occurredAt": 21,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 2 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-22",
+    "sessionId": "session-test",
+    "seq": 22,
+    "schemaVersion": 1,
+    "occurredAt": 22,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-2"
+    }
+  },
+  {
+    "id": "event-23",
+    "sessionId": "session-test",
+    "seq": 23,
+    "schemaVersion": 1,
+    "occurredAt": 23,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-3",
+      "input": "step 3 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-24",
+    "sessionId": "session-test",
+    "seq": 24,
+    "schemaVersion": 1,
+    "occurredAt": 24,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-25",
+    "sessionId": "session-test",
+    "seq": 25,
+    "schemaVersion": 1,
+    "occurredAt": 25,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-3",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-3.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-26",
+    "sessionId": "session-test",
+    "seq": 26,
+    "schemaVersion": 1,
+    "occurredAt": 26,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-3",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-3.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-3"
+    }
+  },
+  {
+    "id": "event-27",
+    "sessionId": "session-test",
+    "seq": 27,
+    "schemaVersion": 1,
+    "occurredAt": 27,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-3"
+    }
+  },
+  {
+    "id": "event-28",
+    "sessionId": "session-test",
+    "seq": 28,
+    "schemaVersion": 1,
+    "occurredAt": 28,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-3"
+    }
+  },
+  {
+    "id": "event-29",
+    "sessionId": "session-test",
+    "seq": 29,
+    "schemaVersion": 1,
+    "occurredAt": 29,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-3",
+      "resultJson": "{\"content\":\"entry-3 ok\"}"
+    }
+  },
+  {
+    "id": "event-30",
+    "sessionId": "session-test",
+    "seq": 30,
+    "schemaVersion": 1,
+    "occurredAt": 30,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-31",
+    "sessionId": "session-test",
+    "seq": 31,
+    "schemaVersion": 1,
+    "occurredAt": 31,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 3 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-32",
+    "sessionId": "session-test",
+    "seq": 32,
+    "schemaVersion": 1,
+    "occurredAt": 32,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-3"
+    }
+  },
+  {
+    "id": "event-33",
+    "sessionId": "session-test",
+    "seq": 33,
+    "schemaVersion": 1,
+    "occurredAt": 33,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-1",
+      "statement": "entry 3 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-34",
+    "sessionId": "session-test",
+    "seq": 34,
+    "schemaVersion": 1,
+    "occurredAt": 34,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-4",
+      "input": "step 4 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-35",
+    "sessionId": "session-test",
+    "seq": 35,
+    "schemaVersion": 1,
+    "occurredAt": 35,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-36",
+    "sessionId": "session-test",
+    "seq": 36,
+    "schemaVersion": 1,
+    "occurredAt": 36,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-4",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-4.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-37",
+    "sessionId": "session-test",
+    "seq": 37,
+    "schemaVersion": 1,
+    "occurredAt": 37,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-4",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-4.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-4"
+    }
+  },
+  {
+    "id": "event-38",
+    "sessionId": "session-test",
+    "seq": 38,
+    "schemaVersion": 1,
+    "occurredAt": 38,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-4"
+    }
+  },
+  {
+    "id": "event-39",
+    "sessionId": "session-test",
+    "seq": 39,
+    "schemaVersion": 1,
+    "occurredAt": 39,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-4"
+    }
+  },
+  {
+    "id": "event-40",
+    "sessionId": "session-test",
+    "seq": 40,
+    "schemaVersion": 1,
+    "occurredAt": 40,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-4",
+      "resultJson": "{\"content\":\"entry-4 ok\"}"
+    }
+  },
+  {
+    "id": "event-41",
+    "sessionId": "session-test",
+    "seq": 41,
+    "schemaVersion": 1,
+    "occurredAt": 41,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-42",
+    "sessionId": "session-test",
+    "seq": 42,
+    "schemaVersion": 1,
+    "occurredAt": 42,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 4 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-43",
+    "sessionId": "session-test",
+    "seq": 43,
+    "schemaVersion": 1,
+    "occurredAt": 43,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-4"
+    }
+  },
+  {
+    "id": "event-44",
+    "sessionId": "session-test",
+    "seq": 44,
+    "schemaVersion": 1,
+    "occurredAt": 44,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-1",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 4 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-45",
+    "sessionId": "session-test",
+    "seq": 45,
+    "schemaVersion": 1,
+    "occurredAt": 45,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-5",
+      "input": "step 5 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-46",
+    "sessionId": "session-test",
+    "seq": 46,
+    "schemaVersion": 1,
+    "occurredAt": 46,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-47",
+    "sessionId": "session-test",
+    "seq": 47,
+    "schemaVersion": 1,
+    "occurredAt": 47,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-5",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-5.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-48",
+    "sessionId": "session-test",
+    "seq": 48,
+    "schemaVersion": 1,
+    "occurredAt": 48,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-5",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-5.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-5"
+    }
+  },
+  {
+    "id": "event-49",
+    "sessionId": "session-test",
+    "seq": 49,
+    "schemaVersion": 1,
+    "occurredAt": 49,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-5"
+    }
+  },
+  {
+    "id": "event-50",
+    "sessionId": "session-test",
+    "seq": 50,
+    "schemaVersion": 1,
+    "occurredAt": 50,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-5"
+    }
+  },
+  {
+    "id": "event-51",
+    "sessionId": "session-test",
+    "seq": 51,
+    "schemaVersion": 1,
+    "occurredAt": 51,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-5",
+      "reason": "process died mid-read"
+    }
+  },
+  {
+    "id": "event-52",
+    "sessionId": "session-test",
+    "seq": 52,
+    "schemaVersion": 1,
+    "occurredAt": 52,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-5",
+      "outcome": "succeeded",
+      "resultJson": "{\"content\":\"entry-5 recovered\"}"
+    }
+  },
+  {
+    "id": "event-53",
+    "sessionId": "session-test",
+    "seq": 53,
+    "schemaVersion": 1,
+    "occurredAt": 53,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-54",
+    "sessionId": "session-test",
+    "seq": 54,
+    "schemaVersion": 1,
+    "occurredAt": 54,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 5 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-55",
+    "sessionId": "session-test",
+    "seq": 55,
+    "schemaVersion": 1,
+    "occurredAt": 55,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-5"
+    }
+  },
+  {
+    "id": "event-56",
+    "sessionId": "session-test",
+    "seq": 56,
+    "schemaVersion": 1,
+    "occurredAt": 56,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-6",
+      "input": "step 6 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-57",
+    "sessionId": "session-test",
+    "seq": 57,
+    "schemaVersion": 1,
+    "occurredAt": 57,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-58",
+    "sessionId": "session-test",
+    "seq": 58,
+    "schemaVersion": 1,
+    "occurredAt": 58,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-6",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-6.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-59",
+    "sessionId": "session-test",
+    "seq": 59,
+    "schemaVersion": 1,
+    "occurredAt": 59,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-6",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-6.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-6"
+    }
+  },
+  {
+    "id": "event-60",
+    "sessionId": "session-test",
+    "seq": 60,
+    "schemaVersion": 1,
+    "occurredAt": 60,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-6"
+    }
+  },
+  {
+    "id": "event-61",
+    "sessionId": "session-test",
+    "seq": 61,
+    "schemaVersion": 1,
+    "occurredAt": 61,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-6"
+    }
+  },
+  {
+    "id": "event-62",
+    "sessionId": "session-test",
+    "seq": 62,
+    "schemaVersion": 1,
+    "occurredAt": 62,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-6",
+      "resultJson": "{\"content\":\"entry-6 ok\"}"
+    }
+  },
+  {
+    "id": "event-63",
+    "sessionId": "session-test",
+    "seq": 63,
+    "schemaVersion": 1,
+    "occurredAt": 63,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-64",
+    "sessionId": "session-test",
+    "seq": 64,
+    "schemaVersion": 1,
+    "occurredAt": 64,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 6 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-65",
+    "sessionId": "session-test",
+    "seq": 65,
+    "schemaVersion": 1,
+    "occurredAt": 65,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-6"
+    }
+  },
+  {
+    "id": "event-66",
+    "sessionId": "session-test",
+    "seq": 66,
+    "schemaVersion": 1,
+    "occurredAt": 66,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-7",
+      "input": "step 7 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-67",
+    "sessionId": "session-test",
+    "seq": 67,
+    "schemaVersion": 1,
+    "occurredAt": 67,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-68",
+    "sessionId": "session-test",
+    "seq": 68,
+    "schemaVersion": 1,
+    "occurredAt": 68,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 7 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-69",
+    "sessionId": "session-test",
+    "seq": 69,
+    "schemaVersion": 1,
+    "occurredAt": 69,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-7"
+    }
+  },
+  {
+    "id": "event-70",
+    "sessionId": "session-test",
+    "seq": 70,
+    "schemaVersion": 1,
+    "occurredAt": 70,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-8",
+      "input": "step 8 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-71",
+    "sessionId": "session-test",
+    "seq": 71,
+    "schemaVersion": 1,
+    "occurredAt": 71,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-72",
+    "sessionId": "session-test",
+    "seq": 72,
+    "schemaVersion": 1,
+    "occurredAt": 72,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-7",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-8.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-73",
+    "sessionId": "session-test",
+    "seq": 73,
+    "schemaVersion": 1,
+    "occurredAt": 73,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-7",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-8.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-7"
+    }
+  },
+  {
+    "id": "event-74",
+    "sessionId": "session-test",
+    "seq": 74,
+    "schemaVersion": 1,
+    "occurredAt": 74,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-7"
+    }
+  },
+  {
+    "id": "event-75",
+    "sessionId": "session-test",
+    "seq": 75,
+    "schemaVersion": 1,
+    "occurredAt": 75,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-7"
+    }
+  },
+  {
+    "id": "event-76",
+    "sessionId": "session-test",
+    "seq": 76,
+    "schemaVersion": 1,
+    "occurredAt": 76,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-7",
+      "resultJson": "{\"content\":\"entry-8 ok\"}"
+    }
+  },
+  {
+    "id": "event-77",
+    "sessionId": "session-test",
+    "seq": 77,
+    "schemaVersion": 1,
+    "occurredAt": 77,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-78",
+    "sessionId": "session-test",
+    "seq": 78,
+    "schemaVersion": 1,
+    "occurredAt": 78,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 8 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-79",
+    "sessionId": "session-test",
+    "seq": 79,
+    "schemaVersion": 1,
+    "occurredAt": 79,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-8"
+    }
+  },
+  {
+    "id": "event-80",
+    "sessionId": "session-test",
+    "seq": 80,
+    "schemaVersion": 1,
+    "occurredAt": 80,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-2",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 8 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-81",
+    "sessionId": "session-test",
+    "seq": 81,
+    "schemaVersion": 1,
+    "occurredAt": 81,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-9",
+      "input": "step 9 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-82",
+    "sessionId": "session-test",
+    "seq": 82,
+    "schemaVersion": 1,
+    "occurredAt": 82,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-83",
+    "sessionId": "session-test",
+    "seq": 83,
+    "schemaVersion": 1,
+    "occurredAt": 83,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-8",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-9.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-84",
+    "sessionId": "session-test",
+    "seq": 84,
+    "schemaVersion": 1,
+    "occurredAt": 84,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-8",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-9.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-8"
+    }
+  },
+  {
+    "id": "event-85",
+    "sessionId": "session-test",
+    "seq": 85,
+    "schemaVersion": 1,
+    "occurredAt": 85,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-8"
+    }
+  },
+  {
+    "id": "event-86",
+    "sessionId": "session-test",
+    "seq": 86,
+    "schemaVersion": 1,
+    "occurredAt": 86,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-8"
+    }
+  },
+  {
+    "id": "event-87",
+    "sessionId": "session-test",
+    "seq": 87,
+    "schemaVersion": 1,
+    "occurredAt": 87,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-8",
+      "resultJson": "{\"content\":\"entry-9 ok\"}"
+    }
+  },
+  {
+    "id": "event-88",
+    "sessionId": "session-test",
+    "seq": 88,
+    "schemaVersion": 1,
+    "occurredAt": 88,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-89",
+    "sessionId": "session-test",
+    "seq": 89,
+    "schemaVersion": 1,
+    "occurredAt": 89,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 9 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-90",
+    "sessionId": "session-test",
+    "seq": 90,
+    "schemaVersion": 1,
+    "occurredAt": 90,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-9"
+    }
+  },
+  {
+    "id": "event-91",
+    "sessionId": "session-test",
+    "seq": 91,
+    "schemaVersion": 1,
+    "occurredAt": 91,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-1",
+      "goalRef": "answer the user question",
+      "nextAction": "replay importer for entry 9"
+    }
+  },
+  {
+    "id": "event-92",
+    "sessionId": "session-test",
+    "seq": 92,
+    "schemaVersion": 1,
+    "occurredAt": 92,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-10",
+      "input": "step 10 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-93",
+    "sessionId": "session-test",
+    "seq": 93,
+    "schemaVersion": 1,
+    "occurredAt": 93,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-94",
+    "sessionId": "session-test",
+    "seq": 94,
+    "schemaVersion": 1,
+    "occurredAt": 94,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-9",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-10.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-95",
+    "sessionId": "session-test",
+    "seq": 95,
+    "schemaVersion": 1,
+    "occurredAt": 95,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-9",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-10.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-9"
+    }
+  },
+  {
+    "id": "event-96",
+    "sessionId": "session-test",
+    "seq": 96,
+    "schemaVersion": 1,
+    "occurredAt": 96,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-9"
+    }
+  },
+  {
+    "id": "event-97",
+    "sessionId": "session-test",
+    "seq": 97,
+    "schemaVersion": 1,
+    "occurredAt": 97,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-9"
+    }
+  },
+  {
+    "id": "event-98",
+    "sessionId": "session-test",
+    "seq": 98,
+    "schemaVersion": 1,
+    "occurredAt": 98,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolFailed",
+    "payload": {
+      "toolExecutionId": "tool-exec-9",
+      "message": "entry 10 unreadable"
+    }
+  },
+  {
+    "id": "event-99",
+    "sessionId": "session-test",
+    "seq": 99,
+    "schemaVersion": 1,
+    "occurredAt": 99,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-100",
+    "sessionId": "session-test",
+    "seq": 100,
+    "schemaVersion": 1,
+    "occurredAt": 100,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 10 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-101",
+    "sessionId": "session-test",
+    "seq": 101,
+    "schemaVersion": 1,
+    "occurredAt": 101,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-10"
+    }
+  },
+  {
+    "id": "event-102",
+    "sessionId": "session-test",
+    "seq": 102,
+    "schemaVersion": 1,
+    "occurredAt": 102,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-2",
+      "statement": "entry 10 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-103",
+    "sessionId": "session-test",
+    "seq": 103,
+    "schemaVersion": 1,
+    "occurredAt": 103,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-11",
+      "input": "step 11 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-104",
+    "sessionId": "session-test",
+    "seq": 104,
+    "schemaVersion": 1,
+    "occurredAt": 104,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-105",
+    "sessionId": "session-test",
+    "seq": 105,
+    "schemaVersion": 1,
+    "occurredAt": 105,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-10",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-11.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-106",
+    "sessionId": "session-test",
+    "seq": 106,
+    "schemaVersion": 1,
+    "occurredAt": 106,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-10",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-11.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-10"
+    }
+  },
+  {
+    "id": "event-107",
+    "sessionId": "session-test",
+    "seq": 107,
+    "schemaVersion": 1,
+    "occurredAt": 107,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-10"
+    }
+  },
+  {
+    "id": "event-108",
+    "sessionId": "session-test",
+    "seq": 108,
+    "schemaVersion": 1,
+    "occurredAt": 108,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-10"
+    }
+  },
+  {
+    "id": "event-109",
+    "sessionId": "session-test",
+    "seq": 109,
+    "schemaVersion": 1,
+    "occurredAt": 109,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-10",
+      "resultJson": "{\"content\":\"entry-11 ok\"}"
+    }
+  },
+  {
+    "id": "event-110",
+    "sessionId": "session-test",
+    "seq": 110,
+    "schemaVersion": 1,
+    "occurredAt": 110,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-111",
+    "sessionId": "session-test",
+    "seq": 111,
+    "schemaVersion": 1,
+    "occurredAt": 111,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 11 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-112",
+    "sessionId": "session-test",
+    "seq": 112,
+    "schemaVersion": 1,
+    "occurredAt": 112,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-11"
+    }
+  },
+  {
+    "id": "event-113",
+    "sessionId": "session-test",
+    "seq": 113,
+    "schemaVersion": 1,
+    "occurredAt": 113,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-12",
+      "input": "step 12 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-114",
+    "sessionId": "session-test",
+    "seq": 114,
+    "schemaVersion": 1,
+    "occurredAt": 114,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-115",
+    "sessionId": "session-test",
+    "seq": 115,
+    "schemaVersion": 1,
+    "occurredAt": 115,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-11",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-12.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-116",
+    "sessionId": "session-test",
+    "seq": 116,
+    "schemaVersion": 1,
+    "occurredAt": 116,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-11",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-12.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-11"
+    }
+  },
+  {
+    "id": "event-117",
+    "sessionId": "session-test",
+    "seq": 117,
+    "schemaVersion": 1,
+    "occurredAt": 117,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-11"
+    }
+  },
+  {
+    "id": "event-118",
+    "sessionId": "session-test",
+    "seq": 118,
+    "schemaVersion": 1,
+    "occurredAt": 118,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-11"
+    }
+  },
+  {
+    "id": "event-119",
+    "sessionId": "session-test",
+    "seq": 119,
+    "schemaVersion": 1,
+    "occurredAt": 119,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-11",
+      "resultJson": "{\"content\":\"entry-12 ok\"}"
+    }
+  },
+  {
+    "id": "event-120",
+    "sessionId": "session-test",
+    "seq": 120,
+    "schemaVersion": 1,
+    "occurredAt": 120,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-121",
+    "sessionId": "session-test",
+    "seq": 121,
+    "schemaVersion": 1,
+    "occurredAt": 121,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 12 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-122",
+    "sessionId": "session-test",
+    "seq": 122,
+    "schemaVersion": 1,
+    "occurredAt": 122,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-12"
+    }
+  },
+  {
+    "id": "event-123",
+    "sessionId": "session-test",
+    "seq": 123,
+    "schemaVersion": 1,
+    "occurredAt": 123,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-3",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 12 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-124",
+    "sessionId": "session-test",
+    "seq": 124,
+    "schemaVersion": 1,
+    "occurredAt": 124,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-13",
+      "input": "step 13 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-125",
+    "sessionId": "session-test",
+    "seq": 125,
+    "schemaVersion": 1,
+    "occurredAt": 125,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-126",
+    "sessionId": "session-test",
+    "seq": 126,
+    "schemaVersion": 1,
+    "occurredAt": 126,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-12",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-13.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-127",
+    "sessionId": "session-test",
+    "seq": 127,
+    "schemaVersion": 1,
+    "occurredAt": 127,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-12",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-13.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-12"
+    }
+  },
+  {
+    "id": "event-128",
+    "sessionId": "session-test",
+    "seq": 128,
+    "schemaVersion": 1,
+    "occurredAt": 128,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-12"
+    }
+  },
+  {
+    "id": "event-129",
+    "sessionId": "session-test",
+    "seq": 129,
+    "schemaVersion": 1,
+    "occurredAt": 129,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-12"
+    }
+  },
+  {
+    "id": "event-130",
+    "sessionId": "session-test",
+    "seq": 130,
+    "schemaVersion": 1,
+    "occurredAt": 130,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-12",
+      "resultJson": "{\"content\":\"entry-13 ok\"}"
+    }
+  },
+  {
+    "id": "event-131",
+    "sessionId": "session-test",
+    "seq": 131,
+    "schemaVersion": 1,
+    "occurredAt": 131,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-132",
+    "sessionId": "session-test",
+    "seq": 132,
+    "schemaVersion": 1,
+    "occurredAt": 132,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 13 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-133",
+    "sessionId": "session-test",
+    "seq": 133,
+    "schemaVersion": 1,
+    "occurredAt": 133,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-13"
+    }
+  },
+  {
+    "id": "event-134",
+    "sessionId": "session-test",
+    "seq": 134,
+    "schemaVersion": 1,
+    "occurredAt": 134,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-14",
+      "input": "step 14 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-135",
+    "sessionId": "session-test",
+    "seq": 135,
+    "schemaVersion": 1,
+    "occurredAt": 135,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-136",
+    "sessionId": "session-test",
+    "seq": 136,
+    "schemaVersion": 1,
+    "occurredAt": 136,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 14 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-137",
+    "sessionId": "session-test",
+    "seq": 137,
+    "schemaVersion": 1,
+    "occurredAt": 137,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-14"
+    }
+  },
+  {
+    "id": "event-138",
+    "sessionId": "session-test",
+    "seq": 138,
+    "schemaVersion": 1,
+    "occurredAt": 138,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-15",
+      "input": "step 15 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-139",
+    "sessionId": "session-test",
+    "seq": 139,
+    "schemaVersion": 1,
+    "occurredAt": 139,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-140",
+    "sessionId": "session-test",
+    "seq": 140,
+    "schemaVersion": 1,
+    "occurredAt": 140,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-13",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-15.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-141",
+    "sessionId": "session-test",
+    "seq": 141,
+    "schemaVersion": 1,
+    "occurredAt": 141,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-13",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-15.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-13"
+    }
+  },
+  {
+    "id": "event-142",
+    "sessionId": "session-test",
+    "seq": 142,
+    "schemaVersion": 1,
+    "occurredAt": 142,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-13"
+    }
+  },
+  {
+    "id": "event-143",
+    "sessionId": "session-test",
+    "seq": 143,
+    "schemaVersion": 1,
+    "occurredAt": 143,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-13"
+    }
+  },
+  {
+    "id": "event-144",
+    "sessionId": "session-test",
+    "seq": 144,
+    "schemaVersion": 1,
+    "occurredAt": 144,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-13",
+      "reason": "process died mid-read"
+    }
+  },
+  {
+    "id": "event-145",
+    "sessionId": "session-test",
+    "seq": 145,
+    "schemaVersion": 1,
+    "occurredAt": 145,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-13",
+      "outcome": "succeeded",
+      "resultJson": "{\"content\":\"entry-15 recovered\"}"
+    }
+  },
+  {
+    "id": "event-146",
+    "sessionId": "session-test",
+    "seq": 146,
+    "schemaVersion": 1,
+    "occurredAt": 146,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-147",
+    "sessionId": "session-test",
+    "seq": 147,
+    "schemaVersion": 1,
+    "occurredAt": 147,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 15 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-148",
+    "sessionId": "session-test",
+    "seq": 148,
+    "schemaVersion": 1,
+    "occurredAt": 148,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-15"
+    }
+  },
+  {
+    "id": "event-149",
+    "sessionId": "session-test",
+    "seq": 149,
+    "schemaVersion": 1,
+    "occurredAt": 149,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-16",
+      "input": "step 16 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-150",
+    "sessionId": "session-test",
+    "seq": 150,
+    "schemaVersion": 1,
+    "occurredAt": 150,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-151",
+    "sessionId": "session-test",
+    "seq": 151,
+    "schemaVersion": 1,
+    "occurredAt": 151,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-14",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-16.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-152",
+    "sessionId": "session-test",
+    "seq": 152,
+    "schemaVersion": 1,
+    "occurredAt": 152,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-14",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-16.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-14"
+    }
+  },
+  {
+    "id": "event-153",
+    "sessionId": "session-test",
+    "seq": 153,
+    "schemaVersion": 1,
+    "occurredAt": 153,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-14"
+    }
+  },
+  {
+    "id": "event-154",
+    "sessionId": "session-test",
+    "seq": 154,
+    "schemaVersion": 1,
+    "occurredAt": 154,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-14"
+    }
+  },
+  {
+    "id": "event-155",
+    "sessionId": "session-test",
+    "seq": 155,
+    "schemaVersion": 1,
+    "occurredAt": 155,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-14",
+      "resultJson": "{\"content\":\"entry-16 ok\"}"
+    }
+  },
+  {
+    "id": "event-156",
+    "sessionId": "session-test",
+    "seq": 156,
+    "schemaVersion": 1,
+    "occurredAt": 156,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-157",
+    "sessionId": "session-test",
+    "seq": 157,
+    "schemaVersion": 1,
+    "occurredAt": 157,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 16 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-158",
+    "sessionId": "session-test",
+    "seq": 158,
+    "schemaVersion": 1,
+    "occurredAt": 158,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-16"
+    }
+  },
+  {
+    "id": "event-159",
+    "sessionId": "session-test",
+    "seq": 159,
+    "schemaVersion": 1,
+    "occurredAt": 159,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-4",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 16 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-160",
+    "sessionId": "session-test",
+    "seq": 160,
+    "schemaVersion": 1,
+    "occurredAt": 160,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-17",
+      "input": "step 17 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-161",
+    "sessionId": "session-test",
+    "seq": 161,
+    "schemaVersion": 1,
+    "occurredAt": 161,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-162",
+    "sessionId": "session-test",
+    "seq": 162,
+    "schemaVersion": 1,
+    "occurredAt": 162,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-15",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-17.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-163",
+    "sessionId": "session-test",
+    "seq": 163,
+    "schemaVersion": 1,
+    "occurredAt": 163,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-15",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-17.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-15"
+    }
+  },
+  {
+    "id": "event-164",
+    "sessionId": "session-test",
+    "seq": 164,
+    "schemaVersion": 1,
+    "occurredAt": 164,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-15"
+    }
+  },
+  {
+    "id": "event-165",
+    "sessionId": "session-test",
+    "seq": 165,
+    "schemaVersion": 1,
+    "occurredAt": 165,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-15"
+    }
+  },
+  {
+    "id": "event-166",
+    "sessionId": "session-test",
+    "seq": 166,
+    "schemaVersion": 1,
+    "occurredAt": 166,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-15",
+      "resultJson": "{\"content\":\"entry-17 ok\"}"
+    }
+  },
+  {
+    "id": "event-167",
+    "sessionId": "session-test",
+    "seq": 167,
+    "schemaVersion": 1,
+    "occurredAt": 167,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-168",
+    "sessionId": "session-test",
+    "seq": 168,
+    "schemaVersion": 1,
+    "occurredAt": 168,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 17 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-169",
+    "sessionId": "session-test",
+    "seq": 169,
+    "schemaVersion": 1,
+    "occurredAt": 169,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-17"
+    }
+  },
+  {
+    "id": "event-170",
+    "sessionId": "session-test",
+    "seq": 170,
+    "schemaVersion": 1,
+    "occurredAt": 170,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-3",
+      "statement": "entry 17 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-171",
+    "sessionId": "session-test",
+    "seq": 171,
+    "schemaVersion": 1,
+    "occurredAt": 171,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-18",
+      "input": "step 18 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-172",
+    "sessionId": "session-test",
+    "seq": 172,
+    "schemaVersion": 1,
+    "occurredAt": 172,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-173",
+    "sessionId": "session-test",
+    "seq": 173,
+    "schemaVersion": 1,
+    "occurredAt": 173,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-16",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-18.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-174",
+    "sessionId": "session-test",
+    "seq": 174,
+    "schemaVersion": 1,
+    "occurredAt": 174,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-16",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-18.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-16"
+    }
+  },
+  {
+    "id": "event-175",
+    "sessionId": "session-test",
+    "seq": 175,
+    "schemaVersion": 1,
+    "occurredAt": 175,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-16"
+    }
+  },
+  {
+    "id": "event-176",
+    "sessionId": "session-test",
+    "seq": 176,
+    "schemaVersion": 1,
+    "occurredAt": 176,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-16"
+    }
+  },
+  {
+    "id": "event-177",
+    "sessionId": "session-test",
+    "seq": 177,
+    "schemaVersion": 1,
+    "occurredAt": 177,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-16",
+      "resultJson": "{\"content\":\"entry-18 ok\"}"
+    }
+  },
+  {
+    "id": "event-178",
+    "sessionId": "session-test",
+    "seq": 178,
+    "schemaVersion": 1,
+    "occurredAt": 178,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-179",
+    "sessionId": "session-test",
+    "seq": 179,
+    "schemaVersion": 1,
+    "occurredAt": 179,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 18 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-180",
+    "sessionId": "session-test",
+    "seq": 180,
+    "schemaVersion": 1,
+    "occurredAt": 180,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-18"
+    }
+  },
+  {
+    "id": "event-181",
+    "sessionId": "session-test",
+    "seq": 181,
+    "schemaVersion": 1,
+    "occurredAt": 181,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-2",
+      "goalRef": "answer the user question",
+      "nextAction": "replay importer for entry 18"
+    }
+  },
+  {
+    "id": "event-182",
+    "sessionId": "session-test",
+    "seq": 182,
+    "schemaVersion": 1,
+    "occurredAt": 182,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-19",
+      "input": "step 19 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-183",
+    "sessionId": "session-test",
+    "seq": 183,
+    "schemaVersion": 1,
+    "occurredAt": 183,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-184",
+    "sessionId": "session-test",
+    "seq": 184,
+    "schemaVersion": 1,
+    "occurredAt": 184,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-17",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-19.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-185",
+    "sessionId": "session-test",
+    "seq": 185,
+    "schemaVersion": 1,
+    "occurredAt": 185,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-17",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-19.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-17"
+    }
+  },
+  {
+    "id": "event-186",
+    "sessionId": "session-test",
+    "seq": 186,
+    "schemaVersion": 1,
+    "occurredAt": 186,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-17"
+    }
+  },
+  {
+    "id": "event-187",
+    "sessionId": "session-test",
+    "seq": 187,
+    "schemaVersion": 1,
+    "occurredAt": 187,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-17"
+    }
+  },
+  {
+    "id": "event-188",
+    "sessionId": "session-test",
+    "seq": 188,
+    "schemaVersion": 1,
+    "occurredAt": 188,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-17",
+      "resultJson": "{\"content\":\"entry-19 ok\"}"
+    }
+  },
+  {
+    "id": "event-189",
+    "sessionId": "session-test",
+    "seq": 189,
+    "schemaVersion": 1,
+    "occurredAt": 189,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-190",
+    "sessionId": "session-test",
+    "seq": 190,
+    "schemaVersion": 1,
+    "occurredAt": 190,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 19 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-191",
+    "sessionId": "session-test",
+    "seq": 191,
+    "schemaVersion": 1,
+    "occurredAt": 191,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-19"
+    }
+  },
+  {
+    "id": "event-192",
+    "sessionId": "session-test",
+    "seq": 192,
+    "schemaVersion": 1,
+    "occurredAt": 192,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-20",
+      "input": "step 20 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-193",
+    "sessionId": "session-test",
+    "seq": 193,
+    "schemaVersion": 1,
+    "occurredAt": 193,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-194",
+    "sessionId": "session-test",
+    "seq": 194,
+    "schemaVersion": 1,
+    "occurredAt": 194,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-18",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-20.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-195",
+    "sessionId": "session-test",
+    "seq": 195,
+    "schemaVersion": 1,
+    "occurredAt": 195,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-18",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-20.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-18"
+    }
+  },
+  {
+    "id": "event-196",
+    "sessionId": "session-test",
+    "seq": 196,
+    "schemaVersion": 1,
+    "occurredAt": 196,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-18"
+    }
+  },
+  {
+    "id": "event-197",
+    "sessionId": "session-test",
+    "seq": 197,
+    "schemaVersion": 1,
+    "occurredAt": 197,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-18"
+    }
+  },
+  {
+    "id": "event-198",
+    "sessionId": "session-test",
+    "seq": 198,
+    "schemaVersion": 1,
+    "occurredAt": 198,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolFailed",
+    "payload": {
+      "toolExecutionId": "tool-exec-18",
+      "message": "entry 20 unreadable"
+    }
+  },
+  {
+    "id": "event-199",
+    "sessionId": "session-test",
+    "seq": 199,
+    "schemaVersion": 1,
+    "occurredAt": 199,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-200",
+    "sessionId": "session-test",
+    "seq": 200,
+    "schemaVersion": 1,
+    "occurredAt": 200,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 20 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-201",
+    "sessionId": "session-test",
+    "seq": 201,
+    "schemaVersion": 1,
+    "occurredAt": 201,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-20"
+    }
+  },
+  {
+    "id": "event-202",
+    "sessionId": "session-test",
+    "seq": 202,
+    "schemaVersion": 1,
+    "occurredAt": 202,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-5",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 20 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-203",
+    "sessionId": "session-test",
+    "seq": 203,
+    "schemaVersion": 1,
+    "occurredAt": 203,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-21",
+      "input": "step 21 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-204",
+    "sessionId": "session-test",
+    "seq": 204,
+    "schemaVersion": 1,
+    "occurredAt": 204,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-205",
+    "sessionId": "session-test",
+    "seq": 205,
+    "schemaVersion": 1,
+    "occurredAt": 205,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 21 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-206",
+    "sessionId": "session-test",
+    "seq": 206,
+    "schemaVersion": 1,
+    "occurredAt": 206,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-21"
+    }
+  },
+  {
+    "id": "event-207",
+    "sessionId": "session-test",
+    "seq": 207,
+    "schemaVersion": 1,
+    "occurredAt": 207,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisStatusChanged",
+    "payload": {
+      "hypothesisId": "hyp-1",
+      "to": "falsified",
+      "reason": "importer log shows no drop"
+    }
+  },
+  {
+    "id": "event-208",
+    "sessionId": "session-test",
+    "seq": 208,
+    "schemaVersion": 1,
+    "occurredAt": 208,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-22",
+      "input": "step 22 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-209",
+    "sessionId": "session-test",
+    "seq": 209,
+    "schemaVersion": 1,
+    "occurredAt": 209,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-210",
+    "sessionId": "session-test",
+    "seq": 210,
+    "schemaVersion": 1,
+    "occurredAt": 210,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-19",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-22.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-211",
+    "sessionId": "session-test",
+    "seq": 211,
+    "schemaVersion": 1,
+    "occurredAt": 211,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-19",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-22.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-19"
+    }
+  },
+  {
+    "id": "event-212",
+    "sessionId": "session-test",
+    "seq": 212,
+    "schemaVersion": 1,
+    "occurredAt": 212,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-19"
+    }
+  },
+  {
+    "id": "event-213",
+    "sessionId": "session-test",
+    "seq": 213,
+    "schemaVersion": 1,
+    "occurredAt": 213,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-19"
+    }
+  },
+  {
+    "id": "event-214",
+    "sessionId": "session-test",
+    "seq": 214,
+    "schemaVersion": 1,
+    "occurredAt": 214,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-19",
+      "resultJson": "{\"content\":\"entry-22 ok\"}"
+    }
+  },
+  {
+    "id": "event-215",
+    "sessionId": "session-test",
+    "seq": 215,
+    "schemaVersion": 1,
+    "occurredAt": 215,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-216",
+    "sessionId": "session-test",
+    "seq": 216,
+    "schemaVersion": 1,
+    "occurredAt": 216,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 22 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-217",
+    "sessionId": "session-test",
+    "seq": 217,
+    "schemaVersion": 1,
+    "occurredAt": 217,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-22"
+    }
+  },
+  {
+    "id": "event-218",
+    "sessionId": "session-test",
+    "seq": 218,
+    "schemaVersion": 1,
+    "occurredAt": 218,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-23",
+      "input": "step 23 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-219",
+    "sessionId": "session-test",
+    "seq": 219,
+    "schemaVersion": 1,
+    "occurredAt": 219,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-220",
+    "sessionId": "session-test",
+    "seq": 220,
+    "schemaVersion": 1,
+    "occurredAt": 220,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-20",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-23.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-221",
+    "sessionId": "session-test",
+    "seq": 221,
+    "schemaVersion": 1,
+    "occurredAt": 221,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-20",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-23.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-20"
+    }
+  },
+  {
+    "id": "event-222",
+    "sessionId": "session-test",
+    "seq": 222,
+    "schemaVersion": 1,
+    "occurredAt": 222,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-20"
+    }
+  },
+  {
+    "id": "event-223",
+    "sessionId": "session-test",
+    "seq": 223,
+    "schemaVersion": 1,
+    "occurredAt": 223,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-20"
+    }
+  },
+  {
+    "id": "event-224",
+    "sessionId": "session-test",
+    "seq": 224,
+    "schemaVersion": 1,
+    "occurredAt": 224,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-20",
+      "resultJson": "{\"content\":\"entry-23 ok\"}"
+    }
+  },
+  {
+    "id": "event-225",
+    "sessionId": "session-test",
+    "seq": 225,
+    "schemaVersion": 1,
+    "occurredAt": 225,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-226",
+    "sessionId": "session-test",
+    "seq": 226,
+    "schemaVersion": 1,
+    "occurredAt": 226,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 23 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-227",
+    "sessionId": "session-test",
+    "seq": 227,
+    "schemaVersion": 1,
+    "occurredAt": 227,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-23"
+    }
+  },
+  {
+    "id": "event-228",
+    "sessionId": "session-test",
+    "seq": 228,
+    "schemaVersion": 1,
+    "occurredAt": 228,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-24",
+      "input": "step 24 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-229",
+    "sessionId": "session-test",
+    "seq": 229,
+    "schemaVersion": 1,
+    "occurredAt": 229,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-230",
+    "sessionId": "session-test",
+    "seq": 230,
+    "schemaVersion": 1,
+    "occurredAt": 230,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-21",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-24.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-231",
+    "sessionId": "session-test",
+    "seq": 231,
+    "schemaVersion": 1,
+    "occurredAt": 231,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-21",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-24.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-21"
+    }
+  },
+  {
+    "id": "event-232",
+    "sessionId": "session-test",
+    "seq": 232,
+    "schemaVersion": 1,
+    "occurredAt": 232,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-21"
+    }
+  },
+  {
+    "id": "event-233",
+    "sessionId": "session-test",
+    "seq": 233,
+    "schemaVersion": 1,
+    "occurredAt": 233,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-21"
+    }
+  },
+  {
+    "id": "event-234",
+    "sessionId": "session-test",
+    "seq": 234,
+    "schemaVersion": 1,
+    "occurredAt": 234,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-21",
+      "resultJson": "{\"content\":\"entry-24 ok\"}"
+    }
+  },
+  {
+    "id": "event-235",
+    "sessionId": "session-test",
+    "seq": 235,
+    "schemaVersion": 1,
+    "occurredAt": 235,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-236",
+    "sessionId": "session-test",
+    "seq": 236,
+    "schemaVersion": 1,
+    "occurredAt": 236,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 24 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-237",
+    "sessionId": "session-test",
+    "seq": 237,
+    "schemaVersion": 1,
+    "occurredAt": 237,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-24"
+    }
+  },
+  {
+    "id": "event-238",
+    "sessionId": "session-test",
+    "seq": 238,
+    "schemaVersion": 1,
+    "occurredAt": 238,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-6",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 24 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-239",
+    "sessionId": "session-test",
+    "seq": 239,
+    "schemaVersion": 1,
+    "occurredAt": 239,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-4",
+      "statement": "entry 24 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-240",
+    "sessionId": "session-test",
+    "seq": 240,
+    "schemaVersion": 1,
+    "occurredAt": 240,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-25",
+      "input": "step 25 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-241",
+    "sessionId": "session-test",
+    "seq": 241,
+    "schemaVersion": 1,
+    "occurredAt": 241,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-242",
+    "sessionId": "session-test",
+    "seq": 242,
+    "schemaVersion": 1,
+    "occurredAt": 242,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-22",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-25.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-243",
+    "sessionId": "session-test",
+    "seq": 243,
+    "schemaVersion": 1,
+    "occurredAt": 243,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-22",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-25.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-22"
+    }
+  },
+  {
+    "id": "event-244",
+    "sessionId": "session-test",
+    "seq": 244,
+    "schemaVersion": 1,
+    "occurredAt": 244,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-22"
+    }
+  },
+  {
+    "id": "event-245",
+    "sessionId": "session-test",
+    "seq": 245,
+    "schemaVersion": 1,
+    "occurredAt": 245,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-22"
+    }
+  },
+  {
+    "id": "event-246",
+    "sessionId": "session-test",
+    "seq": 246,
+    "schemaVersion": 1,
+    "occurredAt": 246,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-22",
+      "reason": "process died mid-read"
+    }
+  },
+  {
+    "id": "event-247",
+    "sessionId": "session-test",
+    "seq": 247,
+    "schemaVersion": 1,
+    "occurredAt": 247,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-22",
+      "outcome": "succeeded",
+      "resultJson": "{\"content\":\"entry-25 recovered\"}"
+    }
+  },
+  {
+    "id": "event-248",
+    "sessionId": "session-test",
+    "seq": 248,
+    "schemaVersion": 1,
+    "occurredAt": 248,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-249",
+    "sessionId": "session-test",
+    "seq": 249,
+    "schemaVersion": 1,
+    "occurredAt": 249,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 25 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-250",
+    "sessionId": "session-test",
+    "seq": 250,
+    "schemaVersion": 1,
+    "occurredAt": 250,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-25"
+    }
+  },
+  {
+    "id": "event-251",
+    "sessionId": "session-test",
+    "seq": 251,
+    "schemaVersion": 1,
+    "occurredAt": 251,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-26",
+      "input": "step 26 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-252",
+    "sessionId": "session-test",
+    "seq": 252,
+    "schemaVersion": 1,
+    "occurredAt": 252,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-253",
+    "sessionId": "session-test",
+    "seq": 253,
+    "schemaVersion": 1,
+    "occurredAt": 253,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-23",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-26.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-254",
+    "sessionId": "session-test",
+    "seq": 254,
+    "schemaVersion": 1,
+    "occurredAt": 254,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-23",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-26.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-23"
+    }
+  },
+  {
+    "id": "event-255",
+    "sessionId": "session-test",
+    "seq": 255,
+    "schemaVersion": 1,
+    "occurredAt": 255,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-23"
+    }
+  },
+  {
+    "id": "event-256",
+    "sessionId": "session-test",
+    "seq": 256,
+    "schemaVersion": 1,
+    "occurredAt": 256,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-23"
+    }
+  },
+  {
+    "id": "event-257",
+    "sessionId": "session-test",
+    "seq": 257,
+    "schemaVersion": 1,
+    "occurredAt": 257,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-23",
+      "resultJson": "{\"content\":\"entry-26 ok\"}"
+    }
+  },
+  {
+    "id": "event-258",
+    "sessionId": "session-test",
+    "seq": 258,
+    "schemaVersion": 1,
+    "occurredAt": 258,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-259",
+    "sessionId": "session-test",
+    "seq": 259,
+    "schemaVersion": 1,
+    "occurredAt": 259,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 26 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-260",
+    "sessionId": "session-test",
+    "seq": 260,
+    "schemaVersion": 1,
+    "occurredAt": 260,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-26"
+    }
+  },
+  {
+    "id": "event-261",
+    "sessionId": "session-test",
+    "seq": 261,
+    "schemaVersion": 1,
+    "occurredAt": 261,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-27",
+      "input": "step 27 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-262",
+    "sessionId": "session-test",
+    "seq": 262,
+    "schemaVersion": 1,
+    "occurredAt": 262,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-263",
+    "sessionId": "session-test",
+    "seq": 263,
+    "schemaVersion": 1,
+    "occurredAt": 263,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-24",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-27.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-264",
+    "sessionId": "session-test",
+    "seq": 264,
+    "schemaVersion": 1,
+    "occurredAt": 264,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-24",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-27.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-24"
+    }
+  },
+  {
+    "id": "event-265",
+    "sessionId": "session-test",
+    "seq": 265,
+    "schemaVersion": 1,
+    "occurredAt": 265,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-24"
+    }
+  },
+  {
+    "id": "event-266",
+    "sessionId": "session-test",
+    "seq": 266,
+    "schemaVersion": 1,
+    "occurredAt": 266,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-24"
+    }
+  },
+  {
+    "id": "event-267",
+    "sessionId": "session-test",
+    "seq": 267,
+    "schemaVersion": 1,
+    "occurredAt": 267,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-24",
+      "resultJson": "{\"content\":\"entry-27 ok\"}"
+    }
+  },
+  {
+    "id": "event-268",
+    "sessionId": "session-test",
+    "seq": 268,
+    "schemaVersion": 1,
+    "occurredAt": 268,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-269",
+    "sessionId": "session-test",
+    "seq": 269,
+    "schemaVersion": 1,
+    "occurredAt": 269,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 27 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-270",
+    "sessionId": "session-test",
+    "seq": 270,
+    "schemaVersion": 1,
+    "occurredAt": 270,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-27"
+    }
+  },
+  {
+    "id": "event-271",
+    "sessionId": "session-test",
+    "seq": 271,
+    "schemaVersion": 1,
+    "occurredAt": 271,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-3",
+      "goalRef": "answer the user question",
+      "nextAction": "replay importer for entry 27"
+    }
+  },
+  {
+    "id": "event-272",
+    "sessionId": "session-test",
+    "seq": 272,
+    "schemaVersion": 1,
+    "occurredAt": 272,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-28",
+      "input": "step 28 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-273",
+    "sessionId": "session-test",
+    "seq": 273,
+    "schemaVersion": 1,
+    "occurredAt": 273,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-274",
+    "sessionId": "session-test",
+    "seq": 274,
+    "schemaVersion": 1,
+    "occurredAt": 274,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 28 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-275",
+    "sessionId": "session-test",
+    "seq": 275,
+    "schemaVersion": 1,
+    "occurredAt": 275,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-28"
+    }
+  },
+  {
+    "id": "event-276",
+    "sessionId": "session-test",
+    "seq": 276,
+    "schemaVersion": 1,
+    "occurredAt": 276,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-7",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 28 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-277",
+    "sessionId": "session-test",
+    "seq": 277,
+    "schemaVersion": 1,
+    "occurredAt": 277,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-29",
+      "input": "step 29 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-278",
+    "sessionId": "session-test",
+    "seq": 278,
+    "schemaVersion": 1,
+    "occurredAt": 278,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-279",
+    "sessionId": "session-test",
+    "seq": 279,
+    "schemaVersion": 1,
+    "occurredAt": 279,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-25",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-29.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-280",
+    "sessionId": "session-test",
+    "seq": 280,
+    "schemaVersion": 1,
+    "occurredAt": 280,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-25",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-29.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-25"
+    }
+  },
+  {
+    "id": "event-281",
+    "sessionId": "session-test",
+    "seq": 281,
+    "schemaVersion": 1,
+    "occurredAt": 281,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-25"
+    }
+  },
+  {
+    "id": "event-282",
+    "sessionId": "session-test",
+    "seq": 282,
+    "schemaVersion": 1,
+    "occurredAt": 282,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-25"
+    }
+  },
+  {
+    "id": "event-283",
+    "sessionId": "session-test",
+    "seq": 283,
+    "schemaVersion": 1,
+    "occurredAt": 283,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-25",
+      "resultJson": "{\"content\":\"entry-29 ok\"}"
+    }
+  },
+  {
+    "id": "event-284",
+    "sessionId": "session-test",
+    "seq": 284,
+    "schemaVersion": 1,
+    "occurredAt": 284,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-285",
+    "sessionId": "session-test",
+    "seq": 285,
+    "schemaVersion": 1,
+    "occurredAt": 285,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 29 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-286",
+    "sessionId": "session-test",
+    "seq": 286,
+    "schemaVersion": 1,
+    "occurredAt": 286,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-29"
+    }
+  },
+  {
+    "id": "event-287",
+    "sessionId": "session-test",
+    "seq": 287,
+    "schemaVersion": 1,
+    "occurredAt": 287,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-30",
+      "input": "step 30 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-288",
+    "sessionId": "session-test",
+    "seq": 288,
+    "schemaVersion": 1,
+    "occurredAt": 288,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-289",
+    "sessionId": "session-test",
+    "seq": 289,
+    "schemaVersion": 1,
+    "occurredAt": 289,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-26",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-30.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-290",
+    "sessionId": "session-test",
+    "seq": 290,
+    "schemaVersion": 1,
+    "occurredAt": 290,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-26",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-30.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-26"
+    }
+  },
+  {
+    "id": "event-291",
+    "sessionId": "session-test",
+    "seq": 291,
+    "schemaVersion": 1,
+    "occurredAt": 291,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-26"
+    }
+  },
+  {
+    "id": "event-292",
+    "sessionId": "session-test",
+    "seq": 292,
+    "schemaVersion": 1,
+    "occurredAt": 292,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-26"
+    }
+  },
+  {
+    "id": "event-293",
+    "sessionId": "session-test",
+    "seq": 293,
+    "schemaVersion": 1,
+    "occurredAt": 293,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolFailed",
+    "payload": {
+      "toolExecutionId": "tool-exec-26",
+      "message": "entry 30 unreadable"
+    }
+  },
+  {
+    "id": "event-294",
+    "sessionId": "session-test",
+    "seq": 294,
+    "schemaVersion": 1,
+    "occurredAt": 294,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-295",
+    "sessionId": "session-test",
+    "seq": 295,
+    "schemaVersion": 1,
+    "occurredAt": 295,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 30 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-296",
+    "sessionId": "session-test",
+    "seq": 296,
+    "schemaVersion": 1,
+    "occurredAt": 296,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-30"
+    }
+  },
+  {
+    "id": "event-297",
+    "sessionId": "session-test",
+    "seq": 297,
+    "schemaVersion": 1,
+    "occurredAt": 297,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ChallengeRaised",
+    "payload": {
+      "challengeId": "challenge-1",
+      "targetType": "plan",
+      "targetId": "plan-3",
+      "claim": "the replay assumes the importer is idempotent",
+      "evidenceEventIds": ["event-2"]
+    }
+  },
+  {
+    "id": "event-298",
+    "sessionId": "session-test",
+    "seq": 298,
+    "schemaVersion": 1,
+    "occurredAt": 298,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-31",
+      "input": "step 31 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-299",
+    "sessionId": "session-test",
+    "seq": 299,
+    "schemaVersion": 1,
+    "occurredAt": 299,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-300",
+    "sessionId": "session-test",
+    "seq": 300,
+    "schemaVersion": 1,
+    "occurredAt": 300,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-27",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-31.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-301",
+    "sessionId": "session-test",
+    "seq": 301,
+    "schemaVersion": 1,
+    "occurredAt": 301,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-27",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-31.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-27"
+    }
+  },
+  {
+    "id": "event-302",
+    "sessionId": "session-test",
+    "seq": 302,
+    "schemaVersion": 1,
+    "occurredAt": 302,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-27"
+    }
+  },
+  {
+    "id": "event-303",
+    "sessionId": "session-test",
+    "seq": 303,
+    "schemaVersion": 1,
+    "occurredAt": 303,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-27"
+    }
+  },
+  {
+    "id": "event-304",
+    "sessionId": "session-test",
+    "seq": 304,
+    "schemaVersion": 1,
+    "occurredAt": 304,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-27",
+      "resultJson": "{\"content\":\"entry-31 ok\"}"
+    }
+  },
+  {
+    "id": "event-305",
+    "sessionId": "session-test",
+    "seq": 305,
+    "schemaVersion": 1,
+    "occurredAt": 305,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-306",
+    "sessionId": "session-test",
+    "seq": 306,
+    "schemaVersion": 1,
+    "occurredAt": 306,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 31 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-307",
+    "sessionId": "session-test",
+    "seq": 307,
+    "schemaVersion": 1,
+    "occurredAt": 307,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-31"
+    }
+  },
+  {
+    "id": "event-308",
+    "sessionId": "session-test",
+    "seq": 308,
+    "schemaVersion": 1,
+    "occurredAt": 308,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-5",
+      "statement": "entry 31 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-309",
+    "sessionId": "session-test",
+    "seq": 309,
+    "schemaVersion": 1,
+    "occurredAt": 309,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-32",
+      "input": "step 32 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-310",
+    "sessionId": "session-test",
+    "seq": 310,
+    "schemaVersion": 1,
+    "occurredAt": 310,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-311",
+    "sessionId": "session-test",
+    "seq": 311,
+    "schemaVersion": 1,
+    "occurredAt": 311,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-28",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-32.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-312",
+    "sessionId": "session-test",
+    "seq": 312,
+    "schemaVersion": 1,
+    "occurredAt": 312,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-28",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-32.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-28"
+    }
+  },
+  {
+    "id": "event-313",
+    "sessionId": "session-test",
+    "seq": 313,
+    "schemaVersion": 1,
+    "occurredAt": 313,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-28"
+    }
+  },
+  {
+    "id": "event-314",
+    "sessionId": "session-test",
+    "seq": 314,
+    "schemaVersion": 1,
+    "occurredAt": 314,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-28"
+    }
+  },
+  {
+    "id": "event-315",
+    "sessionId": "session-test",
+    "seq": 315,
+    "schemaVersion": 1,
+    "occurredAt": 315,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-28",
+      "resultJson": "{\"content\":\"entry-32 ok\"}"
+    }
+  },
+  {
+    "id": "event-316",
+    "sessionId": "session-test",
+    "seq": 316,
+    "schemaVersion": 1,
+    "occurredAt": 316,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-317",
+    "sessionId": "session-test",
+    "seq": 317,
+    "schemaVersion": 1,
+    "occurredAt": 317,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 32 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-318",
+    "sessionId": "session-test",
+    "seq": 318,
+    "schemaVersion": 1,
+    "occurredAt": 318,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-32"
+    }
+  },
+  {
+    "id": "event-319",
+    "sessionId": "session-test",
+    "seq": 319,
+    "schemaVersion": 1,
+    "occurredAt": 319,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-8",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 32 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-320",
+    "sessionId": "session-test",
+    "seq": 320,
+    "schemaVersion": 1,
+    "occurredAt": 320,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-33",
+      "input": "step 33 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-321",
+    "sessionId": "session-test",
+    "seq": 321,
+    "schemaVersion": 1,
+    "occurredAt": 321,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-322",
+    "sessionId": "session-test",
+    "seq": 322,
+    "schemaVersion": 1,
+    "occurredAt": 322,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-29",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-33.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-323",
+    "sessionId": "session-test",
+    "seq": 323,
+    "schemaVersion": 1,
+    "occurredAt": 323,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-29",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-33.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-29"
+    }
+  },
+  {
+    "id": "event-324",
+    "sessionId": "session-test",
+    "seq": 324,
+    "schemaVersion": 1,
+    "occurredAt": 324,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-29"
+    }
+  },
+  {
+    "id": "event-325",
+    "sessionId": "session-test",
+    "seq": 325,
+    "schemaVersion": 1,
+    "occurredAt": 325,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-29"
+    }
+  },
+  {
+    "id": "event-326",
+    "sessionId": "session-test",
+    "seq": 326,
+    "schemaVersion": 1,
+    "occurredAt": 326,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-29",
+      "resultJson": "{\"content\":\"entry-33 ok\"}"
+    }
+  },
+  {
+    "id": "event-327",
+    "sessionId": "session-test",
+    "seq": 327,
+    "schemaVersion": 1,
+    "occurredAt": 327,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-328",
+    "sessionId": "session-test",
+    "seq": 328,
+    "schemaVersion": 1,
+    "occurredAt": 328,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 33 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-329",
+    "sessionId": "session-test",
+    "seq": 329,
+    "schemaVersion": 1,
+    "occurredAt": 329,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-33"
+    }
+  },
+  {
+    "id": "event-330",
+    "sessionId": "session-test",
+    "seq": 330,
+    "schemaVersion": 1,
+    "occurredAt": 330,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ChallengeResolved",
+    "payload": {
+      "challengeId": "challenge-1",
+      "outcome": "resolved",
+      "reason": "importer deduplicates by invoice id"
+    }
+  },
+  {
+    "id": "event-331",
+    "sessionId": "session-test",
+    "seq": 331,
+    "schemaVersion": 1,
+    "occurredAt": 331,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-34",
+      "input": "step 34 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-332",
+    "sessionId": "session-test",
+    "seq": 332,
+    "schemaVersion": 1,
+    "occurredAt": 332,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-333",
+    "sessionId": "session-test",
+    "seq": 333,
+    "schemaVersion": 1,
+    "occurredAt": 333,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-30",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-34.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-334",
+    "sessionId": "session-test",
+    "seq": 334,
+    "schemaVersion": 1,
+    "occurredAt": 334,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-30",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-34.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-30"
+    }
+  },
+  {
+    "id": "event-335",
+    "sessionId": "session-test",
+    "seq": 335,
+    "schemaVersion": 1,
+    "occurredAt": 335,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-30"
+    }
+  },
+  {
+    "id": "event-336",
+    "sessionId": "session-test",
+    "seq": 336,
+    "schemaVersion": 1,
+    "occurredAt": 336,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-30"
+    }
+  },
+  {
+    "id": "event-337",
+    "sessionId": "session-test",
+    "seq": 337,
+    "schemaVersion": 1,
+    "occurredAt": 337,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-30",
+      "resultJson": "{\"content\":\"entry-34 ok\"}"
+    }
+  },
+  {
+    "id": "event-338",
+    "sessionId": "session-test",
+    "seq": 338,
+    "schemaVersion": 1,
+    "occurredAt": 338,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-339",
+    "sessionId": "session-test",
+    "seq": 339,
+    "schemaVersion": 1,
+    "occurredAt": 339,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 34 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-340",
+    "sessionId": "session-test",
+    "seq": 340,
+    "schemaVersion": 1,
+    "occurredAt": 340,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-34"
+    }
+  },
+  {
+    "id": "event-341",
+    "sessionId": "session-test",
+    "seq": 341,
+    "schemaVersion": 1,
+    "occurredAt": 341,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-35",
+      "input": "step 35 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-342",
+    "sessionId": "session-test",
+    "seq": 342,
+    "schemaVersion": 1,
+    "occurredAt": 342,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-343",
+    "sessionId": "session-test",
+    "seq": 343,
+    "schemaVersion": 1,
+    "occurredAt": 343,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 35 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-344",
+    "sessionId": "session-test",
+    "seq": 344,
+    "schemaVersion": 1,
+    "occurredAt": 344,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-35"
+    }
+  },
+  {
+    "id": "event-345",
+    "sessionId": "session-test",
+    "seq": 345,
+    "schemaVersion": 1,
+    "occurredAt": 345,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-36",
+      "input": "step 36 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-346",
+    "sessionId": "session-test",
+    "seq": 346,
+    "schemaVersion": 1,
+    "occurredAt": 346,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-347",
+    "sessionId": "session-test",
+    "seq": 347,
+    "schemaVersion": 1,
+    "occurredAt": 347,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-31",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-36.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-348",
+    "sessionId": "session-test",
+    "seq": 348,
+    "schemaVersion": 1,
+    "occurredAt": 348,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-31",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-36.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-31"
+    }
+  },
+  {
+    "id": "event-349",
+    "sessionId": "session-test",
+    "seq": 349,
+    "schemaVersion": 1,
+    "occurredAt": 349,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-31"
+    }
+  },
+  {
+    "id": "event-350",
+    "sessionId": "session-test",
+    "seq": 350,
+    "schemaVersion": 1,
+    "occurredAt": 350,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-31"
+    }
+  },
+  {
+    "id": "event-351",
+    "sessionId": "session-test",
+    "seq": 351,
+    "schemaVersion": 1,
+    "occurredAt": 351,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-31",
+      "resultJson": "{\"content\":\"entry-36 ok\"}"
+    }
+  },
+  {
+    "id": "event-352",
+    "sessionId": "session-test",
+    "seq": 352,
+    "schemaVersion": 1,
+    "occurredAt": 352,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-353",
+    "sessionId": "session-test",
+    "seq": 353,
+    "schemaVersion": 1,
+    "occurredAt": 353,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 36 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-354",
+    "sessionId": "session-test",
+    "seq": 354,
+    "schemaVersion": 1,
+    "occurredAt": 354,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-36"
+    }
+  },
+  {
+    "id": "event-355",
+    "sessionId": "session-test",
+    "seq": 355,
+    "schemaVersion": 1,
+    "occurredAt": 355,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-9",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 36 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-356",
+    "sessionId": "session-test",
+    "seq": 356,
+    "schemaVersion": 1,
+    "occurredAt": 356,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-4",
+      "goalRef": "answer the user question",
+      "nextAction": "replay importer for entry 36"
+    }
+  },
+  {
+    "id": "event-357",
+    "sessionId": "session-test",
+    "seq": 357,
+    "schemaVersion": 1,
+    "occurredAt": 357,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-37",
+      "input": "step 37 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-358",
+    "sessionId": "session-test",
+    "seq": 358,
+    "schemaVersion": 1,
+    "occurredAt": 358,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-359",
+    "sessionId": "session-test",
+    "seq": 359,
+    "schemaVersion": 1,
+    "occurredAt": 359,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-32",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-37.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-360",
+    "sessionId": "session-test",
+    "seq": 360,
+    "schemaVersion": 1,
+    "occurredAt": 360,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-32",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-37.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-32"
+    }
+  },
+  {
+    "id": "event-361",
+    "sessionId": "session-test",
+    "seq": 361,
+    "schemaVersion": 1,
+    "occurredAt": 361,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-32"
+    }
+  },
+  {
+    "id": "event-362",
+    "sessionId": "session-test",
+    "seq": 362,
+    "schemaVersion": 1,
+    "occurredAt": 362,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-32"
+    }
+  },
+  {
+    "id": "event-363",
+    "sessionId": "session-test",
+    "seq": 363,
+    "schemaVersion": 1,
+    "occurredAt": 363,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-32",
+      "resultJson": "{\"content\":\"entry-37 ok\"}"
+    }
+  },
+  {
+    "id": "event-364",
+    "sessionId": "session-test",
+    "seq": 364,
+    "schemaVersion": 1,
+    "occurredAt": 364,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-365",
+    "sessionId": "session-test",
+    "seq": 365,
+    "schemaVersion": 1,
+    "occurredAt": 365,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 37 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-366",
+    "sessionId": "session-test",
+    "seq": 366,
+    "schemaVersion": 1,
+    "occurredAt": 366,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-37"
+    }
+  },
+  {
+    "id": "event-367",
+    "sessionId": "session-test",
+    "seq": 367,
+    "schemaVersion": 1,
+    "occurredAt": 367,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-38",
+      "input": "step 38 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-368",
+    "sessionId": "session-test",
+    "seq": 368,
+    "schemaVersion": 1,
+    "occurredAt": 368,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-369",
+    "sessionId": "session-test",
+    "seq": 369,
+    "schemaVersion": 1,
+    "occurredAt": 369,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-33",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-38.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-370",
+    "sessionId": "session-test",
+    "seq": 370,
+    "schemaVersion": 1,
+    "occurredAt": 370,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-33",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-38.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-33"
+    }
+  },
+  {
+    "id": "event-371",
+    "sessionId": "session-test",
+    "seq": 371,
+    "schemaVersion": 1,
+    "occurredAt": 371,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-33"
+    }
+  },
+  {
+    "id": "event-372",
+    "sessionId": "session-test",
+    "seq": 372,
+    "schemaVersion": 1,
+    "occurredAt": 372,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-33"
+    }
+  },
+  {
+    "id": "event-373",
+    "sessionId": "session-test",
+    "seq": 373,
+    "schemaVersion": 1,
+    "occurredAt": 373,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-33",
+      "resultJson": "{\"content\":\"entry-38 ok\"}"
+    }
+  },
+  {
+    "id": "event-374",
+    "sessionId": "session-test",
+    "seq": 374,
+    "schemaVersion": 1,
+    "occurredAt": 374,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-375",
+    "sessionId": "session-test",
+    "seq": 375,
+    "schemaVersion": 1,
+    "occurredAt": 375,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 38 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-376",
+    "sessionId": "session-test",
+    "seq": 376,
+    "schemaVersion": 1,
+    "occurredAt": 376,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-38"
+    }
+  },
+  {
+    "id": "event-377",
+    "sessionId": "session-test",
+    "seq": 377,
+    "schemaVersion": 1,
+    "occurredAt": 377,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-6",
+      "statement": "entry 38 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-378",
+    "sessionId": "session-test",
+    "seq": 378,
+    "schemaVersion": 1,
+    "occurredAt": 378,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-39",
+      "input": "step 39 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-379",
+    "sessionId": "session-test",
+    "seq": 379,
+    "schemaVersion": 1,
+    "occurredAt": 379,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-380",
+    "sessionId": "session-test",
+    "seq": 380,
+    "schemaVersion": 1,
+    "occurredAt": 380,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-34",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-39.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-381",
+    "sessionId": "session-test",
+    "seq": 381,
+    "schemaVersion": 1,
+    "occurredAt": 381,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-34",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-39.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-34"
+    }
+  },
+  {
+    "id": "event-382",
+    "sessionId": "session-test",
+    "seq": 382,
+    "schemaVersion": 1,
+    "occurredAt": 382,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-34"
+    }
+  },
+  {
+    "id": "event-383",
+    "sessionId": "session-test",
+    "seq": 383,
+    "schemaVersion": 1,
+    "occurredAt": 383,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-34"
+    }
+  },
+  {
+    "id": "event-384",
+    "sessionId": "session-test",
+    "seq": 384,
+    "schemaVersion": 1,
+    "occurredAt": 384,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-34",
+      "resultJson": "{\"content\":\"entry-39 ok\"}"
+    }
+  },
+  {
+    "id": "event-385",
+    "sessionId": "session-test",
+    "seq": 385,
+    "schemaVersion": 1,
+    "occurredAt": 385,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-386",
+    "sessionId": "session-test",
+    "seq": 386,
+    "schemaVersion": 1,
+    "occurredAt": 386,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 39 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-387",
+    "sessionId": "session-test",
+    "seq": 387,
+    "schemaVersion": 1,
+    "occurredAt": 387,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-39"
+    }
+  },
+  {
+    "id": "event-388",
+    "sessionId": "session-test",
+    "seq": 388,
+    "schemaVersion": 1,
+    "occurredAt": 388,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-40",
+      "input": "step 40 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-389",
+    "sessionId": "session-test",
+    "seq": 389,
+    "schemaVersion": 1,
+    "occurredAt": 389,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-390",
+    "sessionId": "session-test",
+    "seq": 390,
+    "schemaVersion": 1,
+    "occurredAt": 390,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-35",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-40.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-391",
+    "sessionId": "session-test",
+    "seq": 391,
+    "schemaVersion": 1,
+    "occurredAt": 391,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-35",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-40.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-35"
+    }
+  },
+  {
+    "id": "event-392",
+    "sessionId": "session-test",
+    "seq": 392,
+    "schemaVersion": 1,
+    "occurredAt": 392,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-35"
+    }
+  },
+  {
+    "id": "event-393",
+    "sessionId": "session-test",
+    "seq": 393,
+    "schemaVersion": 1,
+    "occurredAt": 393,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-35"
+    }
+  },
+  {
+    "id": "event-394",
+    "sessionId": "session-test",
+    "seq": 394,
+    "schemaVersion": 1,
+    "occurredAt": 394,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolFailed",
+    "payload": {
+      "toolExecutionId": "tool-exec-35",
+      "message": "entry 40 unreadable"
+    }
+  },
+  {
+    "id": "event-395",
+    "sessionId": "session-test",
+    "seq": 395,
+    "schemaVersion": 1,
+    "occurredAt": 395,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-396",
+    "sessionId": "session-test",
+    "seq": 396,
+    "schemaVersion": 1,
+    "occurredAt": 396,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 40 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-397",
+    "sessionId": "session-test",
+    "seq": 397,
+    "schemaVersion": 1,
+    "occurredAt": 397,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-40"
+    }
+  },
+  {
+    "id": "event-398",
+    "sessionId": "session-test",
+    "seq": 398,
+    "schemaVersion": 1,
+    "occurredAt": 398,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-10",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 40 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-399",
+    "sessionId": "session-test",
+    "seq": 399,
+    "schemaVersion": 1,
+    "occurredAt": 399,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-41",
+      "input": "step 41 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-400",
+    "sessionId": "session-test",
+    "seq": 400,
+    "schemaVersion": 1,
+    "occurredAt": 400,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-401",
+    "sessionId": "session-test",
+    "seq": 401,
+    "schemaVersion": 1,
+    "occurredAt": 401,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-36",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-41.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-402",
+    "sessionId": "session-test",
+    "seq": 402,
+    "schemaVersion": 1,
+    "occurredAt": 402,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-36",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-41.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-36"
+    }
+  },
+  {
+    "id": "event-403",
+    "sessionId": "session-test",
+    "seq": 403,
+    "schemaVersion": 1,
+    "occurredAt": 403,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-36"
+    }
+  },
+  {
+    "id": "event-404",
+    "sessionId": "session-test",
+    "seq": 404,
+    "schemaVersion": 1,
+    "occurredAt": 404,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-36"
+    }
+  },
+  {
+    "id": "event-405",
+    "sessionId": "session-test",
+    "seq": 405,
+    "schemaVersion": 1,
+    "occurredAt": 405,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-36",
+      "resultJson": "{\"content\":\"entry-41 ok\"}"
+    }
+  },
+  {
+    "id": "event-406",
+    "sessionId": "session-test",
+    "seq": 406,
+    "schemaVersion": 1,
+    "occurredAt": 406,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-407",
+    "sessionId": "session-test",
+    "seq": 407,
+    "schemaVersion": 1,
+    "occurredAt": 407,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 41 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-408",
+    "sessionId": "session-test",
+    "seq": 408,
+    "schemaVersion": 1,
+    "occurredAt": 408,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-41"
+    }
+  },
+  {
+    "id": "event-409",
+    "sessionId": "session-test",
+    "seq": 409,
+    "schemaVersion": 1,
+    "occurredAt": 409,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-42",
+      "input": "step 42 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-410",
+    "sessionId": "session-test",
+    "seq": 410,
+    "schemaVersion": 1,
+    "occurredAt": 410,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-411",
+    "sessionId": "session-test",
+    "seq": 411,
+    "schemaVersion": 1,
+    "occurredAt": 411,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 42 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-412",
+    "sessionId": "session-test",
+    "seq": 412,
+    "schemaVersion": 1,
+    "occurredAt": 412,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-42"
+    }
+  },
+  {
+    "id": "event-413",
+    "sessionId": "session-test",
+    "seq": 413,
+    "schemaVersion": 1,
+    "occurredAt": 413,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-43",
+      "input": "step 43 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-414",
+    "sessionId": "session-test",
+    "seq": 414,
+    "schemaVersion": 1,
+    "occurredAt": 414,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-415",
+    "sessionId": "session-test",
+    "seq": 415,
+    "schemaVersion": 1,
+    "occurredAt": 415,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-37",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-43.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-416",
+    "sessionId": "session-test",
+    "seq": 416,
+    "schemaVersion": 1,
+    "occurredAt": 416,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-37",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-43.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-37"
+    }
+  },
+  {
+    "id": "event-417",
+    "sessionId": "session-test",
+    "seq": 417,
+    "schemaVersion": 1,
+    "occurredAt": 417,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-37"
+    }
+  },
+  {
+    "id": "event-418",
+    "sessionId": "session-test",
+    "seq": 418,
+    "schemaVersion": 1,
+    "occurredAt": 418,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-37"
+    }
+  },
+  {
+    "id": "event-419",
+    "sessionId": "session-test",
+    "seq": 419,
+    "schemaVersion": 1,
+    "occurredAt": 419,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-37",
+      "resultJson": "{\"content\":\"entry-43 ok\"}"
+    }
+  },
+  {
+    "id": "event-420",
+    "sessionId": "session-test",
+    "seq": 420,
+    "schemaVersion": 1,
+    "occurredAt": 420,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-421",
+    "sessionId": "session-test",
+    "seq": 421,
+    "schemaVersion": 1,
+    "occurredAt": 421,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 43 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-422",
+    "sessionId": "session-test",
+    "seq": 422,
+    "schemaVersion": 1,
+    "occurredAt": 422,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-43"
+    }
+  },
+  {
+    "id": "event-423",
+    "sessionId": "session-test",
+    "seq": 423,
+    "schemaVersion": 1,
+    "occurredAt": 423,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-44",
+      "input": "step 44 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-424",
+    "sessionId": "session-test",
+    "seq": 424,
+    "schemaVersion": 1,
+    "occurredAt": 424,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-425",
+    "sessionId": "session-test",
+    "seq": 425,
+    "schemaVersion": 1,
+    "occurredAt": 425,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-38",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-44.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-426",
+    "sessionId": "session-test",
+    "seq": 426,
+    "schemaVersion": 1,
+    "occurredAt": 426,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-38",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-44.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-38"
+    }
+  },
+  {
+    "id": "event-427",
+    "sessionId": "session-test",
+    "seq": 427,
+    "schemaVersion": 1,
+    "occurredAt": 427,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-38"
+    }
+  },
+  {
+    "id": "event-428",
+    "sessionId": "session-test",
+    "seq": 428,
+    "schemaVersion": 1,
+    "occurredAt": 428,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-38"
+    }
+  },
+  {
+    "id": "event-429",
+    "sessionId": "session-test",
+    "seq": 429,
+    "schemaVersion": 1,
+    "occurredAt": 429,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-38",
+      "resultJson": "{\"content\":\"entry-44 ok\"}"
+    }
+  },
+  {
+    "id": "event-430",
+    "sessionId": "session-test",
+    "seq": 430,
+    "schemaVersion": 1,
+    "occurredAt": 430,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-431",
+    "sessionId": "session-test",
+    "seq": 431,
+    "schemaVersion": 1,
+    "occurredAt": 431,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 44 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-432",
+    "sessionId": "session-test",
+    "seq": 432,
+    "schemaVersion": 1,
+    "occurredAt": 432,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-44"
+    }
+  },
+  {
+    "id": "event-433",
+    "sessionId": "session-test",
+    "seq": 433,
+    "schemaVersion": 1,
+    "occurredAt": 433,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-11",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 44 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-434",
+    "sessionId": "session-test",
+    "seq": 434,
+    "schemaVersion": 1,
+    "occurredAt": 434,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-45",
+      "input": "step 45 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-435",
+    "sessionId": "session-test",
+    "seq": 435,
+    "schemaVersion": 1,
+    "occurredAt": 435,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-436",
+    "sessionId": "session-test",
+    "seq": 436,
+    "schemaVersion": 1,
+    "occurredAt": 436,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-39",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-45.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-437",
+    "sessionId": "session-test",
+    "seq": 437,
+    "schemaVersion": 1,
+    "occurredAt": 437,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-39",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-45.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-39"
+    }
+  },
+  {
+    "id": "event-438",
+    "sessionId": "session-test",
+    "seq": 438,
+    "schemaVersion": 1,
+    "occurredAt": 438,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-39"
+    }
+  },
+  {
+    "id": "event-439",
+    "sessionId": "session-test",
+    "seq": 439,
+    "schemaVersion": 1,
+    "occurredAt": 439,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-39"
+    }
+  },
+  {
+    "id": "event-440",
+    "sessionId": "session-test",
+    "seq": 440,
+    "schemaVersion": 1,
+    "occurredAt": 440,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolIndeterminate",
+    "payload": {
+      "toolExecutionId": "tool-exec-39",
+      "reason": "process died mid-read"
+    }
+  },
+  {
+    "id": "event-441",
+    "sessionId": "session-test",
+    "seq": 441,
+    "schemaVersion": 1,
+    "occurredAt": 441,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolReconciled",
+    "payload": {
+      "toolExecutionId": "tool-exec-39",
+      "outcome": "succeeded",
+      "resultJson": "{\"content\":\"entry-45 recovered\"}"
+    }
+  },
+  {
+    "id": "event-442",
+    "sessionId": "session-test",
+    "seq": 442,
+    "schemaVersion": 1,
+    "occurredAt": 442,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-443",
+    "sessionId": "session-test",
+    "seq": 443,
+    "schemaVersion": 1,
+    "occurredAt": 443,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 45 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-444",
+    "sessionId": "session-test",
+    "seq": 444,
+    "schemaVersion": 1,
+    "occurredAt": 444,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-45"
+    }
+  },
+  {
+    "id": "event-445",
+    "sessionId": "session-test",
+    "seq": 445,
+    "schemaVersion": 1,
+    "occurredAt": 445,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "HypothesisProposed",
+    "payload": {
+      "hypothesisId": "hyp-7",
+      "statement": "entry 45 was dropped by the importer"
+    }
+  },
+  {
+    "id": "event-446",
+    "sessionId": "session-test",
+    "seq": 446,
+    "schemaVersion": 1,
+    "occurredAt": 446,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "PlanSet",
+    "payload": {
+      "planId": "plan-5",
+      "goalRef": "answer the user question",
+      "nextAction": "replay importer for entry 45"
+    }
+  },
+  {
+    "id": "event-447",
+    "sessionId": "session-test",
+    "seq": 447,
+    "schemaVersion": 1,
+    "occurredAt": 447,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-46",
+      "input": "step 46 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-448",
+    "sessionId": "session-test",
+    "seq": 448,
+    "schemaVersion": 1,
+    "occurredAt": 448,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-449",
+    "sessionId": "session-test",
+    "seq": 449,
+    "schemaVersion": 1,
+    "occurredAt": 449,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-40",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-46.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-450",
+    "sessionId": "session-test",
+    "seq": 450,
+    "schemaVersion": 1,
+    "occurredAt": 450,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-40",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-46.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-40"
+    }
+  },
+  {
+    "id": "event-451",
+    "sessionId": "session-test",
+    "seq": 451,
+    "schemaVersion": 1,
+    "occurredAt": 451,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-40"
+    }
+  },
+  {
+    "id": "event-452",
+    "sessionId": "session-test",
+    "seq": 452,
+    "schemaVersion": 1,
+    "occurredAt": 452,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-40"
+    }
+  },
+  {
+    "id": "event-453",
+    "sessionId": "session-test",
+    "seq": 453,
+    "schemaVersion": 1,
+    "occurredAt": 453,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-40",
+      "resultJson": "{\"content\":\"entry-46 ok\"}"
+    }
+  },
+  {
+    "id": "event-454",
+    "sessionId": "session-test",
+    "seq": 454,
+    "schemaVersion": 1,
+    "occurredAt": 454,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-455",
+    "sessionId": "session-test",
+    "seq": 455,
+    "schemaVersion": 1,
+    "occurredAt": 455,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 46 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-456",
+    "sessionId": "session-test",
+    "seq": 456,
+    "schemaVersion": 1,
+    "occurredAt": 456,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-46"
+    }
+  },
+  {
+    "id": "event-457",
+    "sessionId": "session-test",
+    "seq": 457,
+    "schemaVersion": 1,
+    "occurredAt": 457,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-47",
+      "input": "step 47 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-458",
+    "sessionId": "session-test",
+    "seq": 458,
+    "schemaVersion": 1,
+    "occurredAt": 458,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-459",
+    "sessionId": "session-test",
+    "seq": 459,
+    "schemaVersion": 1,
+    "occurredAt": 459,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-41",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-47.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-460",
+    "sessionId": "session-test",
+    "seq": 460,
+    "schemaVersion": 1,
+    "occurredAt": 460,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-41",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-47.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-41"
+    }
+  },
+  {
+    "id": "event-461",
+    "sessionId": "session-test",
+    "seq": 461,
+    "schemaVersion": 1,
+    "occurredAt": 461,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-41"
+    }
+  },
+  {
+    "id": "event-462",
+    "sessionId": "session-test",
+    "seq": 462,
+    "schemaVersion": 1,
+    "occurredAt": 462,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-41"
+    }
+  },
+  {
+    "id": "event-463",
+    "sessionId": "session-test",
+    "seq": 463,
+    "schemaVersion": 1,
+    "occurredAt": 463,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-41",
+      "resultJson": "{\"content\":\"entry-47 ok\"}"
+    }
+  },
+  {
+    "id": "event-464",
+    "sessionId": "session-test",
+    "seq": 464,
+    "schemaVersion": 1,
+    "occurredAt": 464,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-465",
+    "sessionId": "session-test",
+    "seq": 465,
+    "schemaVersion": 1,
+    "occurredAt": 465,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 47 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-466",
+    "sessionId": "session-test",
+    "seq": 466,
+    "schemaVersion": 1,
+    "occurredAt": 466,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-47"
+    }
+  },
+  {
+    "id": "event-467",
+    "sessionId": "session-test",
+    "seq": 467,
+    "schemaVersion": 1,
+    "occurredAt": 467,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-48",
+      "input": "step 48 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-468",
+    "sessionId": "session-test",
+    "seq": 468,
+    "schemaVersion": 1,
+    "occurredAt": 468,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-469",
+    "sessionId": "session-test",
+    "seq": 469,
+    "schemaVersion": 1,
+    "occurredAt": 469,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-42",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-48.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-470",
+    "sessionId": "session-test",
+    "seq": 470,
+    "schemaVersion": 1,
+    "occurredAt": 470,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-42",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-48.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-42"
+    }
+  },
+  {
+    "id": "event-471",
+    "sessionId": "session-test",
+    "seq": 471,
+    "schemaVersion": 1,
+    "occurredAt": 471,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-42"
+    }
+  },
+  {
+    "id": "event-472",
+    "sessionId": "session-test",
+    "seq": 472,
+    "schemaVersion": 1,
+    "occurredAt": 472,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-42"
+    }
+  },
+  {
+    "id": "event-473",
+    "sessionId": "session-test",
+    "seq": 473,
+    "schemaVersion": 1,
+    "occurredAt": 473,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolSucceeded",
+    "payload": {
+      "toolExecutionId": "tool-exec-42",
+      "resultJson": "{\"content\":\"entry-48 ok\"}"
+    }
+  },
+  {
+    "id": "event-474",
+    "sessionId": "session-test",
+    "seq": 474,
+    "schemaVersion": 1,
+    "occurredAt": 474,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-475",
+    "sessionId": "session-test",
+    "seq": 475,
+    "schemaVersion": 1,
+    "occurredAt": 475,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 48 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-476",
+    "sessionId": "session-test",
+    "seq": 476,
+    "schemaVersion": 1,
+    "occurredAt": 476,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-48"
+    }
+  },
+  {
+    "id": "event-477",
+    "sessionId": "session-test",
+    "seq": 477,
+    "schemaVersion": 1,
+    "occurredAt": 477,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ObservationRecorded",
+    "payload": {
+      "observationId": "obs-12",
+      "source": {
+        "kind": "system",
+        "detail": "test observation"
+      },
+      "claim": "ledger entry 48 has a matching invoice",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-478",
+    "sessionId": "session-test",
+    "seq": 478,
+    "schemaVersion": 1,
+    "occurredAt": 478,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-49",
+      "input": "step 49 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-479",
+    "sessionId": "session-test",
+    "seq": 479,
+    "schemaVersion": 1,
+    "occurredAt": 479,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-480",
+    "sessionId": "session-test",
+    "seq": 480,
+    "schemaVersion": 1,
+    "occurredAt": 480,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 49 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-481",
+    "sessionId": "session-test",
+    "seq": 481,
+    "schemaVersion": 1,
+    "occurredAt": 481,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-49"
+    }
+  },
+  {
+    "id": "event-482",
+    "sessionId": "session-test",
+    "seq": 482,
+    "schemaVersion": 1,
+    "occurredAt": 482,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnStarted",
+    "payload": {
+      "turnId": "turn-50",
+      "input": "step 50 of the ledger restoration"
+    }
+  },
+  {
+    "id": "event-483",
+    "sessionId": "session-test",
+    "seq": 483,
+    "schemaVersion": 1,
+    "occurredAt": 483,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-484",
+    "sessionId": "session-test",
+    "seq": 484,
+    "schemaVersion": 1,
+    "occurredAt": 484,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "toolCalls": [
+        {
+          "id": "call-43",
+          "name": "read_file",
+          "argumentsJson": "{\"path\":\"entry-50.json\"}"
+        }
+      ]
+    }
+  },
+  {
+    "id": "event-485",
+    "sessionId": "session-test",
+    "seq": 485,
+    "schemaVersion": 1,
+    "occurredAt": 485,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolProposed",
+    "payload": {
+      "toolExecutionId": "tool-exec-43",
+      "name": "read_file",
+      "argumentsJson": "{\"path\":\"entry-50.json\"}",
+      "effect": "read_only",
+      "toolCallId": "call-43"
+    }
+  },
+  {
+    "id": "event-486",
+    "sessionId": "session-test",
+    "seq": 486,
+    "schemaVersion": 1,
+    "occurredAt": 486,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolAuthorized",
+    "payload": {
+      "toolExecutionId": "tool-exec-43"
+    }
+  },
+  {
+    "id": "event-487",
+    "sessionId": "session-test",
+    "seq": 487,
+    "schemaVersion": 1,
+    "occurredAt": 487,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolStarted",
+    "payload": {
+      "toolExecutionId": "tool-exec-43"
+    }
+  },
+  {
+    "id": "event-488",
+    "sessionId": "session-test",
+    "seq": 488,
+    "schemaVersion": 1,
+    "occurredAt": 488,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ToolFailed",
+    "payload": {
+      "toolExecutionId": "tool-exec-43",
+      "message": "entry 50 unreadable"
+    }
+  },
+  {
+    "id": "event-489",
+    "sessionId": "session-test",
+    "seq": 489,
+    "schemaVersion": 1,
+    "occurredAt": 489,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelRequestStarted",
+    "payload": {
+      "model": "regression-model"
+    }
+  },
+  {
+    "id": "event-490",
+    "sessionId": "session-test",
+    "seq": 490,
+    "schemaVersion": 1,
+    "occurredAt": 490,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "ModelResponseCompleted",
+    "payload": {
+      "text": "step 50 done",
+      "toolCalls": []
+    }
+  },
+  {
+    "id": "event-491",
+    "sessionId": "session-test",
+    "seq": 491,
+    "schemaVersion": 1,
+    "occurredAt": 491,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "TurnCompleted",
+    "payload": {
+      "turnId": "turn-50"
+    }
+  },
+  {
+    "id": "event-492",
+    "sessionId": "session-test",
+    "seq": 492,
+    "schemaVersion": 1,
+    "occurredAt": 492,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "VerificationRecorded",
+    "payload": {
+      "outcome": "passed",
+      "summary": "all 50 ledger entries reconciled",
+      "evidenceEventIds": ["event-1"]
+    }
+  },
+  {
+    "id": "event-493",
+    "sessionId": "session-test",
+    "seq": 493,
+    "schemaVersion": 1,
+    "occurredAt": 493,
+    "actor": {
+      "kind": "system"
+    },
+    "type": "SessionCompleted",
+    "payload": {}
+  }
+]

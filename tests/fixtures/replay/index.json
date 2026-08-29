@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "file": "session-lifecycle-v1.json",
+      "schemaVersion": 1,
+      "description": "three completed turns through create/pause/resume/complete",
+      "events": 12,
+      "terminalStatus": "COMPLETED"
+    },
+    {
+      "file": "agent-loop-recovery-v1.json",
+      "schemaVersion": 1,
+      "description": "crashed-and-recovered loop with dangling EXECUTING and pending model request checkpoints",
+      "events": 28,
+      "terminalStatus": "COMPLETED"
+    },
+    {
+      "file": "tool-reconciliation-v1.json",
+      "schemaVersion": 1,
+      "description": "INDETERMINATE executions settled through ToolReconciled (succeeded and failed)",
+      "events": 18,
+      "terminalStatus": "ACTIVE"
+    },
+    {
+      "file": "epistemic-v1.json",
+      "schemaVersion": 1,
+      "description": "goal/observations/hypotheses/plans/challenges/verification lifecycle with falsification and supersede checkpoints",
+      "events": 23,
+      "terminalStatus": "ACTIVE"
+    },
+    {
+      "file": "session-tool-lifecycle-v1.json",
+      "schemaVersion": 1,
+      "description": "two read-only tool executions inside one session to completion",
+      "events": 10,
+      "terminalStatus": "COMPLETED"
+    },
+    {
+      "file": "regression-long-session-v1.json",
+      "schemaVersion": 1,
+      "description": "regression collection opener: 50-turn ledger restoration with tool failures, indeterminate-then-reconciled reads, interleaved epistemic facts, one plan challenge, closing verification; regenerates deterministically from tests/replay/regression-session-builder.ts",
+      "events": 493,
+      "terminalStatus": "COMPLETED"
+    }
+  ]
+}

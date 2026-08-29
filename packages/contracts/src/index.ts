@@ -41,7 +41,7 @@ export {
   workspaceRootCovers,
 } from "./capability/capability";
 export type { EventEnvelopeBase, SessionEvent } from "./envelope";
-export { EVENT_SCHEMA_VERSION, sessionEventSchema } from "./envelope";
+export { EVENT_SCHEMA_VERSION, EventEnvelopeBaseSchema, sessionEventSchema } from "./envelope";
 export type {
   Challenge,
   ChallengeOutcome,
@@ -306,6 +306,17 @@ export type {
   ToolExecutionContext,
   ToolExecutionOutcome,
 } from "./ports/tool";
+export type { SessionEventMigration } from "./replay";
+export {
+  applyEventMigrations,
+  FutureSchemaVersionError,
+  InvalidMigrationTableError,
+  InvalidReplayEventError,
+  migratedSchemaVersion,
+  parseReplayEvent,
+  parseReplayStream,
+  SESSION_EVENT_MIGRATIONS,
+} from "./replay";
 export type { ToolExecutionStatus } from "./tool-state";
 export {
   TOOL_EXECUTION_STATUSES,

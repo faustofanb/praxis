@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { SessionEventUnion } from "@praxis/contracts";
 import {
@@ -7,19 +7,25 @@ import {
   asObservationId,
   asPlanId,
   asToolExecutionId,
+  parseReplayStream,
   SessionEventUnionSchema,
 } from "@praxis/contracts";
 import { foldSessionEvents, reduceSession } from "@praxis/core";
 import fc from "fast-check";
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 import { inMemoryEventStore } from "../helpers/in-memory-event-store";
 import { commandArbitrary, translateCommands } from "../helpers/random-session-streams";
 import { sessionCreated, TEST_SESSION_ID } from "../helpers/session-events";
+import { buildRegressionLongSession } from "./regression-session-builder";
 
 /**
  * Replay laws (ADR-0003 verification): historical fixtures stay loadable,
  * persisted streams fold identically on every read, and any checkpoint
  * state continued with the remaining suffix equals a single full fold.
+ * Since M5-T003 every fixture loads through the versioned replay seam
+ * (parseReplayStream: envelope-first, version-window fail-closed) and the
+ * fixture manifest is the single home of the replay collection.
  */
 
 const fixturePath = fileURLToPath(
@@ -34,25 +40,22 @@ const reconcileFixturePath = fileURLToPath(
 const epistemicFixturePath = fileURLToPath(
   new URL("../fixtures/replay/epistemic-v1.json", import.meta.url),
 );
+const fixturesDir = fileURLToPath(new URL("../fixtures/replay/", import.meta.url));
 
 function loadFixture(): SessionEventUnion[] {
-  const raw: unknown = JSON.parse(readFileSync(fixturePath, "utf8"));
-  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+  return parseReplayStream(JSON.parse(readFileSync(fixturePath, "utf8")));
 }
 
 function loadLoopFixture(): SessionEventUnion[] {
-  const raw: unknown = JSON.parse(readFileSync(loopFixturePath, "utf8"));
-  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+  return parseReplayStream(JSON.parse(readFileSync(loopFixturePath, "utf8")));
 }
 
 function loadReconcileFixture(): SessionEventUnion[] {
-  const raw: unknown = JSON.parse(readFileSync(reconcileFixturePath, "utf8"));
-  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+  return parseReplayStream(JSON.parse(readFileSync(reconcileFixturePath, "utf8")));
 }
 
 function loadEpistemicFixture(): SessionEventUnion[] {
-  const raw: unknown = JSON.parse(readFileSync(epistemicFixturePath, "utf8"));
-  return (raw as unknown[]).map((event) => SessionEventUnionSchema.parse(event));
+  return parseReplayStream(JSON.parse(readFileSync(epistemicFixturePath, "utf8")));
 }
 
 describe("historical fixture replay", () => {
@@ -203,6 +206,71 @@ describe("epistemic fixture replay", () => {
   test("folding the epistemic fixture twice yields identical states", () => {
     const events = loadEpistemicFixture();
     expect(foldSessionEvents(events)).toEqual(foldSessionEvents(events));
+  });
+});
+
+describe("fixture manifest law (M5-T003)", () => {
+  const ManifestSchema = z.object({
+    schema_version: z.literal(1),
+    fixtures: z.array(
+      z.object({
+        file: z.string().min(1),
+        schemaVersion: z.number().int().positive(),
+        description: z.string().min(1),
+        events: z.number().int().positive(),
+        terminalStatus: z.enum(["ACTIVE", "PAUSED", "COMPLETED"]),
+      }),
+    ),
+  });
+  type Manifest = z.infer<typeof ManifestSchema>;
+
+  function loadManifest(): Manifest {
+    return ManifestSchema.parse(JSON.parse(readFileSync(`${fixturesDir}index.json`, "utf8")));
+  }
+
+  test("every manifest fixture loads through the versioned seam, folds to its recorded terminal status, and double-folds identically", () => {
+    const manifest = loadManifest();
+    expect(manifest.fixtures.length).toBeGreaterThanOrEqual(6);
+    for (const entry of manifest.fixtures) {
+      const events = parseReplayStream(
+        JSON.parse(readFileSync(`${fixturesDir}${entry.file}`, "utf8")),
+      );
+      expect(events).toHaveLength(entry.events);
+      const state = foldSessionEvents(events);
+      expect(state.status).toBe(entry.terminalStatus);
+      expect(state.headSeq).toBe(entry.events);
+      expect(foldSessionEvents(events)).toEqual(state);
+    }
+  });
+
+  test("the manifest and the fixture directory stay complete in both directions", () => {
+    const manifest = loadManifest();
+    const manifestFiles = manifest.fixtures.map((entry) => entry.file).sort();
+    const directoryFiles = readdirSync(fixturesDir)
+      .filter((name) => name.endsWith(".json") && name !== "index.json")
+      .sort();
+    expect(manifestFiles).toEqual(directoryFiles);
+    expect(new Set(manifestFiles).size).toBe(manifestFiles.length);
+  });
+
+  test("the regression session regenerates identically from its deterministic builder", () => {
+    const built = buildRegressionLongSession();
+    const committed = readFileSync(`${fixturesDir}regression-long-session-v1.json`, "utf8");
+    // The fixture file is biome-formatted on disk, so the pin compares
+    // canonical JSON: any drift in any committed field breaks equality.
+    expect(JSON.stringify(built)).toBe(JSON.stringify(JSON.parse(committed)));
+    expect(buildRegressionLongSession()).toEqual(built);
+    // Regenerated events are schema-valid and fold to the manifest state.
+    const parsed = built.map((event) => SessionEventUnionSchema.parse(event));
+    const state = foldSessionEvents(parsed);
+    expect(state.status).toBe("COMPLETED");
+    expect(state.goal?.goal).toBe("restore the quarterly ledger");
+    expect(state.toolExecutions.size).toBe(43);
+    expect(state.observations.size).toBe(12);
+    expect(state.hypotheses.size).toBe(7);
+    expect(state.plans.size).toBe(5);
+    expect(state.openChallenges).toHaveLength(0);
+    expect(state.lastVerification?.outcome).toBe("passed");
   });
 });
 
