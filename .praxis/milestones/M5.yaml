@@ -1,6 +1,6 @@
 schema_version: 1
 id: M5
-status: planned
+status: active
 goal: Harden recovery, context bounds, compaction invariants and session evolution.
 prerequisites:
 - M4
