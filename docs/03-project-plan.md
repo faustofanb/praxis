@@ -295,9 +295,9 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 
 ### M5.2 Replay fixtures
 
-- [ ] 版本化 session fixtures；
-- [ ] migration tests；
-- [ ] regression session collection。
+- [x] 版本化 session fixtures（M5-T003：envelope `schemaVersion` 版本窗口 fail closed + `tests/fixtures/replay/index.json` 清单为集合唯一权威，加载一律走 `parseReplayStream` 缝隙）；
+- [x] migration tests（M5-T003：连续递增步进迁移表 + 管线盖章版本；合成 v1→v2 drill 证明迁移后真实 fixture 折叠到同一 derived state；未来版本流加载即拒）；
+- [x] regression session collection（M5-T003：开篇 493 事件混合会话 fixture，由确定性构造器再生并以规范化 JSON 相等 pin）。
 
 ### M5.3 Crash matrix
 

@@ -410,6 +410,8 @@ type SessionEvent<TType extends EventType, TPayload> = {
 - 同一 event stream + 同一 reducer 版本必须得到确定 state（若迁移，先转换 schema）；
 - Event timestamp 不决定顺序，`seq` 才决定顺序。
 
+**版本窗口与迁移法则（M5-T003）**：加载持久化流是一等边界解析，不是类型断言。`@praxis/contracts` 提供 `parseReplayStream`/`parseReplayEvent`：先以 envelope 基 schema 校验身份，强制 `1 <= schemaVersion <= EVENT_SCHEMA_VERSION`——更高版本的流（更新运行时写入）在加载时 fail closed（`FutureSchemaVersionError`），绝不进入 reducer 静默折叠；再按连续递增的步进迁移表（`SESSION_EVENT_MIGRATIONS`，每步 `fromVersion: i+1`，缺步/跳步即 `InvalidMigrationTableError`）把事件从声明版本迁到当前版本，版本号由管线盖章而非 transform 自报；最后整体过 `SessionEventUnionSchema`。每次 schema 升级恰追加一步迁移，且全部历史 fixture 必须折叠到同一 derived state（迁移 drill 钉死于 `tests/contracts-replay.test.ts`）。回放 fixture 集合以 `tests/fixtures/replay/index.json` 清单为唯一权威：每条记录 file/schemaVersion/事件数/终态，replay 门逐条经缝隙加载、折叠到记录终态并双折叠一致，清单与目录双向完备；回归会话集合的开篇 fixture（`regression-long-session-v1.json`，493 事件）由确定性构造器再生并以规范化 JSON 相等 pin（文件本身经 biome 格式化，pin 比较规范化形式，任何字段漂移即破）。
+
 ## 6.2 v1 Event Vocabulary
 
 建议首批：
