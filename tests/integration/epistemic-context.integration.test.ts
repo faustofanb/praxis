@@ -205,4 +205,80 @@ describe("runTurn epistemic context projection", () => {
     const completed = reduceSession(beforeCompletion, sessionCompleted(stream.length + 1));
     expect(completed.status).toBe("COMPLETED");
   });
+
+  test("a hypothesis flood still delivers the goal and an honest omission marker under the default budget", async () => {
+    const provider = new ScriptedModelProvider([
+      { kind: "event", event: { type: "textDelta", text: "prioritizing" } },
+      { kind: "event", event: { type: "completed", finishReason: "stop" } },
+    ]);
+    const harness = deps(provider);
+    const seed = [sessionCreated(1), goalSet(2, { goal: "restore the missing payment record" })];
+    for (let n = 1; n <= 20; n += 1) {
+      seed.push(hypothesisProposed(seed.length + 1, n, { statement: `hypothesis number ${n}` }));
+    }
+    await harness.store.append(seed, 0);
+
+    const outcome = await runTurn(
+      harness,
+      { input: "proceed" },
+      { signal: new AbortController().signal },
+    );
+    expect(outcome.kind).toBe("completed");
+
+    const system = provider.requests[0]?.messages.find((message) => message.role === "system");
+    if (system?.role !== "system") {
+      throw new Error("expected a system message");
+    }
+    expect(system.text).toContain("Goal: restore the missing payment record");
+    expect(system.text).toContain("hypothesis number 20");
+    expect(system.text).toContain("…[+12 older active hypotheses omitted]");
+    expect(system.text).not.toContain("hypothesis number 1\n");
+    expect(system.text).not.toContain("- [proposed] hypothesis number 5");
+  });
+
+  test("fails closed before consulting the model when the non-compactable tier cannot fit", async () => {
+    const provider = new ScriptedModelProvider([
+      { kind: "event", event: { type: "textDelta", text: "unreachable" } },
+      { kind: "event", event: { type: "completed", finishReason: "stop" } },
+    ]);
+    const harness = deps(provider);
+    await harness.store.append(
+      [
+        sessionCreated(1),
+        goalSet(2, {
+          goal: "restore the missing payment record",
+          constraints: [
+            "never write without a matching invoice and a second operator confirmation",
+            "never bypass the ledger reconciliation pass under any operational pressure",
+            "never treat an unverified replica as the source of truth for balances",
+          ],
+        }),
+      ],
+      0,
+    );
+
+    await expect(
+      runTurn(
+        harness,
+        { input: "proceed" },
+        {
+          signal: new AbortController().signal,
+          budget: {
+            maxRecentMessages: 8,
+            maxFragmentBytes: 300,
+            maxToolResultBytes: 512,
+            maxActiveObservations: 8,
+            maxActiveHypotheses: 8,
+            maxEstimatedTokens: 32 * 1024,
+          },
+        },
+      ),
+    ).rejects.toThrow(/non-compactable/u);
+
+    // The model was never consulted: no request was served and no
+    // ModelRequestStarted fact was appended.
+    expect(provider.requests).toHaveLength(0);
+    const stream = await harness.store.readStream(harness.sessionId);
+    expect(stream.filter((event) => event.type === "ModelRequestStarted")).toHaveLength(0);
+  });
 });

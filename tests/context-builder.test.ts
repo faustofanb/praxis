@@ -18,6 +18,7 @@ const tinyBudget: ContextBudget = {
   maxFragmentBytes: 120,
   maxToolResultBytes: 60,
   maxActiveObservations: 2,
+  maxActiveHypotheses: 2,
   maxEstimatedTokens: 10_000,
 };
 
@@ -261,5 +262,29 @@ describe("buildContext failure modes", () => {
       throw new Error("expected the system message first");
     }
     expect(system.text).toBe("You are Praxis.");
+  });
+
+  test("fails closed when the system prompt plus brief exceed the fragment cap", () => {
+    const longBrief = `## Goal\nGoal: ${"g".repeat(400)}`;
+    expect(() =>
+      buildContext(
+        { systemPrompt: "You are Praxis.", epistemicBrief: longBrief, history: [] },
+        tinyBudget,
+      ),
+    ).toThrow(ContextBudgetExceededError);
+    expect(() =>
+      buildContext(
+        { systemPrompt: "You are Praxis.", epistemicBrief: longBrief, history: [] },
+        tinyBudget,
+      ),
+    ).toThrow(/non-compactable/u);
+    // Without a brief the v0 head-truncation of a lone oversized prompt still
+    // applies — the fail-closed law protects structured state, not prose.
+    const built = buildContext({ systemPrompt: "s".repeat(400), history: [] }, tinyBudget);
+    const system = built.messages[0];
+    if (system?.role !== "system") {
+      throw new Error("expected the system message first");
+    }
+    expect(system.text).toMatch(/…\[\+\d+ bytes truncated\]/u);
   });
 });

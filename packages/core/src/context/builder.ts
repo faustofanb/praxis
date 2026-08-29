@@ -171,6 +171,18 @@ export function buildContext(
     input.epistemicBrief === undefined
       ? input.systemPrompt
       : `${input.systemPrompt}\n\n${input.epistemicBrief}`;
+  if (
+    input.epistemicBrief !== undefined &&
+    utf8Bytes(composedSystemPrompt) > budget.maxFragmentBytes
+  ) {
+    // Tail-truncating the composed fragment could silently cut the brief's
+    // non-compactable sections (docs/02 section 12.2); with facts present
+    // the build fails closed instead. Without a brief the v0 head-truncation
+    // of a lone oversized prompt still applies.
+    throw new ContextBudgetExceededError(
+      `system prompt plus epistemic brief reach ${utf8Bytes(composedSystemPrompt)} bytes over the fragment cap of ${budget.maxFragmentBytes}; refusing to truncate structured non-compactable state`,
+    );
+  }
   const fittedSystem = fitText(composedSystemPrompt, budget.maxFragmentBytes);
   const systemMessage: ModelMessage = {
     role: "system",

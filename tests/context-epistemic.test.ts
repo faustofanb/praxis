@@ -1,5 +1,6 @@
 import type { ContextBudget } from "@praxis/core";
 import {
+  ContextBudgetExceededError,
   DEFAULT_CONTEXT_BUDGET,
   foldSessionEvents,
   InvalidContextBudgetError,
@@ -31,6 +32,9 @@ import {
  */
 
 const budget: ContextBudget = DEFAULT_CONTEXT_BUDGET;
+
+const encoder = new TextEncoder();
+const utf8BytesOf = (text: string): number => encoder.encode(text).length;
 
 function fold(events: Parameters<typeof foldSessionEvents>[0]) {
   return foldSessionEvents(events);
@@ -206,26 +210,112 @@ describe("projectEpistemicBrief section laws", () => {
     expect(brief).toContain("Summary: checker unreachable");
   });
 
-  test("caps a pathological observation line without evicting later sections", () => {
+  test("evicts a pathological compactable section honestly instead of evicting fixed sections", () => {
     const state = fold([
       sessionCreated(1),
       observationRecorded(2, 1, { claim: "x".repeat(20_000) }),
       planSet(3, 1),
       challengeRaised(4, 1),
     ]);
+    // A line needing per-line truncation occupies ~cap bytes by itself, so it
+    // can never coexist with the fixed tier inside one fragment cap: the
+    // two-tier law drops the whole compactable section and says so, rather
+    // than truncating it into view or evicting plan/challenge lines.
     const smallBudget: ContextBudget = { ...budget, maxFragmentBytes: 300 };
     const brief = projectEpistemicBrief(state, smallBudget);
     if (brief === undefined) {
       throw new Error("expected a rendered brief");
     }
-    expect(brief).toMatch(/…\[\+\d+ bytes truncated\]/u);
-    const challengeAt = brief.indexOf("## Open challenge");
-    const observationAt = brief.indexOf("## Observations");
-    expect(observationAt).toBeGreaterThanOrEqual(0);
-    // Section priority keeps the challenge before the bulk partition, and the
-    // per-line cap keeps the truncated claim from evicting it.
-    expect(challengeAt).toBeGreaterThanOrEqual(0);
-    expect(challengeAt).toBeLessThan(observationAt);
+    expect(brief).toContain("## Active plan");
+    expect(brief).toContain("## Open challenge");
+    expect(brief).not.toContain("## Observations");
+    expect(brief).toContain("…[+2 brief lines omitted]");
+    expect(utf8BytesOf(brief)).toBeLessThanOrEqual(300);
+  });
+});
+
+describe("two-tier assembly law (M5-T001)", () => {
+  test("caps active hypotheses at maxActiveHypotheses keeping the newest, with an omission marker", () => {
+    const events = [sessionCreated(1)];
+    for (let n = 1; n <= 10; n += 1) {
+      events.push(hypothesisProposed(n + 1, n, { statement: `hypothesis number ${n}` }));
+    }
+    const state = fold(events);
+
+    const capped: ContextBudget = { ...budget, maxActiveHypotheses: 3 };
+    const brief = projectEpistemicBrief(state, capped);
+    if (brief === undefined) {
+      throw new Error("expected a rendered brief");
+    }
+    expect(brief).toContain("## Active hypotheses");
+    expect(brief).toContain("- [proposed] hypothesis number 8");
+    expect(brief).toContain("- [proposed] hypothesis number 9");
+    expect(brief).toContain("- [proposed] hypothesis number 10");
+    expect(brief).toContain("…[+7 older active hypotheses omitted]");
+    for (let n = 1; n <= 7; n += 1) {
+      expect(brief).not.toContain(`[proposed] hypothesis number ${n}\n`);
+    }
+  });
+
+  test("a hypothesis flood never evicts non-compactable sections and stays within the fragment cap", () => {
+    const events = [
+      sessionCreated(1),
+      goalSet(2, { goal: "restore the missing payment record" }),
+      planSet(3, 1),
+      challengeRaised(4, 1, { claim: "the plan ignores the missing file" }),
+      turnStarted(5, 1, "write the ledger"),
+      toolProposed(6, 1, { name: "write_file" }),
+      toolAuthorized(7, 1),
+      toolStarted(8, 1),
+      toolIndeterminate(9, 1, "process crashed mid-write; outcome unknown"),
+      verificationRecorded(10, { outcome: "inconclusive", summary: "checker unreachable" }),
+    ];
+    for (let n = 1; n <= 40; n += 1) {
+      events.push(
+        hypothesisProposed(events.length + 1, n, {
+          statement: `${n} the ledger replica may lag behind the primary by a full sync cycle`,
+        }),
+      );
+    }
+    for (let n = 1; n <= 5; n += 1) {
+      events.push(observationRecorded(events.length + 1, n, { claim: `observation number ${n}` }));
+    }
+    const state = fold(events);
+
+    const tight: ContextBudget = { ...budget, maxFragmentBytes: 1000 };
+    const brief = projectEpistemicBrief(state, tight);
+    if (brief === undefined) {
+      throw new Error("expected a rendered brief");
+    }
+    // Every non-compactable section survives the flood.
+    expect(brief).toContain("## Goal");
+    expect(brief).toContain("## Active plan");
+    expect(brief).toContain("## Open challenge");
+    expect(brief).toContain("## Pending indeterminate action");
+    expect(brief).toContain("## Latest verification");
+    // The compactable hypothesis section yields, honestly counted; the small
+    // observations section still fits after it.
+    expect(brief).not.toContain("## Active hypotheses");
+    expect(brief).toContain("…[+10 brief lines omitted]");
+    expect(brief).toContain("## Observations");
+    expect(utf8BytesOf(brief)).toBeLessThanOrEqual(1000);
+  });
+
+  test("fails closed when the non-compactable tier alone cannot fit", () => {
+    const state = fold([
+      sessionCreated(1),
+      goalSet(2, {
+        goal: "restore the missing payment record",
+        constraints: [
+          "never write without a matching invoice and a second operator confirmation",
+          "never bypass the ledger reconciliation pass under any operational pressure",
+          "never treat an unverified replica as the source of truth for balances",
+        ],
+      }),
+    ]);
+    const tiny: ContextBudget = { ...budget, maxFragmentBytes: 300 };
+    expect(() => projectEpistemicBrief(state, tiny)).toThrow(ContextBudgetExceededError);
+    expect(() => projectEpistemicBrief(state, tiny)).toThrow(/non-compactable/u);
   });
 });
 
@@ -236,6 +326,18 @@ describe("maxActiveObservations budget cap", () => {
       InvalidContextBudgetError,
     );
     expect(() => validateContextBudget({ ...budget, maxActiveObservations: 2.5 })).toThrow(
+      InvalidContextBudgetError,
+    );
+  });
+});
+
+describe("maxActiveHypotheses budget cap", () => {
+  test("default is 8 and validateContextBudget enforces positivity", () => {
+    expect(DEFAULT_CONTEXT_BUDGET.maxActiveHypotheses).toBe(8);
+    expect(() => validateContextBudget({ ...budget, maxActiveHypotheses: 0 })).toThrow(
+      InvalidContextBudgetError,
+    );
+    expect(() => validateContextBudget({ ...budget, maxActiveHypotheses: 1.5 })).toThrow(
       InvalidContextBudgetError,
     );
   });
