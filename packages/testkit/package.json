@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./session-events": "./src/session-events.ts",
+    "./in-memory-event-store": "./src/in-memory-event-store.ts"
   },
   "dependencies": {
     "@praxis/contracts": "0.0.0",
