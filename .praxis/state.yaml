@@ -15,8 +15,8 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-29
 next_legal_actions: 
-  - decide M5-T005 (session fork, optional) with evidence: implement or record explicit deferral
-  - prepare the M5 milestone acceptance record (docs/acceptance/M5.md) per the milestone-acceptance skill
+  - human: review docs/acceptance/M5.md and run the human demo
+  - human only: flip .praxis/milestones/M5.yaml status to accepted and advance current_milestone to M6
 last_verification: 
   task: M5-T004
   at: 2026-08-29T14:33:16.121Z
