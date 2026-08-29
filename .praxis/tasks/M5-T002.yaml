@@ -1,0 +1,92 @@
+schema_version: 1
+id: M5-T002
+title: implement deterministic compaction and long-session tests
+milestone: M5
+status: acceptance_ready
+risk_class: C
+objective: "Close the last M5.1 checkbox 'deterministic summary/简单 compaction strategy' and the M5 scenario acceptance '1000-turn synthetic session stays bounded' (.praxis/milestones/M5.yaml, docs/03 section 8). Today buildContext windows history at maxRecentMessages and drops oldest messages under the token cap, counting them in estimate.droppedMessages — but nothing replaces the dropped prefix: the model silently loses the fact that earlier work existed, and no test proves a long session stays bounded end to end. Deliverable: deterministic compaction — when messages drop out of the context window (either the count window or the token-cap loop), buildContext appends a single structured '## Compacted history' line to the composed system fragment after the epistemic brief, rendering honest per-role counts of everything dropped (user/assistant/tool messages), derived purely from the dropped messages themselves with no clock, randomness, or model-generated prose. Zero dropped messages keeps the composed system fragment byte-identical to today. The existing fail-closed composition law (M5-T001) applies unchanged to prompt+brief+summary. Long-session proof: a 1000-turn synthetic event stream projects, folds, and builds a context that stays within every declared cap while the durable state (goal/plan/verification) still reaches the model via the brief; plus a runTurn integration where a ScriptedModel consumes the bounded request. Conversation projection stays full-fidelity by design — the event store is the history, the context is bounded working state; compaction happens only at context build, never by deleting or rewriting events."
+evidence: 
+  observed: 
+    - "packages/core/src/context/builder.ts: the window slice and token-cap loop drop oldest messages silently; estimate.droppedMessages is reported but no fragment tells the model what was compacted"
+    - "packages/core/src/agent-loop/conversation.ts + run-turn.ts:190: history is re-projected from the full durable stream each step (projectConversation(turnEvents)) — projection is full-fidelity and replay-safe; there is no per-step memory growth, but nothing bounds what buildContext receives beyond the window"
+    - "docs/02 section 12.3 lists 'old conversation summarization' as the overflow policy; docs/03 M5.1 leaves 'deterministic summary/简单 compaction strategy' unchecked; M5 scenario acceptance requires '1000-turn synthetic session stays bounded'; no test today builds a session longer than ~tens of messages"
+    - M5-T001 (accepted) established the two-tier brief law and fail-closed composition; the system fragment is the natural home for a compaction recap because history must stay a pure order-preserving suffix of the projection (tests/property/context-builder.property.test.ts pins this)
+  expected: 
+    - "buildContext: after the window slice and token-cap loop settle, if droppedMessages > 0 the composed system fragment gains a trailing '## Compacted history' section — one per-line-capped line like 'N earlier messages compacted: U user, A assistant, T tool results' — computed from the dropped fitted messages; zero drops keeps output byte-identical to the M5-T001 projection (existing tests unmodified)"
+    - "the summary line is deterministic and honest: counts derive only from the dropped messages; the line passes the same per-fragment byte cap; prompt+brief+summary overflow keeps the M5-T001 fail-closed law (no silent truncation of structured state)"
+    - "long-session unit test: a synthetic 1000-turn event stream (turn input, assistant text, periodic tool cycles, durable goal/plan/verification facts) projects via projectConversation, folds via foldSessionEvents without error, and buildContext output stays within every cap: message count <= maxRecentMessages + 1 system message, estimatedTokens <= cap, all non-compactable brief sections present, '## Compacted history' present with matching counts, no compacted message body present"
+    - "runTurn integration (ScriptedModel): the same long stream seeded in the store, one scripted turn completes, and the served request is bounded (history length <= maxRecentMessages) with the compaction recap and the durable goal section in the system fragment"
+    - docs/02 section 12.3/12.4 record the v1 deterministic compaction line and its composition position; docs/03 M5.1 ticks the last checkbox; docs/subsystems/core.md context section and test list updated
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M5.yaml
+    - packages/core/src/context/builder.ts
+    - packages/core/src/agent-loop/conversation.ts
+    - tests/context-builder.test.ts
+    - tests/integration/epistemic-context.integration.test.ts
+hypothesis: "A deterministic compaction recap is enough for v1 long sessions: the durable consequences of dropped turns already live in structured brief sections (goal, plan, challenges, verification, observations — M5-T001 law keeps them immune), so the only missing fact is that a prefix was omitted and at what scale; a single per-role count line computed from the dropped messages, composed after the brief and subject to the same fail-closed cap, proves 'long session stays bounded' without model-generated summaries, new budget fields, or touching the event store."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M5-T002.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/src/context/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/src/state/**
+    - packages/core/src/agent-loop/**
+    - packages/core/src/capability/**
+    - packages/core/src/tools/**
+    - packages/core/src/index.ts
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "run-turn.ts and conversation.ts are deliberately forbidden: the recap is computed inside buildContext from the messages it already drops, so projection and loop are untouched; if evidence contradicts this, amend the contract first."
+    - "No new ContextBudget field: the recap is a single line under the existing maxFragmentBytes cap; compaction byte policy stays count-window + token-cap exactly as today."
+    - "Model-generated summarization is out of scope by design (docs/02 section 2.5): v1 compaction is a deterministic structured recap; semantic summarization is post-v1 evidence-driven work."
+    - "The kept-history suffix property must keep holding unchanged: the recap lives in the system fragment, never as a synthetic history message."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - integration
+  - property
+  - build
+acceptance: 
+  scenarios: 
+    - "1000-turn synthetic session stays bounded: project + fold + buildContext keeps message count within maxRecentMessages (+1 system), estimatedTokens within cap, every non-compactable brief section present, and the compaction recap reports counts matching the dropped messages; building twice is byte-identical"
+    - "runTurn integration: the long stream seeded in the store, one scripted turn completes and the served request carries the bounded window plus the recap and the durable goal section in the system fragment"
+    - zero dropped messages keeps the composed system fragment byte-identical to the M5-T001 projection (all existing tests unmodified)
+  failure_cases: 
+    - a recap that lied (counts not matching the actually dropped messages) would break the honesty contract — pinned by exact-count assertions in the long-session test
+    - "compaction that deleted or rewrote durable events (instead of bounding the working context) would violate 'Event history 保留，不因 compaction 删除' — rejected: only buildContext output changes, the store is untouched by design and the forbidden list pins conversation/reducer/store"
+    - serving a synthetic history message as the recap would break the order-preserving-suffix property — the recap must live in the system fragment
+    - weakening the M5-T001 fail-closed law or the two-tier brief law to make the recap fit is forbidden
+  artifacts: 
+    - packages/core/src/context/builder.ts
+    - tests/context-builder.test.ts
+    - tests/context-compaction.test.ts
+    - tests/integration/epistemic-context.integration.test.ts
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+falsified_if: "The recap cannot be computed from the dropped messages inside buildContext without touching run-turn/conversation/contracts; zero-drop outputs stop being byte-identical; the 1000-turn build exceeds any declared cap or drops a non-compactable brief section; the kept-history suffix property breaks; or the recap requires a model call, a new budget field, or durable-event deletion."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog (core behavior over settled runtime; no contract change). Reaches ACCEPTANCE_READY; human sign-off required per ai-policy. Deliberately simple v1 recap (per-role counts, one line); richer deterministic recaps (per-turn outcomes, first/last turn markers) deferred pending evidence they change model behavior. M5-T003 (versioned replay fixtures, risk E) is next after this."
