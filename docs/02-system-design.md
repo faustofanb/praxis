@@ -811,21 +811,24 @@ max total estimated tokens
 超限策略：
 
 - tool output truncation + artifact/reference；
-- old conversation summarization；
+- old conversation 确定性压缩（deterministic compaction，M5-T002）；
 - inactive hypothesis 不进入 active context；
 - Event history 保留，不因 compaction 删除。
 
-v1 先实现简单 deterministic projection；自动 semantic retrieval 后置。
+v1 先实现简单 deterministic projection；自动 semantic retrieval 与模型生成的 summarization 后置。
 
 **双层组装法则（M5-T001）**：brief 分两层——不可压缩层（12.2 全部条目）逐行渲染、永不因字节压力被逐出，仅单行仍受 `maxFragmentBytes` 硬界；可压缩层（active hypotheses、observations，各自计数封顶、最新优先）按**整节**让位，让位必附诚实的 `…[+K brief lines omitted]` 计数。brief 总字节恒不超过 `maxFragmentBytes`；不可压缩层自身放不下时直接 `ContextBudgetExceededError`（fail closed），绝不静默丢弃治理状态。带 brief 的 system 组合片段超限时同样 fail closed；无 brief 时超长 prompt 仍按 v0 头截断。
 
-## 12.4 v1 实现（M4-T002、M5-T001）
+**确定性压缩（M5-T002）**：滑出 `maxRecentMessages` 窗口的消息不再无声消失——`buildContext` 在组合 system 片段末尾（brief 之后）追加单一 `## Compacted history` 分节，一行按角色计数的诚实摘要（`N earlier messages compacted: U user, A assistant, T tool results`）。计数只来自被丢弃的 fitted 消息，无时钟/随机/模型生成文本；同一输入与 budget 永远渲染同一 recap。零丢弃时输出与 M5-T001 投影逐字节一致。recap 属 system 片段而非合成 history 消息（保字长窗口后缀性质）；计入 M5-T001 的 fail-closed 界。Event store 永远全量保留——压缩只约束工作上下文。
+
+## 12.4 v1 实现（M4-T002、M5-T001、M5-T002）
 
 - `projectEpistemicBrief(state, budget)`：纯函数渲染器，从 `DerivedSessionState` 生成结构化 brief——同一状态与 budget 永远渲染同一字符串；不读时钟/随机/环境。
 - 分节优先级即 12.2 法则的落地顺序：goal + hard constraints → active plan（含 falsifiedIf 与 hypothesis 引用）→ open challenges → pending `INDETERMINATE` executions → latest verification（`inconclusive` 一等公民，原样呈现）→ active hypotheses（仅 proposed/supported；falsified/superseded 永不进入）→ observations（按 `maxActiveObservations` 截取最新 N 条，最旧先丢）。
 - 每行独立过 `maxFragmentBytes` 截断（带 `…[+N bytes truncated]` 标记），单条病态 claim 无法挤掉后面的分节；组合后的 system 片段仍受整体 fitText 与 token 上限约束，超限 fail closed（`ContextBudgetExceededError`）。
 - M5-T001 起 brief 按 12.3 双层法则组装：active hypotheses 以 `maxActiveHypotheses`（默认 8）取最新 N 条并附 `…[+K older active hypotheses omitted]` 计数；可压缩分节整节让位并计数；不可压缩层或组合 system 片段超限即抛 `ContextBudgetExceededError`。推论：需要单行截断的病态行约占满整个 cap，必然导致其分节让位（可压缩）或 fail closed（不可压缩）——诚实让位置于截断示人。
 - brief 组合进**单一** system 片段（systemPrompt + 空行 + brief），不新增第二条 system 消息；`buildContext` 的 no-system-in-history 法则不变。
+- M5-T002 起窗口丢弃触发确定性压缩：`buildContext` 内部对窗口与 token 循环做收敛迭代——每轮按当前窗口计算 recap 并组合 system 片段，仍超 token 上限则再丢一条并重算计数；丢弃数 > 0 时追加 `## Compacted history` 行（按角色计数），丢弃数为 0 时输出与 M5-T001 逐字节一致。recap 计入 fail-closed 组合界与 `maxFragmentBytes` 单行界。
 - 认识论切片为空且无 pending indeterminate 时返回 `undefined`，brief 整体省略——无认识论事实的会话构建出与 M4 之前逐字节相同的上下文。
 - `runTurn` 每步重新折叠流并重建 brief，turn 中途落地的认识论事实下一步即到达模型。
 - v1 无 mode 字段，故 12.2 中的 "current mode" 在 v1 无对应分节（有意省略，非遗漏）。

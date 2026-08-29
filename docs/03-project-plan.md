@@ -291,7 +291,7 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 - [x] max tool output（M2-T002 起 `maxToolResultBytes`）；
 - [x] max history（M2-T002 起 `maxRecentMessages` + token 上限最旧先丢）；
 - [x] structured non-compactable state（M5-T001：12.2 条目入不可压缩层，永不被字节压力逐出；可压缩分节计数封顶、整节让位、诚实计数；不可压缩层超限 fail closed）；
-- [ ] deterministic summary/简单 compaction strategy。
+- [x] deterministic summary/简单 compaction strategy（M5-T002：窗口丢弃触发 `## Compacted history` 确定性按角色计数 recap，计入 fail-closed 组合界；零丢弃逐字节等同 M5-T001 投影；event store 永远全量保留）。
 
 ### M5.2 Replay fixtures
 
