@@ -23,6 +23,9 @@
       "path": "./packages/tools-local"
     },
     {
+      "path": "./evals"
+    },
+    {
       "path": "./scripts/ai"
     },
     {
