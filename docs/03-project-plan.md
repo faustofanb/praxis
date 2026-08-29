@@ -287,10 +287,10 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 
 ### M5.1 Context bounds
 
-- [ ] max fragments；
-- [ ] max tool output；
-- [ ] max history；
-- [ ] structured non-compactable state；
+- [x] max fragments（M2-T002 起 `maxFragmentBytes`；M5-T001 起 brief 总字节同受此界）；
+- [x] max tool output（M2-T002 起 `maxToolResultBytes`）；
+- [x] max history（M2-T002 起 `maxRecentMessages` + token 上限最旧先丢）；
+- [x] structured non-compactable state（M5-T001：12.2 条目入不可压缩层，永不被字节压力逐出；可压缩分节计数封顶、整节让位、诚实计数；不可压缩层超限 fail closed）；
 - [ ] deterministic summary/简单 compaction strategy。
 
 ### M5.2 Replay fixtures
