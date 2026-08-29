@@ -1,15 +1,18 @@
 import type { ToolDefinition } from "@praxis/contracts";
 import { asEventId, asTurnId } from "@praxis/contracts";
-import { type AgentLoopDeps, runTurn } from "@praxis/core";
+import { type AgentLoopDeps, foldSessionEvents, reduceSession, runTurn } from "@praxis/core";
 import { ScriptedModelProvider } from "@praxis/testkit";
 import { describe, expect, test } from "vitest";
 import { inMemoryEventStore } from "../helpers/in-memory-event-store";
 import {
+  challengeRaised,
+  challengeResolved,
   goalSet,
   hypothesisProposed,
   hypothesisStatusChanged,
   observationRecorded,
   planSet,
+  sessionCompleted,
   sessionCreated,
   TEST_SESSION_ID,
 } from "../helpers/session-events";
@@ -147,5 +150,59 @@ describe("runTurn epistemic context projection", () => {
     expect(system.text).toContain("Goal: restore the missing payment record");
     expect(system.text).not.toContain("## Active plan");
     expect(system.text).not.toContain("replay the payment webhook");
+  });
+
+  test("a completion-target challenge changes the session path: completion is refused until resolved", async () => {
+    const provider = new ScriptedModelProvider([
+      { kind: "event", event: { type: "textDelta", text: "working under protest" } },
+      { kind: "event", event: { type: "completed", finishReason: "stop" } },
+    ]);
+    const harness = deps(provider);
+    await harness.store.append(
+      [
+        sessionCreated(1),
+        goalSet(2, { goal: "restore the missing payment record" }),
+        challengeRaised(3, 1, {
+          targetType: "completion",
+          claim: "the restoration was never verified",
+        }),
+      ],
+      0,
+    );
+
+    const outcome = await runTurn(
+      harness,
+      { input: "proceed" },
+      { signal: new AbortController().signal },
+    );
+    expect(outcome.kind).toBe("completed");
+
+    // The model saw the block as a structured fragment.
+    const system = provider.requests[0]?.messages.find((message) => message.role === "system");
+    if (system?.role !== "system") {
+      throw new Error("expected a system message");
+    }
+    expect(system.text).toContain("## Completion blocked");
+    expect(system.text).toContain("Challenge: challenge-1 — the restoration was never verified");
+
+    // Completion over the open challenge is refused by the reducer...
+    const blockedState = foldSessionEvents(await harness.store.readStream(harness.sessionId));
+    expect(() => reduceSession(blockedState, sessionCompleted(blockedState.headSeq + 1))).toThrow(
+      /completion-target/,
+    );
+
+    // ...and the legal path: resolve the challenge, then complete.
+    const resolution = challengeResolved(
+      blockedState.headSeq + 1,
+      1,
+      "resolved",
+      "verification recorded",
+    );
+    await harness.store.append([resolution], blockedState.headSeq);
+    const stream = await harness.store.readStream(harness.sessionId);
+    const beforeCompletion = foldSessionEvents(stream);
+    expect(beforeCompletion.openChallenges).toHaveLength(0);
+    const completed = reduceSession(beforeCompletion, sessionCompleted(stream.length + 1));
+    expect(completed.status).toBe("COMPLETED");
   });
 });

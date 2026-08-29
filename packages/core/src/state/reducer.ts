@@ -171,6 +171,20 @@ export function reduceSession(
     case "SessionCompleted": {
       requireStatus(state, "SessionCompleted", "ACTIVE");
       requireNoOpenTurn(state, "SessionCompleted");
+      // Section 14: a completion-target challenge blocks completion until
+      // resolved. The v1 policy is the law itself — deterministic, no
+      // policy object, no model consultation.
+      const blocking = state.openChallenges.filter(
+        (challenge) => challenge.targetType === "completion",
+      );
+      if (blocking.length > 0) {
+        const ids = blocking.map((challenge) => challenge.challengeId.valueOf()).join(", ");
+        throw new IllegalTransitionError(
+          "SessionCompleted",
+          state.status,
+          `open completion-target challenge(s) must be resolved first: ${ids}`,
+        );
+      }
       return { ...advanced, status: "COMPLETED" };
     }
     case "TurnStarted": {

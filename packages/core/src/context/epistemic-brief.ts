@@ -119,6 +119,22 @@ export function projectEpistemicBrief(
     line(`Claim: ${challenge.claim}`);
   }
 
+  // The reducer refuses SessionCompleted while a completion-target
+  // challenge is open (docs/02 section 14, M4-T004): render the block so
+  // the model knows why completion is unavailable and what to resolve.
+  const blockingCompletions = state.openChallenges.filter(
+    (challenge) => challenge.targetType === "completion",
+  );
+  if (blockingCompletions.length > 0) {
+    line(`## Completion blocked`);
+    line(
+      `Session completion is blocked until ${blockingCompletions.length} completion-target challenge(s) are resolved.`,
+    );
+    for (const challenge of blockingCompletions) {
+      line(`Challenge: ${challenge.challengeId.valueOf()} — ${challenge.claim}`);
+    }
+  }
+
   for (const pending of pendingIndeterminates(state)) {
     line(`## Pending indeterminate action`);
     line(`Execution: ${pending.toolExecutionId} (${pending.name})`);

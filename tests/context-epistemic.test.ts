@@ -147,6 +147,8 @@ describe("projectEpistemicBrief section laws", () => {
     const open = projectEpistemicBrief(withOpen, budget);
     expect(open).toContain("## Open challenge");
     expect(open).toContain("Claim: the plan ignores the missing file");
+    // A plan-target challenge does not render a completion block.
+    expect(open).not.toContain("## Completion blocked");
 
     const resolved = fold([
       sessionCreated(1),
@@ -155,6 +157,27 @@ describe("projectEpistemicBrief section laws", () => {
       challengeResolved(4, 1, "rejected", "the file exists under another name"),
     ]);
     expect(projectEpistemicBrief(resolved, budget)).toContain("## Active plan");
+  });
+
+  test("renders the completion block while a completion-target challenge is open, and stops once resolved", () => {
+    const blocked = fold([
+      sessionCreated(1),
+      challengeRaised(2, 1, {
+        targetType: "completion",
+        claim: "the restoration was never verified",
+      }),
+    ]);
+    const brief = projectEpistemicBrief(blocked, budget);
+    expect(brief).toContain("## Completion blocked");
+    expect(brief).toContain("1 completion-target challenge(s) are resolved");
+    expect(brief).toContain("Challenge: challenge-1 — the restoration was never verified");
+
+    const unblocked = fold([
+      sessionCreated(1),
+      challengeRaised(2, 1, { targetType: "completion" }),
+      challengeResolved(3, 1, "resolved", "verification recorded"),
+    ]);
+    expect(projectEpistemicBrief(unblocked, budget)).toBeUndefined();
   });
 
   test("renders pending INDETERMINATE executions with id, name, and reason", () => {

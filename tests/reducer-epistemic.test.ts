@@ -269,6 +269,55 @@ describe("challenge law", () => {
       /requires challenge status open/,
     );
   });
+
+  test("an open completion-target challenge blocks SessionCompleted; any outcome resolves the block", () => {
+    const blocked = foldSessionEvents([
+      sessionCreated(1),
+      challengeRaised(2, 1, { targetType: "completion" }),
+    ]);
+    expect(() => reduceSession(blocked, sessionCompleted(3))).toThrow(
+      /open completion-target challenge\(s\) must be resolved first: challenge-1/,
+    );
+
+    // Resolution with any recorded outcome (here: the challenge was wrong)
+    // removes the block and completion becomes legal.
+    const resolved = foldSessionEvents([
+      sessionCreated(1),
+      challengeRaised(2, 1, { targetType: "completion" }),
+      challengeResolved(3, 1, "rejected", "the verification already passed"),
+      sessionCompleted(4),
+    ]);
+    expect(resolved.status).toBe("COMPLETED");
+  });
+
+  test("non-completion targets never block completion on their own", () => {
+    const state = foldSessionEvents([
+      sessionCreated(1),
+      planSet(2, 1),
+      challengeRaised(3, 1),
+      challengeRaised(4, 2, { targetType: "policy", target: "read-only boundary" }),
+    ]);
+    expect(state.openChallenges).toHaveLength(2);
+    const completed = reduceSession(state, sessionCompleted(5));
+    expect(completed.status).toBe("COMPLETED");
+  });
+
+  test("multiple completion-target challenges all listed; resolving one still blocks", () => {
+    const two = foldSessionEvents([
+      sessionCreated(1),
+      challengeRaised(2, 1, { targetType: "completion" }),
+      challengeRaised(3, 2, { targetType: "completion" }),
+    ]);
+    expect(() => reduceSession(two, sessionCompleted(4))).toThrow(/challenge-1, challenge-2/);
+
+    const oneLeft = foldSessionEvents([
+      sessionCreated(1),
+      challengeRaised(2, 1, { targetType: "completion" }),
+      challengeRaised(3, 2, { targetType: "completion" }),
+      challengeResolved(4, 1, "resolved", "addressed by replanning"),
+    ]);
+    expect(() => reduceSession(oneLeft, sessionCompleted(5))).toThrow(/challenge-2/);
+  });
 });
 
 describe("verification law", () => {
