@@ -266,10 +266,10 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 
 ### M4.4 Challenge
 
-- [ ] Challenge target/evidence refs；
-- [ ] unresolved completion blocking（按 policy）；
-- [ ] accept -> plan/hypothesis update；
-- [ ] reject requires reason event。
+- [x] Challenge target/evidence refs；
+- [x] unresolved completion blocking（按 policy；v1 policy 即法则本身，见 docs/02 §14）；
+- [x] accept -> plan/hypothesis update（M4-T003 入口 pass）；
+- [x] reject requires reason event。
 
 ### Exit Criteria
 

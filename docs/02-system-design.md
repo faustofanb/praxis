@@ -877,6 +877,13 @@ Model/extension resolves:
 
 若 Challenge 指向 completion 且 policy 要求解决，Session 不能完成。
 
+v1 的 policy 即法则本身，不引入可配置 policy 对象（`CompletionPolicy` 见 §13 未来工作）：
+
+- 所有 `targetType === "completion"` 的 open challenge 阻断 `SessionCompleted`，reducer 在 fold 时拒绝并逐出全部阻断者的 id；
+- 指向 hypothesis / plan / policy 的 challenge 不阻断完成（v1 只按 target 判定）；
+- 任何 `ChallengeResolved` outcome（`accepted` / `rejected` / `resolved`）都解除阻断——reducer 不评价理由，理由进 Event 流；
+- epistemic brief 渲染 `## Completion blocked` 分节，使模型知道完成为何不可用、需要先解决什么。
+
 v1 不自动做复杂 appeal hierarchy；保留 `Challenge` + `SessionPaused` 足够。
 
 ---
