@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M6
 last_accepted_milestone: M5
-active_task: null
-development_state: ACCEPTED
+active_task: M6-T001
+development_state: PLAN_READY
 blockers: 
   []
 open_adrs: 
@@ -15,8 +15,9 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-29
 next_legal_actions: 
-  - author the M6-T001 Task Contract (minimal extension lifecycle and seams)
-  - run ai:plan on the M6-T001 contract
+  - implement only within Task Contract scope
+  - run ai:guard
+  - run ai:verify
 last_verification: 
   task: M5-T004
   at: 2026-08-29T14:33:16.121Z

@@ -1,0 +1,118 @@
+schema_version: 1
+id: M6-T001
+title: define minimal extension lifecycle and context/tool/event seams
+milestone: M6
+status: plan_ready
+risk_class: C
+objective: "Open docs/03 M6 per docs/02 section 19: define the minimal extension seams so that M6-T002 (telemetry observer) and M6-T003 (sample context/tool extension) can land WITHOUT further Core modification (T003's own title demands it), and M6-T004 can verify unload/failure isolation. Observed state: docs/02 section 19 specifies the PraxisExtension shape (8 hooks: onTurnStart/contributeContext/beforeModel/afterModel/beforeTool/afterTool/onEvent/onTurnEnd) and four constraints (bounded hook count, no CapabilityPolicy bypass, no extension-owned durable state inside Core's store, explicit failure semantics with telemetry-defaults-non-blocking and policy-fail-closed); none of it exists in code — no extension types in packages/contracts, no host/registry in packages/core, no invocation points in run-turn/tool-runtime (grep Extension/hook across src: zero hits). Deliverable: (1) packages/contracts/src/extensions.ts — the PraxisExtension type family (8 hooks exactly, per docs/02 section 19), read-only hook context types (ExtensionContext, ContextContributionContext, ModelHookContext, ModelResultHookContext, ToolHookContext, ToolResultHookContext), ContextFragment {source, text}, ToolHookDecision, ExtensionFailurePolicy ('isolate' | 'fail_closed'), and validatePraxisExtension (name rules, hook arity/fn shape, failurePolicy default 'isolate'); ToolHookDecision is DENY-ONLY by type ({decision:'deny'; reason} | void) — an extension structurally cannot express 'allow', making 'extension cannot bypass core capability checks' (M6 failure acceptance) impossible by construction rather than by discipline; (2) packages/core extension host — instance-scoped (injected via deps; zero module-global state), register/unload with validation, deterministic registration-order invocation, per-hook failure policy ('isolate' swallows hook errors, 'fail_closed' propagates so the existing crash-recovery machinery handles it honestly); (3) seam invocation points wired once into Core: runTurn calls onTurnStart (after turn opens), collects contributeContext fragments (rendered as deterministic `## Extension: <name>` sections in the system fragment AFTER the epistemic brief, byte-capped and token-capped by the existing M5-T001 fail-closed composition law — compactable, unlike goal/plan), beforeModel/afterModel around model.complete, onEvent after each durable append (observe-only), onTurnEnd on completion/pause/cancel; executeToolCall consults beforeTool (deny → explicit ToolRejected citing the extension, AFTER the capability/authorizer check so extensions only ever RESTRICT) and afterTool on settle; (4) ADR-0013 recording the v1 decisions (deny-only ToolHookDecision, failure-policy table, unload law, invocation points, what v1 deliberately refuses per section 19 'not an Event Bus framework'); docs/02 section 19 concretized to match code; (5) tests: host unit laws (ordering, isolation, unload-stops-invocation, duplicate-name rejection), runTurn integration (hooks fire in the documented order through a scripted extension; extension writes no durable events; replay unaffected), fault (a fail_closed extension crash leaves a recoverable stream — existing recovery handles it), security (a deny-happy extension cannot make an unauthorized tool run; an extension cannot override a capability rejection)."
+evidence: 
+  observed: 
+    - "grep -ri 'extension|hook' packages/contracts/src packages/core/src: zero code hits — docs/02 section 19's PraxisExtension (8 hooks, lines 1015-1033) is entirely unimplemented; no host, no registry, no invocation points"
+    - "docs/03 M6 exit criteria: '一个 out-of-core extension 可在不修改 packages/core 的情况下注册工具/贡献 context/观察 event；卸载后不残留 mutable global state' — T003's title 'without Core modification' implies the Core-side seam (invocation points) must be complete after THIS task; M6.yaml failure_acceptance: 'extension cannot bypass core capability checks'"
+    - "packages/core/src/tools/tool-runtime.ts executes authorization via ToolAuthorizer (capability-enforced, M3-T002); any extension tool-veto must compose AFTER that check to preserve ADR-0007 (capability enforcement is Core, never tool-author or extension discipline)"
+    - "packages/core/src/context/builder.ts (M5-T001/T002) composes the system fragment with fail-closed byte/token caps and a non-compactable brief layer — extension context fragments must enter THROUGH that law (compactable, capped), not around it"
+    - "docs/02 section 19 constraints: 'extension 不能绕过 CapabilityPolicy；extension 自己的 durable state 必须以 Event 或独立显式 storage 管理；extension failure 是否阻断主循环由 hook contract 明确' — the failure policy must be per-extension and declared"
+  expected: 
+    - "packages/contracts/src/extensions.ts (new): PraxisExtension type with exactly the 8 section-19 hooks (all optional), readonly hook context types carrying read-only views (never the store, never mutable state), ContextFragment {source: string; text: string}, ToolHookDecision = {decision: 'deny'; reason: string} (deny-only), ExtensionFailurePolicy = 'isolate' | 'fail_closed', validatePraxisExtension throwing on rule violations (empty/duplicate-name at host level, non-function hooks, invalid failurePolicy); index.ts exports the family"
+    - "packages/core/src/extensions/host.ts (new): createExtensionHost() instance factory — register(extension) validates + appends in order, unload(name) removes (later invocations skip it; nothing else mutates), invoke<Hook> helpers applying the extension's failurePolicy per hook call ('isolate' swallow, 'fail_closed' rethrow); no module-level mutable state (AGENTS.md law); host exposes registered names read-only"
+    - "packages/core/src/agent-loop/run-turn.ts: AgentLoopDeps gains optional extensions host; onTurnStart after TurnStarted append (isolated policy implied for lifecycle hooks? no — per-extension policy), contributeContext fragments joined into buildContext input as deterministic '## Extension: <name>' sections after the epistemic brief subject to the existing caps, beforeModel/afterModel around model.complete, onEvent fired with each newly appended event (observe-only; extensions never append), onTurnEnd on every TurnOutcome path (completed/paused/cancelled)"
+    - "packages/core/src/tools/tool-runtime.ts: after the existing authorizer decision, beforeTool is consulted — any deny appends ToolRejected with reason citing the extension name and never executes; afterTool fires on settle (SUCCEEDED/FAILED/INDETERMINATE/REJECTED); the capability check order is unchanged and an extension cannot alter it"
+    - "tests/extensions/host.test.ts (new dir): registration order preserved on every hook, unload stops invocation immediately, duplicate name rejected, 'isolate' swallows a throwing hook while 'fail_closed' propagates, validatePraxisExtension rejects malformed definitions"
+    - "tests/integration/extensions.integration.test.ts: a scripted extension observes a full turn (hook firing order asserted against the documented sequence), contributes a context fragment that appears capped in the built request, denies a tool call producing an explicit ToolRejected, and writes zero durable events (stream identical to an extension-free run of the same scripts)"
+    - "tests/fault/extension-failure.fault.test.ts: a fail_closed extension whose beforeModel throws crashes the turn mid-flight; the persisted prefix folds legally and the existing crash recovery resumes the session (no new recovery path)"
+    - "tests/security/extension-bypass.security.test.ts: an extension cannot authorize a tool the capability authorizer denies (deny-only decision type exercised; authorizer rejection stands regardless of extension behavior); an extension deny produces the same ToolRejected fact shape as any other veto"
+    - "docs/decisions/ADR-0013-extension-seams-v1.md (new): context, decision (8-hook surface, deny-only ToolHookDecision with rationale, failure-policy table isolate/fail_closed with fail_closed delegating to crash recovery, instance host + unload law, invocation points, explicit non-goals from section 19), consequences; docs/02 section 19 updated to the concrete v1 law (deny-only decision, failure policy, fragment rendering/capping); docs/03 M6 first checkbox group ticked for the seam definition; docs/subsystems/contracts.md and core.md entries"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M6.yaml
+    - packages/core/src/agent-loop/run-turn.ts
+    - packages/core/src/tools/tool-runtime.ts
+    - packages/core/src/context/builder.ts
+    - docs/decisions/ADR-0007-capability-core.md
+    - docs/decisions/ADR_TEMPLATE.md
+hypothesis: "The section-19 surface can be defined so that every M6 acceptance property is structural: deny-only ToolHookDecision makes capability bypass unrepresentable; an instance-scoped host with register/unload makes residual global state impossible; fail_closed delegating to the EXISTING crash-recovery machinery (docs/02 section 17) avoids inventing a second failure path; context fragments entering through the M5-T001 capped composition law keeps the bounded-context invariant intact. If wiring the eight invocation points into run-turn/tool-runtime proves to duplicate control flow rather than seam through it, the seam count should shrink (section 19's own 'hook 数量不随每个新需求增长'), not grow."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M6-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/contracts/**
+    - packages/core/**
+    - tests/extensions/**
+    - tests/integration/**
+    - tests/fault/**
+    - tests/security/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+    - docs/decisions/ADR-0013-extension-seams-v1.md
+  forbidden_paths: 
+    - packages/store-sqlite/**
+    - packages/provider-openai/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - tests/property/**
+    - tests/replay/**
+    - tests/fixtures/**
+    - tests/helpers/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/praxis-dev.test.ts
+  scope_notes: 
+    - "requires_adr TRUE: this adds a new port family (extension seams) — a boundary decision; docs/07 section 4 stop-condition applies even though docs/02 section 19 pre-specifies the shape, because the ADR must record the v1 refinements code commits to (deny-only decision, failure policy table, invocation points, unload law)."
+    - "No durable-event vocabulary changes: extensions observe events and contribute context fragments but append NOTHING to the store (section 19 'extension 自己的 durable state 必须以 Event 或独立显式 storage 管理' — extension-owned storage is out of scope for v1 seams; onEvent is read-only). Event/schema change would additionally trigger the M5-T003 version-window procedure and is explicitly not part of this task."
+    - "No concrete extension ships in this task: telemetry (M6-T002) and the context/tool sample (M6-T003) follow; test extensions inside test files are fixtures, not product."
+    - "runTurn behavior with NO registered extensions must be byte-identical to today (zero-extension identity) — the seam is strictly additive; existing suites passing unedited is part of the evidence, same as M5-T002."
+    - "beforeTool composing AFTER the authorizer is load-bearing (ADR-0007): the authorizer/capability decision stays the sole grant path; extensions only add vetoes. Any evidence that a seam forces reordering there stops this task for an ADR amendment."
+    - "Context fragments are compactable content under the M5-T001 law: they never displace goal/plan/challenge/pending-indeterminate sections, and an over-budget fragment set fails closed exactly like any other oversize input."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+  - docs/decisions/ADR-0007-capability-core.md
+required_gates: 
+  - unit
+  - integration
+  - replay
+  - fault
+  - security
+  - build
+acceptance: 
+  scenarios: 
+    - "an out-of-core (test-file) extension registers, observes a full turn in the documented hook order, contributes a capped context fragment, and denies a tool call — all without editing packages/core beyond this task's one-time seam"
+    - "zero-extension identity: runTurn with no registered extensions produces byte-identical requests and event streams to pre-task behavior (existing suites pass unedited)"
+    - "unload: after host.unload, the extension's hooks are never invoked again and session behavior is indistinguishable from never-registered; no residual state anywhere (host is instance-scoped)"
+  failure_cases: 
+    - an extension attempting to authorize what capability denies — unrepresentable by the deny-only ToolHookDecision type and pinned by the security test regardless of extension behavior
+    - "a throwing 'isolate' extension hook breaking the turn — swallowed, turn proceeds; a throwing 'fail_closed' hook crashes honestly into the EXISTING crash-recovery path (fault test: prefix folds, resume works)"
+    - extension context fragments evicting non-compactable brief sections or escaping the token cap — forbidden by construction through buildContext; over-budget fails closed
+    - an extension writing durable events — impossible through the seam (observe-only contexts); pinned by stream-identity assertion in the integration test
+    - weakening any existing suite to accommodate the seam
+  artifacts: 
+    - packages/contracts/src/extensions.ts
+    - packages/contracts/src/index.ts
+    - packages/core/src/extensions/host.ts
+    - packages/core/src/agent-loop/run-turn.ts
+    - packages/core/src/tools/tool-runtime.ts
+    - packages/core/src/index.ts
+    - tests/extensions/host.test.ts
+    - tests/integration/extensions.integration.test.ts
+    - tests/fault/extension-failure.fault.test.ts
+    - tests/security/extension-bypass.security.test.ts
+    - docs/decisions/ADR-0013-extension-seams-v1.md
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+falsified_if: "The eight-hook surface cannot be wired into run-turn/tool-runtime without duplicating control flow or reordering authorization; deny-only beforeTool cannot compose after the capability check without touching contracts' capability schema; extension fragments cannot enter buildContext under the existing caps without a builder redesign; fail_closed failures cannot ride the existing crash-recovery path; or the zero-extension identity breaks."
+requires_adr: true
+requires_human_acceptance: true
+notes: "Risk C per backlog (Core behavior change over settled runtime; new boundary). Prerequisites M5 accepted (bc2ecd9). Reaches ACCEPTANCE_READY; human sign-off required. M6-T002 (telemetry observer, risk B) and M6-T003 (sample context/tool extension, risk B) build on these seams without further Core edits; M6-T004 (unload/failure isolation verification, risk C) then audits them. The zero-extension identity requirement means the 428-test suite passing unedited is itself evidence."
