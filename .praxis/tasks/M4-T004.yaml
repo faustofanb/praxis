@@ -1,0 +1,86 @@
+schema_version: 1
+id: M4-T004
+title: implement first-class Challenge path that changes legal next actions
+milestone: M4
+status: plan_ready
+risk_class: C
+objective: "Close the M4.4 gap: challenges fold into openChallenges and render in the M4-T002 brief, but nothing lets them change legal next actions — docs/02 section 14 says a completion-target challenge blocks SessionCompleted and M4's exit criteria demand 'challenge 可以改变 session path，而不是只成为日志'. Land the runtime law in the reducer: SessionCompleted is illegal while an open challenge targets completion (v1 policy is deterministic — every completion-target challenge must be resolved, no configuration); ChallengeResolved already exists as the unlock, and the M4-T003 pattern shows accept flows through existing events (PlanInvalidated / HypothesisStatusChanged followed by ChallengeResolved). Update the epistemic brief to render the completion block explicitly so the model knows resolution is required, and pin the whole path with unit tests (blocking, unlock, non-completion targets unaffected) plus the reducer integration tests proving a completion-challenged stream cannot complete and can be rescued by resolution."
+evidence: 
+  observed: 
+    - packages/core/src/state/reducer.ts SessionCompleted only requires ACTIVE + no open turn; openChallenges is never consulted — a completion-target challenge is currently inert beyond the brief
+    - "docs/02 section 14: '若 Challenge 指向 completion 且 policy 要求解决，Session 不能完成'; docs/03 M4.4 lists 'unresolved completion blocking（按 policy）' unchecked and exit criterion 3 demands challenge change session path"
+    - "ChallengeRaised targetType 'completion' exists in the settled contract with a free-form targetId (M4-T001 scope note); ChallengeResolved outcome accepted/rejected/resolved is the terminal unlock — nothing else is needed"
+  expected: 
+    - "reducer SessionCompleted adds the law: openChallenges containing any targetType 'completion' entry makes the transition illegal with a detail naming the blocking challenge id(s) — deterministic, no policy object in v1 (docs/02 section 13's CompletionPolicy stays future work; the law is the policy)"
+    - "blocking is target-scoped: open challenges against hypothesis/plan/policy do NOT block completion in v1 (they ride the brief and the T003-style accept flows); only completion-target challenges block"
+    - "ChallengeResolved(rejected) still unblocks: rejection is a decision that the challenge was wrong, recorded with its required reason — any terminal resolution clears the block if it was the only completion-target challenge"
+    - "projectEpistemicBrief renders an explicit section for a completion-blocking challenge (e.g. '## Completion blocked' citing the challenge claim) so the model sees why completion is unavailable and what to resolve"
+    - "replay determinism untouched: the law is pure state validation at fold time; pre-M4 streams with no completion-target challenges load unchanged"
+    - "unit tests: completion-target open challenge rejects SessionCompleted with the challenge id in the detail; resolution (each outcome) unlocks; hypothesis/plan/policy-target challenges never block; multiple completion challenges all listed; integration/reducer-epistemic tests pin the full path raise -> blocked completion -> resolve -> complete"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M4.yaml
+    - docs/decisions/ADR-0012-epistemic-event-contracts.md
+hypothesis: "Completion blocking lands as one more fold-time law beside the existing SessionCompleted guards — the same shape as requireNoOpenTurn and requireNoActiveToolExecutions. No new events, no policy machinery, no model consultation: the reducer simply refuses to fold a completion over an unresolved completion-target challenge, and the durable stream records both the block and the resolution."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M4-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - packages/contracts/**
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "No contract change: ChallengeRaised targetTypes, ChallengeResolved outcomes, and SessionCompleted are settled M4-T001 vocabulary; this task adds a fold-time law, so requires_adr is false and docs/02 section 14 (the owning doc) records the v1 deterministic policy."
+    - "v1 policy is fixed (all completion-target challenges block) rather than configurable: docs/02 section 13's CompletionPolicy-by-mode is explicitly future work, and a policy object whose only v1 value is 'block always' would be dead configuration; the law encodes the policy."
+    - "Non-completion targets do not block in v1: section 14's accept flow for hypothesis/plan challenges runs through existing events (HypothesisStatusChanged / PlanInvalidated + ChallengeResolved), already covered by M4-T001/T003; blocking them too would exceed the documented v1 semantics."
+    - "The brief's completion-block section is additive: it renders only when a completion-target challenge is open, so existing brief snapshots stay byte-identical."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - "a stream with an open completion-target challenge folds SessionCompleted to an IllegalTransitionError naming the challenge id; appending ChallengeResolved (any outcome, with reason) then folds SessionCompleted legally"
+    - hypothesis/plan/policy-target challenges never block completion on their own; a session may complete with them open (v1 records them; the brief surfaces them)
+    - the epistemic brief renders the completion block (claim visible) while the challenge is open and stops rendering it once resolved
+    - "the full scripted path: ChallengeRaised(completion) -> SessionCompleted rejected -> ChallengeResolved -> SessionCompleted accepted — challenge changed the session path, not just the log (M4 exit criterion 3)"
+  failure_cases: 
+    - "SessionCompleted with TWO open completion-target challenges lists both ids in the rejection detail; resolving only one still blocks, resolving both completes"
+    - ChallengeResolved on an already-resolved challenge is still illegal (M4-T001 law unchanged); resolution cannot resurrect a block
+    - pre-M4 replay fixtures and streams remain loadable unchanged — no schema or vocabulary growth; replay of a blocked stream reproduces the same block deterministically
+  artifacts: 
+    - packages/core/src/state/reducer.ts
+    - packages/core/src/context/epistemic-brief.ts
+    - tests/reducer-epistemic.test.ts
+    - tests/context-epistemic.test.ts
+    - tests/integration/epistemic-context.integration.test.ts
+    - docs/subsystems/core.md
+falsified_if: "The block needs a new event, schema change, policy object, or model consultation to work; non-completion challenges block completion; a resolved challenge still blocks; or pre-M4 streams stop replaying deterministically."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog: reducer law + brief section over settled contracts, no vocabulary growth. Deliberately deferred: configurable CompletionPolicy (docs/02 section 13, post-v1), challenge appeal hierarchy (section 14 explicit non-goal), comparative real-model eval (M4-T005)."
