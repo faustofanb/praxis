@@ -90,3 +90,7 @@ falsified_if: "The contract needs runtime orchestration to be coherent (context 
 requires_adr: true
 requires_human_acceptance: true
 notes: "Risk E per backlog: durable vocabulary growth plus new state laws, hence ADR-0012 and human acceptance routing. Deliberately deferred: context projection (M4-T002), falsifiable-plan orchestration — the runtime that invalidates a plan when its hypothesis is falsified (M4-T003), the challenge path that changes legal next actions including completion blocking (M4-T004), and the comparative real-model eval (M4-T005)."
+acceptance_record:
+  result: ACCEPTED
+  accepted_by: "樊彪 (human, in-session sign-off 2026-08-29 — \"核验通过继续\" reply to the acceptance-ready report, which explicitly surfaced the session-level-fact law, falsification-is-not-invalidation pinned by the seq-20 fixture checkpoint, and the dropped plan-completed status)"
+  evidence: ".praxis/state.yaml last_verification (12 gates PASS) + handoff M4-T001-1787928840282.md"
