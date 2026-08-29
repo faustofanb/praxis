@@ -301,15 +301,14 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 
 ### M5.3 Crash matrix
 
-逐边界注入：
+逐边界注入（M5-T004 全部落格并勾选；法则表以 docs/02 §17 崩溃矩阵为唯一权威，`tests/fault/crash-matrix.fault.test.ts` 逐格注入 + `tests/store/crash-recovery.bun.test.ts` 真实 SQLite 关闭/重开证据）：
 
-```text
-before append
-before execute
-after side effect
-before result append
-after result append
-```
+- [x] before append（ToolProposed 未落盘：零执行、模型重问、无恢复事实）；
+- [x] before execute（dangling PROPOSED/AUTHORIZED → 显式 `ToolRejected`，从未执行）；
+- [x] after side effect（executor 崩溃 → 当回合诚实 `ToolIndeterminate`，下一入口 reconcile 落定，不重复执行）；
+- [x] before result append（结果在手落盘崩溃 → dangling EXECUTING → indeterminate-then-reconciled，绝不采信死进程内存结果）；
+- [x] after result append（终态 durable → 恢复零追加，恰好执行一次）；
+- [x] 附加格：混合 dangling 插入序、恢复幂等（后续 turn 零恢复事实）、§17 第 9 步人工解锁环（SessionResumed 重试 reconciliation）、持久存储关闭/重开全流程恢复。
 
 ### M5.4 Fork（如实现成本合适）
 

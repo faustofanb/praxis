@@ -948,6 +948,21 @@ v1 原则：**Single Writer per Session**。
 8. 重建 Context；
 9. 用户 resume（`SessionResumed`，唯一解锁；PAUSED 会话拒绝运行）后 runtime 重新进入恢复流程并重试 reconciliation；`ToolReconciled` 是关于历史执行的事实，不要求 open turn——否则人工解锁环在结构上不可能。
 
+### 崩溃矩阵（M5-T004）
+
+上述步骤按崩溃发生的关键边界落为可检验的矩阵（`tests/fault/crash-matrix.fault.test.ts` 逐格注入并断言四法则：前缀合法折叠、恢复事实诚实、危险工具 execute 计数不越过崩溃前值、恢复幂等；`tests/store/crash-recovery.bun.test.ts` 在真实 SQLite 关闭/重开后走"before result append"皇冠格）：
+
+| 崩溃边界 | 持久化前缀终止于 | 恢复事实 | execute 计数 |
+| --- | --- | --- | --- |
+| before append（ToolProposed 未落盘） | ModelResponseCompleted（tool-call 意图已持久，执行未成事实） | 无——无 dangling 执行，模型被重新询问 | 0 |
+| before execute · 提案中 | ToolProposed（dangling PROPOSED） | `ToolRejected`（abandoned at proposal） | 0 |
+| before execute · 授权后 | ToolAuthorized（dangling AUTHORIZED） | `ToolRejected`（abandoned at authorization） | 0 |
+| after side effect（executor 崩溃，结果未知） | ToolStarted，运行时当回合落 `ToolIndeterminate` | 下一入口 reconciliation 落 `ToolReconciled` | 1（verify-only） |
+| before result append（结果在手，落盘崩溃） | ToolStarted（dangling EXECUTING） | 恢复落 `ToolIndeterminate` → reconcile 落 `ToolReconciled`；绝不采信死进程的内存结果（未验证的 `ToolSucceeded` 不得出现） | 1（verify-only） |
+| after result append（终态已落盘） | 终态事实 | 无——恢复零追加，事实已 durable | 1 |
+
+矩阵同时钉死：混合 dangling（同一崩溃留下一个 PROPOSED + 一个 EXECUTING）按插入序先 reject、后 indeterminate、再 reconcile；第 9 步人工解锁环全流程（未定论 → `SessionPaused` → PAUSED 拒绝运行 → `SessionResumed` → 重试 reconciliation → 落定后继续 turn，计数全程不变）。
+
 ### 绝对禁止
 
 - 因为没有 result event 就假设工具没执行；

@@ -48,6 +48,7 @@
 - 单元：`tests/context-epistemic.test.ts`（M4-T002：分节优先级、空态 undefined、inactive hypothesis 排除、observations 取最新 N、open/resolved challenge、pending INDETERMINATE 行、inconclusive verification、maxActiveObservations 预算校验。M4-T004：completion-target 阻断分节渲染与解除后消失、非 completion 目标不渲染该分节。M5-T001：hypotheses 取最新 maxActiveHypotheses 条 + 诚实省略计数、hypothesis flood 不逐出任何不可压缩分节且总字节在界内、病态可压缩分节整节让位、不可压缩层独自放不下抛 ContextBudgetExceededError、maxActiveHypotheses 预算校验）。
 - 故障：`tests/fault/tool-runtime.fault.test.ts`（store 崩溃后重放见真实 EXECUTING 态、read_only 崩溃→FAILED、write 崩溃→INDETERMINATE、未知外部效果一等公民）。
 - 故障：`tests/fault/agent-loop.fault.test.ts`（M2-T004：provider 崩溃留可恢复 pending 请求、store 崩溃留合法流、授权后崩溃恢复为显式拒绝）。门：`mise run test:fault`。
+- 故障：`tests/fault/crash-matrix.fault.test.ts`（M5-T004：docs/02 §17 崩溃矩阵逐格注入——五边界 × 四法则（前缀合法折叠/诚实恢复事实/execute 计数不增/恢复幂等），含混合 dangling 插入序与 §17 第 9 步人工解锁环全流程）。
 - 属性：`tests/property/reducer.property.test.ts`（影子模型一致性、fold 确定性、单点 seq 扰动拒绝、相邻交换拒绝）。
 - 属性：`tests/property/context-builder.property.test.ts`（成功构建必不超任何上限、保留历史是输入的保序后缀且以尾消息收尾、确定性）。门：`mise run test:property`。
 - 重放：`tests/fixtures/replay/agent-loop-recovery-v1.json` + `tests/replay/replay.test.ts`（M2-T004：崩溃-恢复全路径 fixture 经公共 schema 加载、中段检查点折叠为可恢复悬挂态、双折叠一致）。门：`mise run test:replay`。
