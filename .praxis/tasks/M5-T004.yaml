@@ -1,0 +1,107 @@
+schema_version: 1
+id: M5-T004
+title: implement crash matrix and recovery evidence
+milestone: M5
+status: acceptance_ready
+risk_class: D
+objective: "Close docs/03 M5.3 'Crash matrix' and the M5 failure-acceptance item 'crash at each critical tool/event boundary' (.praxis/milestones/M5.yaml). Observed gaps: crash coverage exists but is scattered — agent-loop.fault pins a provider crash, a store crash on the ToolProposed append, and a seeded AUTHORIZED-dangling resume; tool-runtime.fault pins a crash before the terminal append, crashing read/write executors, and a first-class unknown outcome — yet no suite walks the docs/03 M5.3 boundary list (before append / before execute / after side effect / before result append / after result append) systematically, and no cell anywhere asserts the exit-criterion law 'crash matrix 无重复危险 side effect' with execute counters held across crash + recovery + resume. Recovery evidence has two deeper holes: (1) every fault test runs on inMemoryEventStore, so docs/02 section 17 steps 1-4 (open EventStore / load / validate / replay after a process death) are never proven against real durable storage — no test closes and reopens a SQLite store and recovers the persisted prefix; (2) section 17 step 9 (SessionResumed is the only unlock and re-enters reconciliation, re-attempting it) is pinned nowhere — SessionResumed appears only in reducer/contracts shape tests, and no fault test drives paused -> resume -> reconcile-settles -> turn continues. Deliverable: (1) a systematic crash-matrix suite (tests/fault/crash-matrix.fault.test.ts) injecting a crash at each boundary of the durable tool lifecycle and asserting per cell: the persisted prefix folds legally, resume appends honest terminal facts (explicit rejection pre-execute, ToolIndeterminate + reconciliation post-side-effect, nothing fabricated), the dangerous tool's execute counter never exceeds its pre-crash count (no duplicated side effect), and recovery is idempotent (a second resume appends no new recovery facts); (2) durable recovery evidence (tests/store/crash-recovery.bun.test.ts): a real SQLite store on disk, a crash mid-execution, close/reopen from the same file, fold the persisted prefix, resume with reconciliation — proving the section 17 recovery procedure across an actual durability boundary, execute still exactly once; (3) the paused-session human loop: unresolved indeterminate -> SessionPaused -> PAUSED rejects runTurn -> SessionResumed re-enters reconciliation which now settles -> turn continues; (4) the matrix recorded as the boundary->recovery table in docs/02 section 17 and ticked with provenance in docs/03 M5.3."
+evidence: 
+  observed: 
+    - "docs/03-project-plan.md M5.3 lists the five boundaries (before append / before execute / after side effect / before result append / after result append) with no checkboxes and no pinning suite; M5 exit criterion requires 'crash matrix 无重复危险 side effect'"
+    - "tests/fault/agent-loop.fault.test.ts covers: provider crash with dangling ModelRequestStarted, store crash on the ToolProposed append (persisted prefix folds, resume completes), seeded AUTHORIZED-dangling -> explicit ToolRejected; tests/fault/tool-runtime.fault.test.ts covers: crash before the terminal append (dangling EXECUTING at runtime level), crashing read-only executor -> FAILED, crashing write executor -> INDETERMINATE, unknown external outcome -> INDETERMINATE — but each in isolation, never as a boundary walk, and never with execute counters proving no duplicated side effect across crash + recovery + resume"
+    - "grep inMemoryEventStore across tests/fault: every fault test runs in memory; tests/store/*.bun.test.ts never folds-and-recovers across a close/reopen — docs/02 section 17 steps 1-4 (open EventStore, load, validate, replay after process death) have zero durable-storage evidence"
+    - "grep SessionResumed across tests: only reducer/contracts shape tests — no fault or recovery test drives the section 17 step 9 loop (unresolved indeterminate -> SessionPaused -> resume is the only unlock -> reconciliation re-attempted -> settles -> turn continues)"
+    - packages/core/src/agent-loop/run-turn.ts recoverDanglingWork + recovery.ts reconcileIndeterminateExecutions/pauseForUnresolvedIndeterminates implement all of the above; the risk this task guards against is that the laws they promise are not continuously pinned at the boundaries the milestone names
+  expected: 
+    - "tests/fault/crash-matrix.fault.test.ts (new): one describe per docs/03 M5.3 boundary; each cell uses ScriptedModelProvider + a write-effect tool carrying execute/reconcile counters, injects the crash (crashing-store wrapper that fails a chosen append, or a throwing execute), then asserts the four laws: prefix folds legally; resume produces the honest terminal fact for that boundary; the execute counter across crash+resume equals the pre-crash count (0 pre-execute, 1 post-side-effect — never 2); a second resume appends no further ToolRejected/ToolIndeterminate/ModelRequestFailed facts"
+    - "the matrix includes a mixed-dangling cell (one PROPOSED + one EXECUTING execution dangling after the same crash): recovery rejects the first and indeterminates the second, in insertion order"
+    - "the paused-session loop cell: reconcilable_write whose reconcile returns indeterminate -> runTurn returns paused with TurnCompleted+SessionPaused appended -> runTurn on the PAUSED session throws -> SessionResumed (the only unlock) -> the next runTurn re-enters reconciliation, the tool now verifies succeeded, and the turn continues to completion without re-execution (counter still 1)"
+    - "tests/store/crash-recovery.bun.test.ts (new, bun:test): openSessionStore on a temp SQLite file; run a turn whose reconcilable_write tool crashes after the side effect (execute throws or terminal append fails); close the store (process death); reopen from the same path; fold the persisted prefix (intact, dangling/indeterminate); resume with a verifying reconcile -> settles and completes; execute called exactly once across the reopen; close and cleanup"
+    - "docs/02-system-design.md section 17: the boundary->recovery matrix table (boundary / persisted prefix / recovery fact / re-execution law) with pointers to the pinning suites — the law's single home; docs/03-project-plan.md M5.3: the five boundaries ticked with provenance; docs/subsystems/core.md and docs/subsystems/store-sqlite.md: the new suites in their test inventories"
+    - packages/core changes ONLY if a matrix cell exposes a genuine recovery-law violation (then the fix is in scope — the agent-loop rule already requires the fault gate — and must keep every existing fault/recovery test passing unweakened)
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M5.yaml
+    - packages/core/src/agent-loop/run-turn.ts
+    - packages/core/src/agent-loop/recovery.ts
+    - packages/core/src/tools/tool-runtime.ts
+    - tests/fault/agent-loop.fault.test.ts
+    - tests/fault/tool-runtime.fault.test.ts
+    - tests/recovery.test.ts
+    - tests/store/store-sqlite.bun.test.ts
+    - docs/decisions/ADR-0011-effect-classes.md
+hypothesis: "The recovery machinery in run-turn.ts/recovery.ts already obeys every boundary law (reject-before-execute, indeterminate-after-side-effect, never re-execute, idempotent recovery, resume re-attempts reconciliation); pinning it as a systematic matrix with counters will pass without core changes — and if any cell falsifies that, the matrix is exactly the instrument that should have caught it. Durable evidence via SQLite close/reopen needs no new store API: openSessionStore(path) on an existing file plus foldSessionEvents is the entire section 17 procedure."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M5-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - tests/fault/**
+    - tests/store/**
+    - packages/core/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+    - docs/subsystems/store-sqlite.md
+    - biome.json
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/store-sqlite/src/**
+    - packages/provider-openai/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+    - tests/property/**
+    - tests/integration/**
+    - tests/security/**
+    - tests/replay/**
+    - tests/fixtures/**
+    - tests/helpers/**
+  scope_notes: 
+    - "AMENDMENT (2026-08-29, pre-guard): added biome.json to allowed_paths. Evidence: the lint gate (biome lint .) began failing with 130 errors, 100% sourced from docs/product/07-praxis_workbench_prototype_v4.html — an untracked foreign draft from a parallel session, held behind a disclosed .git/info/exclude entry (git-level exclusion), which biome does not honor. One-line files.includes addition of '!!docs/product' keeps untracked foreign drafts out of project quality gates, consistent with the git-level exclusion; project files are unaffected (no committed file lives in docs/product)."
+    - "requires_adr false: this task pins and documents laws docs/02 section 17 and ADR-0011 already declare; unless a cell exposes a genuine violation, no behavior changes at all — and a fix inside those documented laws is not an architecture decision. If evidence shows the fix needs a new event, port, or boundary, stop and amend this contract (that would be an ADR event)."
+    - "contracts is forbidden: no new event vocabulary, no schema change, no envelope change — the matrix works entirely with existing facts; the migration seam from M5-T003 stays untouched."
+    - "store-sqlite src is forbidden: the durability evidence uses openSessionStore as-is; if recovery evidence shows a store-level defect (e.g. prefix not surviving close), stop and amend the contract rather than patching the store inside this task."
+    - "tests/helpers is forbidden: fault fixtures are local to the new suites (the existing suites build their own); testkit stays untouched."
+    - Existing fault/recovery tests must not be weakened or deleted; the matrix is additive. Overlap with existing cells is acceptable (systematic walk vs incidental pins) but assertions must not contradict.
+  architecture_refs: 
+    - .praxis/architecture.yaml
+    - docs/02-system-design.md
+required_gates: 
+  - unit
+  - integration
+  - replay
+  - fault
+  - store
+  - build
+acceptance: 
+  scenarios: 
+    - "crash at each docs/03 M5.3 boundary (before append / before execute / after side effect / before result append / after result append): the persisted prefix folds legally, resume appends the honest terminal fact, and the write tool's execute counter across crash+recovery+resume equals its pre-crash count"
+    - "durable recovery: a SQLite store closed mid-execution and reopened from the same file recovers the identical persisted prefix and settles it via reconciliation with execute still called exactly once (docs/02 section 17 steps 1-4 and 6 across a real durability boundary)"
+    - "the human loop: unresolved indeterminate pauses the session; PAUSED rejects runTurn; SessionResumed re-enters reconciliation; a settle on the retry continues the turn to completion without re-execution"
+  failure_cases: 
+    - a resume that re-executes a write tool which already crossed its side-effect boundary (counter > 1) — the core prohibition the matrix exists to catch
+    - a dangling PROPOSED/AUTHORIZED execution silently dropped or coerced to failure instead of an explicit ToolRejected fact
+    - a dangling EXECUTING execution coerced to FAILED or SUCCEEDED without a reconciliation fact
+    - "non-idempotent recovery: a second resume appending another ToolRejected/ToolIndeterminate/ModelRequestFailed for an already-settled execution"
+    - "a PAUSED session accepting a turn without SessionResumed, or a resumed session failing to re-attempt reconciliation"
+    - recovery evidence that only holds in memory (prefix lost on close/reopen) — pinned by the SQLite durability test
+  artifacts: 
+    - tests/fault/crash-matrix.fault.test.ts
+    - tests/store/crash-recovery.bun.test.ts
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+    - docs/subsystems/store-sqlite.md
+falsified_if: A matrix cell cannot be closed without weakening an existing fault/recovery test or without a core change that alters documented section 17 law; the SQLite close/reopen evidence cannot be produced with openSessionStore as-is; or the resume-retry loop (section 17 step 9) cannot be pinned without new event vocabulary.
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk D per backlog (fault-injection over the agent loop's recovery paths; prerequisites M5-T002+M5-T003 satisfied). Reaches ACCEPTANCE_READY; human sign-off required. The preferred outcome is zero production-code change: every gate this task adds is a pin of law that already exists. M5-T005 (session fork, optional, risk C) remains; after it (or its explicit skip) M5 milestone acceptance with human demo."
