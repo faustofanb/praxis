@@ -2,7 +2,7 @@ schema_version: 1
 current_milestone: M6
 last_accepted_milestone: M5
 active_task: M6-T001
-development_state: PLAN_READY
+development_state: ACCEPTANCE_READY
 blockers: 
   []
 open_adrs: 
@@ -19,27 +19,19 @@ next_legal_actions:
   - run ai:guard
   - run ai:verify
 last_verification: 
-  task: M5-T004
-  at: 2026-08-29T14:33:16.121Z
+  task: M6-T001
+  at: 2026-08-29T15:19:14.546Z
   result: PASS
   gates: 
-    - gate: architecture
-      result: PASS
     - gate: build
       result: PASS
     - gate: fault
       result: PASS
-    - gate: format
-      result: PASS
     - gate: integration
-      result: PASS
-    - gate: lint
       result: PASS
     - gate: replay
       result: PASS
-    - gate: store
-      result: PASS
-    - gate: typecheck
+    - gate: security
       result: PASS
     - gate: unit
       result: PASS
