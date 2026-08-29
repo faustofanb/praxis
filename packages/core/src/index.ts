@@ -47,6 +47,17 @@ export {
 } from "./context/builder";
 export { projectEpistemicBrief } from "./context/epistemic-brief";
 export type {
+  ExtensionDenial,
+  ExtensionHookInvokers,
+  ExtensionHost,
+} from "./extensions/host";
+export {
+  createExtensionHost,
+  DuplicateExtensionError,
+  ExtensionHookError,
+  observeEventStore,
+} from "./extensions/host";
+export type {
   DerivedSessionState,
   SessionStatus,
   ToolExecutionSnapshot,

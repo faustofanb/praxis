@@ -1,4 +1,4 @@
-import type { ModelMessage, ModelToolDefinition } from "@praxis/contracts";
+import type { ContextFragment, ModelMessage, ModelToolDefinition } from "@praxis/contracts";
 import type { ContextBudget } from "./budget";
 import { DEFAULT_CONTEXT_BUDGET, validateContextBudget } from "./budget";
 
@@ -60,6 +60,16 @@ export type ContextBuildInput = {
    * blank-line separator; undefined leaves the system prompt untouched.
    */
   readonly epistemicBrief?: string;
+  /**
+   * Extension-contributed sections (docs/02 section 19, ADR-0013), already
+   * source-stamped by the extension host. Rendered as deterministic
+   * `## Extension: <source>` blocks after the epistemic brief. Compactable
+   * content under the same caps: each section is fitted (truncation marker)
+   * to the fragment cap, and a composed system fragment that still exceeds
+   * the cap fails closed — extension text never displaces the brief's
+   * non-compactable sections.
+   */
+  readonly extensionFragments?: readonly ContextFragment[];
   readonly history: readonly ModelMessage[];
   readonly tools?: readonly ModelToolDefinition[];
 };
@@ -192,16 +202,44 @@ function renderCompactionRecap(
   return `## Compacted history\n${fitText(countsLine, budget.maxFragmentBytes).text}`;
 }
 
+/**
+ * Extension context sections (docs/02 section 19, ADR-0013): one
+ * `## Extension: <source>` block per fragment, registration order, joined by
+ * blank lines. Each block is fitted to the fragment cap individually —
+ * extension text is compactable content — and the composed system fragment
+ * still fails closed when over cap, exactly like an oversize brief.
+ */
+function renderExtensionSections(
+  fragments: readonly ContextFragment[],
+  budget: ContextBudget,
+): string | null {
+  if (fragments.length === 0) {
+    return null;
+  }
+  const sections = fragments.map(
+    (fragment) =>
+      fitText(`## Extension: ${fragment.source}\n${fragment.text}`, budget.maxFragmentBytes).text,
+  );
+  return sections.join("\n\n");
+}
+
 export function buildContext(
   input: ContextBuildInput,
   budget: ContextBudget = DEFAULT_CONTEXT_BUDGET,
 ): BuiltContext {
   validateContextBudget(budget);
 
-  const baseSystemPrompt =
+  const withBrief =
     input.epistemicBrief === undefined
       ? input.systemPrompt
       : `${input.systemPrompt}\n\n${input.epistemicBrief}`;
+  const extensionSections =
+    input.extensionFragments === undefined
+      ? null
+      : renderExtensionSections(input.extensionFragments, budget);
+  const baseSystemPrompt =
+    extensionSections === null ? withBrief : `${withBrief}\n\n${extensionSections}`;
+  const structured = input.epistemicBrief !== undefined || extensionSections !== null;
 
   const fittedHistory = input.history.map((message) => fitHistoryMessage(message, budget));
   const windowStart = Math.max(0, fittedHistory.length - budget.maxRecentMessages);
@@ -221,16 +259,14 @@ export function buildContext(
       droppedMessages > 0 ? renderCompactionRecap(fittedHistory, window.length, budget) : null;
     const composedSystemPrompt =
       recapSection === null ? baseSystemPrompt : `${baseSystemPrompt}\n\n${recapSection}`;
-    if (
-      input.epistemicBrief !== undefined &&
-      utf8Bytes(composedSystemPrompt) > budget.maxFragmentBytes
-    ) {
+    if (structured && utf8Bytes(composedSystemPrompt) > budget.maxFragmentBytes) {
       // Tail-truncating the composed fragment could silently cut the brief's
-      // non-compactable sections (docs/02 section 12.2) or the compaction
-      // recap; with facts present the build fails closed instead. Without a
-      // brief the v0 head-truncation of a lone oversized prompt still applies.
+      // non-compactable sections (docs/02 section 12.2), extension sections,
+      // or the compaction recap; with structured content present the build
+      // fails closed instead. Without any the v0 head-truncation of a lone
+      // oversized prompt still applies.
       throw new ContextBudgetExceededError(
-        `system prompt plus epistemic brief reach ${utf8Bytes(composedSystemPrompt)} bytes over the fragment cap of ${budget.maxFragmentBytes}; refusing to truncate structured non-compactable state`,
+        `system prompt plus structured sections reach ${utf8Bytes(composedSystemPrompt)} bytes over the fragment cap of ${budget.maxFragmentBytes}; refusing to truncate structured non-compactable state`,
       );
     }
     const fittedSystem = fitText(composedSystemPrompt, budget.maxFragmentBytes);

@@ -10,6 +10,7 @@ import type {
   ToolExecutionId,
 } from "@praxis/contracts";
 import { EVENT_SCHEMA_VERSION } from "@praxis/contracts";
+import type { ExtensionHost } from "../extensions/host";
 import type { DerivedSessionState } from "../state/reducer";
 import { foldSessionEvents } from "../state/reducer";
 
@@ -79,6 +80,7 @@ export async function executeToolCall(
   options: {
     readonly signal: AbortSignal;
     readonly authorizer?: ToolAuthorizer;
+    readonly extensions?: ExtensionHost;
   },
 ): Promise<ExecutedToolSummary> {
   const priorState = await projectSessionState(deps);
@@ -87,6 +89,7 @@ export async function executeToolCall(
       `executeToolCall requires an ACTIVE session with an open turn (status ${priorState.status})`,
     );
   }
+  const turnId = priorState.currentTurnId;
 
   const authorizer = options.authorizer ?? readOnlyAuthorizer;
   const actor = deps.actor ?? { kind: "system" };
@@ -105,6 +108,22 @@ export async function executeToolCall(
     occurredAt: deps.now(),
     actor,
   });
+  // Every terminal path funnels through here so afterTool observes the
+  // settled execution (ADR-0013), exactly once per tool call.
+  const settle = async (
+    status: ExecutedToolSummary["status"],
+    detail?: string,
+  ): Promise<ExecutedToolSummary> => {
+    await options.extensions?.hooks.afterTool({
+      sessionId: deps.sessionId,
+      turnId,
+      toolExecutionId,
+      name: proposal.name,
+      status,
+      ...(detail === undefined ? {} : { detail }),
+    });
+    return { toolExecutionId, status };
+  };
 
   const registry = new Map(deps.tools.map((tool) => [tool.name, tool]));
   const tool = registry.get(proposal.name);
@@ -126,29 +145,28 @@ export async function executeToolCall(
   });
 
   if (tool === undefined) {
+    const reason = `unknown tool ${proposal.name}`;
     await appendOne({
       ...envelope(),
       type: "ToolRejected",
-      payload: { toolExecutionId, reason: `unknown tool ${proposal.name}` },
+      payload: { toolExecutionId, reason },
     });
-    return { toolExecutionId, status: "REJECTED" };
+    return settle("REJECTED", reason);
   }
 
   let input: unknown;
   try {
     input = tool.inputSchema.parse(JSON.parse(proposal.argumentsJson));
   } catch (error) {
+    const reason = `invalid arguments for ${proposal.name}: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
     await appendOne({
       ...envelope(),
       type: "ToolRejected",
-      payload: {
-        toolExecutionId,
-        reason: `invalid arguments for ${proposal.name}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      },
+      payload: { toolExecutionId, reason },
     });
-    return { toolExecutionId, status: "REJECTED" };
+    return settle("REJECTED", reason);
   }
 
   const decision = authorizer({
@@ -165,7 +183,31 @@ export async function executeToolCall(
       type: "ToolRejected",
       payload: { toolExecutionId, reason: decision.reason },
     });
-    return { toolExecutionId, status: "REJECTED" };
+    return settle("REJECTED", decision.reason);
+  }
+
+  // Extension veto composes AFTER the authorizer approves (ADR-0007/0013):
+  // extensions only ever restrict. A deny is an explicit ToolRejected fact
+  // citing the extension; the call never executes.
+  const denial =
+    options.extensions === undefined
+      ? undefined
+      : await options.extensions.hooks.beforeTool({
+          sessionId: deps.sessionId,
+          turnId,
+          name: proposal.name,
+          effect,
+          argumentsJson: proposal.argumentsJson,
+          ...(proposal.toolCallId === undefined ? {} : { toolCallId: proposal.toolCallId }),
+        });
+  if (denial !== undefined) {
+    const reason = `extension ${denial.extensionName} denied: ${denial.decision.reason}`;
+    await appendOne({
+      ...envelope(),
+      type: "ToolRejected",
+      payload: { toolExecutionId, reason },
+    });
+    return settle("REJECTED", reason);
   }
 
   await appendOne({
@@ -187,27 +229,23 @@ export async function executeToolCall(
     // tools cannot have side effects, so they may fail fast; anything else
     // stays indeterminate (docs/02 section 8.2 hard rules).
     if (effect === "read_only") {
+      const message = `executor crashed: ${error instanceof Error ? error.message : String(error)}`;
       await appendOne({
         ...envelope(),
         type: "ToolFailed",
-        payload: {
-          toolExecutionId,
-          message: `executor crashed: ${error instanceof Error ? error.message : String(error)}`,
-        },
+        payload: { toolExecutionId, message },
       });
-      return { toolExecutionId, status: "FAILED" };
+      return settle("FAILED", message);
     }
+    const reason = `executor crashed before outcome was known: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
     await appendOne({
       ...envelope(),
       type: "ToolIndeterminate",
-      payload: {
-        toolExecutionId,
-        reason: `executor crashed before outcome was known: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      },
+      payload: { toolExecutionId, reason },
     });
-    return { toolExecutionId, status: "INDETERMINATE" };
+    return settle("INDETERMINATE", reason);
   }
 
   switch (outcome.status) {
@@ -217,21 +255,21 @@ export async function executeToolCall(
         type: "ToolSucceeded",
         payload: { toolExecutionId, resultJson: outcome.resultJson },
       });
-      return { toolExecutionId, status: "SUCCEEDED" };
+      return settle("SUCCEEDED");
     case "failed":
       await appendOne({
         ...envelope(),
         type: "ToolFailed",
         payload: { toolExecutionId, message: outcome.error.message },
       });
-      return { toolExecutionId, status: "FAILED" };
+      return settle("FAILED", outcome.error.message);
     case "indeterminate":
       await appendOne({
         ...envelope(),
         type: "ToolIndeterminate",
         payload: { toolExecutionId, reason: outcome.reason },
       });
-      return { toolExecutionId, status: "INDETERMINATE" };
+      return settle("INDETERMINATE", outcome.reason);
   }
 }
 

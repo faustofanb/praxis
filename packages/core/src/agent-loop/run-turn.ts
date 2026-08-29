@@ -2,6 +2,7 @@ import type {
   EventActor,
   EventId,
   EventStore,
+  ExtensionModelResult,
   ModelEvent,
   ModelProvider,
   ModelProviderErrorInfo,
@@ -18,6 +19,8 @@ import type { ContextBudget } from "../context/budget";
 import { DEFAULT_CONTEXT_BUDGET } from "../context/budget";
 import { buildContext } from "../context/builder";
 import { projectEpistemicBrief } from "../context/epistemic-brief";
+import type { ExtensionHost } from "../extensions/host";
+import { observeEventStore } from "../extensions/host";
 import type { DerivedSessionState } from "../state/reducer";
 import { foldSessionEvents } from "../state/reducer";
 import { validateToolDefinitions } from "../tools/effect-policy";
@@ -59,6 +62,13 @@ export type AgentLoopDeps = {
   readonly newTurnId: () => TurnId;
   readonly newToolExecutionId: () => ToolExecutionId;
   readonly actor?: EventActor;
+  /**
+   * Extension host (docs/02 section 19, ADR-0013). Absent or empty means
+   * byte-identical behavior to an extension-free loop (zero-extension
+   * identity). The host instance is caller-owned; Core keeps no module
+   * state.
+   */
+  readonly extensions?: ExtensionHost;
 };
 
 export type TurnGuards = {
@@ -117,52 +127,68 @@ export async function runTurn(
   // Fail closed before any execution: effect-class promises (ADR-0006) are
   // checked here, not trusted from tool authors at call time.
   validateToolDefinitions(deps.tools);
-  const modelTools = toModelTools(deps.tools);
+  // Extension seams (docs/02 section 19, ADR-0013): absent host -> identical
+  // deps (zero-extension identity); present host -> every append below is
+  // observed via onEvent through the wrapped store.
+  const wired: AgentLoopDeps =
+    deps.extensions === undefined
+      ? deps
+      : { ...deps, store: observeEventStore(deps.store, deps.extensions) };
+  const modelTools = toModelTools(wired.tools);
 
-  let state = foldSessionEvents(await deps.store.readStream(deps.sessionId));
+  let state = foldSessionEvents(await wired.store.readStream(wired.sessionId));
   if (state.status !== "ACTIVE") {
     throw new Error(`runTurn requires an ACTIVE session (status ${state.status})`);
   }
 
-  if (await recoverDanglingWork(deps, state)) {
-    state = foldSessionEvents(await deps.store.readStream(deps.sessionId));
+  if (await recoverDanglingWork(wired, state)) {
+    state = foldSessionEvents(await wired.store.readStream(wired.sessionId));
   }
 
   // Falsifiable-plan decision (ADR-0012 reserved it for the runtime, white
   // paper "evidence can invalidate plan"): close active plans whose
   // hypothesis died. Appends nothing when nothing matches.
-  await invalidatePlansFalsifiedByHypotheses(deps);
+  await invalidatePlansFalsifiedByHypotheses(wired);
 
   // Crash-after-side-effect recovery (docs/02 section 17 steps 6-7): verify
   // what can be verified, then escalate instead of continuing a turn over an
   // unresolvable unknown effect. Only a human-initiated resume re-attempts.
-  const reconciliation = await reconcileIndeterminateExecutions(deps, {
+  const reconciliation = await reconcileIndeterminateExecutions(wired, {
     signal: options.signal,
   });
   if (reconciliation.unresolved.length > 0) {
-    await pauseForUnresolvedIndeterminates(deps, reconciliation.unresolved);
+    await pauseForUnresolvedIndeterminates(wired, reconciliation.unresolved);
     const ids = reconciliation.unresolved
       .map((entry) => entry.toolExecutionId.valueOf())
       .join(", ");
+    await wired.extensions?.hooks.onTurnEnd({
+      sessionId: wired.sessionId,
+      turnId: state.currentTurnId,
+      outcome: {
+        kind: "paused",
+        reason: `${reconciliation.unresolved.length} indeterminate tool execution(s) could not be reconciled (${ids}); session paused for human decision`,
+      },
+    });
     return {
       kind: "paused",
       reason: `${reconciliation.unresolved.length} indeterminate tool execution(s) could not be reconciled (${ids}); session paused for human decision`,
     };
   }
 
-  if (state.currentTurnId === undefined) {
+  const openingTurn = state.currentTurnId === undefined;
+  if (openingTurn) {
     const text = input.input;
     if (text === undefined) {
       throw new Error("runTurn requires user input to start a turn");
     }
-    state = await appendEvent(deps, {
-      id: deps.newEventId(),
-      sessionId: deps.sessionId,
+    state = await appendEvent(wired, {
+      id: wired.newEventId(),
+      sessionId: wired.sessionId,
       schemaVersion: EVENT_SCHEMA_VERSION,
-      occurredAt: deps.now(),
-      actor: deps.actor ?? { kind: "system" },
+      occurredAt: wired.now(),
+      actor: wired.actor ?? { kind: "system" },
       type: "TurnStarted",
-      payload: { turnId: deps.newTurnId(), input: text },
+      payload: { turnId: wired.newTurnId(), input: text },
     });
   } else if (input.input !== undefined) {
     throw new Error(
@@ -174,50 +200,89 @@ export async function runTurn(
     throw new Error("failed to open a turn");
   }
 
+  if (openingTurn && input.input !== undefined) {
+    await wired.extensions?.hooks.onTurnStart({
+      sessionId: wired.sessionId,
+      turnId,
+      input: input.input,
+    });
+  }
+
+  // Every TurnOutcome path passes through here so onTurnEnd fires exactly
+  // once per outcome; crashes (fail_closed hooks, store failures) bypass it
+  // honestly — the turn stays dangling for section-17 recovery.
+  const endTurn = async (outcome: TurnOutcome): Promise<TurnOutcome> => {
+    await wired.extensions?.hooks.onTurnEnd({
+      sessionId: wired.sessionId,
+      turnId,
+      outcome,
+    });
+    return outcome;
+  };
+
   let consecutiveFailures = 0;
   const budget = options.budget;
   for (let step = 1; step <= guards.maxStepsPerTurn; step += 1) {
-    const turnEvents = await deps.store.readStream(deps.sessionId);
+    const turnEvents = await wired.store.readStream(wired.sessionId);
     const folded = foldSessionEvents(turnEvents);
     const epistemicBrief = projectEpistemicBrief(folded, budget ?? DEFAULT_CONTEXT_BUDGET);
+    const extensionFragments =
+      wired.extensions === undefined
+        ? []
+        : await wired.extensions.hooks.contributeContext({
+            sessionId: wired.sessionId,
+            turnId,
+          });
     const { messages, tools } = buildContext(
       {
-        systemPrompt: deps.systemPrompt,
+        systemPrompt: wired.systemPrompt,
         // docs/02 section 12.2: goal/plan/challenge/pending-indeterminate facts
         // ride as structured fragments of the system message, re-folded fresh
         // every step so mid-session facts reach the next model request.
         ...(epistemicBrief === undefined ? {} : { epistemicBrief }),
+        ...(extensionFragments.length === 0 ? {} : { extensionFragments }),
         history: projectConversation(turnEvents),
         tools: modelTools,
       },
       budget,
     );
     const request: ModelRequest = {
-      model: deps.modelId,
+      model: wired.modelId,
       messages: [...messages],
       ...(tools.length === 0 ? {} : { tools: [...tools] }),
-      correlationId: deps.sessionId,
+      correlationId: wired.sessionId,
     };
 
-    state = await appendEvent(deps, {
-      id: deps.newEventId(),
-      sessionId: deps.sessionId,
+    state = await appendEvent(wired, {
+      id: wired.newEventId(),
+      sessionId: wired.sessionId,
       schemaVersion: EVENT_SCHEMA_VERSION,
-      occurredAt: deps.now(),
-      actor: deps.actor ?? { kind: "system" },
+      occurredAt: wired.now(),
+      actor: wired.actor ?? { kind: "system" },
       type: "ModelRequestStarted",
-      payload: { model: deps.modelId },
+      payload: { model: wired.modelId },
     });
 
-    const result = await consumeModelStream(deps.model.complete(request, options.signal));
+    await wired.extensions?.hooks.beforeModel({
+      sessionId: wired.sessionId,
+      turnId,
+      request,
+    });
+    const result = await consumeModelStream(wired.model.complete(request, options.signal));
+    await wired.extensions?.hooks.afterModel({
+      sessionId: wired.sessionId,
+      turnId,
+      request,
+      result: toExtensionModelResult(result),
+    });
 
     if (result.kind === "endedSilently") {
-      await appendEvent(deps, {
-        id: deps.newEventId(),
-        sessionId: deps.sessionId,
+      await appendEvent(wired, {
+        id: wired.newEventId(),
+        sessionId: wired.sessionId,
         schemaVersion: EVENT_SCHEMA_VERSION,
-        occurredAt: deps.now(),
-        actor: deps.actor ?? { kind: "system" },
+        occurredAt: wired.now(),
+        actor: wired.actor ?? { kind: "system" },
         type: "ModelRequestFailed",
         payload: {
           kind: "unknown",
@@ -225,16 +290,16 @@ export async function runTurn(
           message: "model stream ended without a terminal event (cancelled)",
         },
       });
-      return { kind: "cancelled" };
+      return endTurn({ kind: "cancelled" });
     }
 
     if (result.kind === "providerError") {
-      state = await appendEvent(deps, {
-        id: deps.newEventId(),
-        sessionId: deps.sessionId,
+      state = await appendEvent(wired, {
+        id: wired.newEventId(),
+        sessionId: wired.sessionId,
         schemaVersion: EVENT_SCHEMA_VERSION,
-        occurredAt: deps.now(),
-        actor: deps.actor ?? { kind: "system" },
+        occurredAt: wired.now(),
+        actor: wired.actor ?? { kind: "system" },
         type: "ModelRequestFailed",
         payload: {
           kind: result.error.kind,
@@ -244,20 +309,20 @@ export async function runTurn(
       });
       consecutiveFailures += 1;
       if (consecutiveFailures >= guards.maxConsecutiveModelFailures) {
-        return {
+        return endTurn({
           kind: "paused",
           reason: `model failed ${consecutiveFailures} times in a row (${result.error.kind})`,
-        };
+        });
       }
       continue;
     }
 
-    state = await appendEvent(deps, {
-      id: deps.newEventId(),
-      sessionId: deps.sessionId,
+    state = await appendEvent(wired, {
+      id: wired.newEventId(),
+      sessionId: wired.sessionId,
       schemaVersion: EVENT_SCHEMA_VERSION,
-      occurredAt: deps.now(),
-      actor: deps.actor ?? { kind: "system" },
+      occurredAt: wired.now(),
+      actor: wired.actor ?? { kind: "system" },
       type: "ModelResponseCompleted",
       payload: {
         ...(result.text === "" ? {} : { text: result.text }),
@@ -270,18 +335,19 @@ export async function runTurn(
       for (const call of result.toolCalls) {
         await executeToolCall(
           {
-            store: deps.store,
-            sessionId: deps.sessionId,
-            tools: deps.tools,
-            now: deps.now,
-            newEventId: deps.newEventId,
-            newToolExecutionId: deps.newToolExecutionId,
-            ...(deps.actor === undefined ? {} : { actor: deps.actor }),
+            store: wired.store,
+            sessionId: wired.sessionId,
+            tools: wired.tools,
+            now: wired.now,
+            newEventId: wired.newEventId,
+            newToolExecutionId: wired.newToolExecutionId,
+            ...(wired.actor === undefined ? {} : { actor: wired.actor }),
           },
           { name: call.name, argumentsJson: call.argumentsJson, toolCallId: call.id },
           {
             signal: options.signal,
             ...(options.authorizer === undefined ? {} : { authorizer: options.authorizer }),
+            ...(wired.extensions === undefined ? {} : { extensions: wired.extensions }),
           },
         );
       }
@@ -289,31 +355,31 @@ export async function runTurn(
     }
 
     if (result.text !== "") {
-      await appendEvent(deps, {
-        id: deps.newEventId(),
-        sessionId: deps.sessionId,
+      await appendEvent(wired, {
+        id: wired.newEventId(),
+        sessionId: wired.sessionId,
         schemaVersion: EVENT_SCHEMA_VERSION,
-        occurredAt: deps.now(),
-        actor: deps.actor ?? { kind: "system" },
+        occurredAt: wired.now(),
+        actor: wired.actor ?? { kind: "system" },
         type: "TurnCompleted",
         payload: { turnId },
       });
-      return { kind: "completed", finalText: result.text };
+      return endTurn({ kind: "completed", finalText: result.text });
     }
 
     consecutiveFailures += 1;
     if (consecutiveFailures >= guards.maxConsecutiveModelFailures) {
-      return {
+      return endTurn({
         kind: "paused",
         reason: "model produced empty responses too many times in a row",
-      };
+      });
     }
   }
 
-  return {
+  return endTurn({
     kind: "paused",
     reason: `turn exceeded ${guards.maxStepsPerTurn} model steps without a final answer`,
-  };
+  });
 }
 
 /**
@@ -372,6 +438,22 @@ async function recoverDanglingWork(
     appended = true;
   }
   return appended;
+}
+
+/** Copy the internal stream result into the contracts read-only view. */
+function toExtensionModelResult(result: ModelStreamResult): ExtensionModelResult {
+  switch (result.kind) {
+    case "completed":
+      return {
+        kind: "completed",
+        text: result.text,
+        toolCalls: result.toolCalls.map((call) => ({ ...call })),
+      };
+    case "providerError":
+      return { kind: "providerError", error: result.error };
+    case "endedSilently":
+      return { kind: "endedSilently" };
+  }
 }
 
 async function consumeModelStream(stream: AsyncIterable<ModelEvent>): Promise<ModelStreamResult> {
