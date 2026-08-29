@@ -360,6 +360,8 @@ type Plan = {
 
 v1 无 `"completed"`：事件词汇表（§6.2）没有任何事件产生它，plan 的完成是 session 级事实（`SessionCompleted`）。新的 `PlanSet` 自动将旧 active plan 置为 `superseded`。
 
+**证伪 → 失效的运行时决定**（M4-T003）：reducer 记录证伪事实但绝不自动失效（§6.2 法则）；`runTurn` 入口运行确定性 pass——active plan 的 hypothesis 已 falsified/superseded 即追加一条 `PlanInvalidated`（reason 引用假设 id 与状态）。决定不依赖模型自觉（白皮书 Core Rule："Evidence can invalidate plan"），幂等可重放；新计划由模型自己的 `PlanSet` 到来。
+
 ## 5.5 Challenge
 
 ```ts

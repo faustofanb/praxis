@@ -257,12 +257,12 @@ user -> model -> read_file -> model -> final
 
 ### M4.3 Plan semantics
 
-Plan 必须支持：
+Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 
-- current hypothesis；
-- next action；
-- falsification condition；
-- invalidation。
+- [x] current hypothesis；
+- [x] next action；
+- [x] falsification condition；
+- [x] invalidation（证伪/取代假设 → 入口 pass 追加 PlanInvalidated 事实，不依赖模型自觉）。
 
 ### M4.4 Challenge
 
