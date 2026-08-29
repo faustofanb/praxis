@@ -1,0 +1,86 @@
+schema_version: 1
+id: M4-T003
+title: implement falsifiable plan semantics and invalidation
+milestone: M4
+status: plan_ready
+risk_class: C
+objective: "Close the M4.3 gap: the reducer (M4-T001, pinned by the seq-20 fixture checkpoint) deliberately never invalidates a plan when its hypothesis is falsified — falsification is a fact, invalidation is a decision — and nothing in the runtime makes that decision, so a falsified plan stays activePlan forever and keeps reaching the model via the M4-T002 brief. Land the deterministic orchestration: invalidatePlansFalsifiedByHypotheses(deps) scans the folded state for active plans whose hypothesisId is falsified or superseded and appends one PlanInvalidated fact per plan (deterministic insertion order, machine actor, recorded reason citing hypothesis id and status). It returns the appended invalidations plus the active-falsified remainder; the agent loop runs it beside recoverDanglingWork at turn entry, so the invalidation decision is runtime-enforced (whitepaper Core Rule: evidence can invalidate plan; not model self-discipline), replayable, and idempotent — re-running over an already-invalidated stream appends nothing. No model consultation, no guessing: superseded hypotheses also count (PlanSet fail-closed its refs at set time, so a plan's hypothesis can only die underneath it), and the new plan arrives as the model's own PlanSet."
+evidence: 
+  observed: 
+    - "packages/core/src/state/reducer.ts HypothesisStatusChanged folds falsified/superseded without touching plans; tests/replay/replay.test.ts pins 'falsification is a fact, not an invalidation' at the seq-20 checkpoint"
+    - grep confirms no code path emits PlanInvalidated except explicit events in tests; run-turn.ts has no epistemic orchestration at turn entry
+    - "docs/00 whitepaper lines 453/462: 'Evidence can invalidate plan' (Core Rule) and '不依赖模型自觉，靠可撤销状态 — replay / invalidation' (Core Rule); docs/03 M4.3 lists falsification condition + invalidation as required plan support"
+    - M4-T002 brief renders activePlan from state — a falsified-hypothesis plan would keep advising the model unless the runtime invalidates it
+  expected: 
+    - "packages/core/src/agent-loop/plan-invalidation.ts: invalidatePlansFalsifiedByHypotheses(deps: EventAppenderDeps) — fold state, collect active plans whose hypothesisId maps to a falsified or superseded hypothesis, append one PlanInvalidated per plan in registry insertion order with reason `hypothesis <id> is <status>; plan invalidated by runtime`"
+    - "idempotent and safe to re-run: second call over the same stream finds no active plan with a dead hypothesis and appends nothing (no duplicate facts, no resurrection)"
+    - "runTurn calls it at turn entry (before the reconciliation pass), appends nothing when nothing matches, and the appended facts are ordinary durable events — replay determinism untouched"
+    - plans without hypothesisId are never invalidated by this pass; plan supersession via a new PlanSet keeps its existing law
+    - "unit tests over hand-built streams: falsified invalidates, superseded invalidates, proposed/supported keep the plan active, no-hypothesis plans untouched, second call is a no-op, insertion order for multiple dead plans"
+    - "integration test: a stream with goal + hypothesis + plan + falsification folds to the plan still active before runTurn, runTurn's entry pass appends the PlanInvalidated fact, and the model request no longer sees an Active plan section (it sees no plan) while the goal section remains"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/00-praxis-whitepaper.md
+    - .praxis/milestones/M4.yaml
+    - docs/decisions/ADR-0012-epistemic-event-contracts.md
+hypothesis: "The invalidation decision lands as a thin deterministic orchestration exactly like the recovery pass: fold state, decide by rule, append facts, re-fold. The reducer laws from M4-T001 are untouched (the seq-20 checkpoint keeps passing); the runtime simply exercises the decision the reducer reserved, and every appended fact is replayable."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M4-T003.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - packages/contracts/**
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "No contract change: PlanInvalidated, hypothesis statuses, and the falsified/superseded vocabulary are settled M4-T001 contracts; this task only appends existing event types, so requires_adr is false and ADR-0012's reserved-decision note is satisfied rather than amended."
+    - "The pass runs at turn entry only (beside crash recovery), not inside the model-step loop: mid-turn falsification facts (host/extension channel) are picked up on the next turn entry — recording the decision once per entry keeps the loop honest and the fact ordering simple."
+    - "superseded hypotheses invalidate their plans too: a superseded hypothesis is as dead as a falsified one, and PlanSet validated the reference at set time, so a plan's hypothesis can only die after the plan was set."
+    - The reason string cites the hypothesis id and status so the durable fact explains itself in replay without a join.
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - "a stream with an active plan on a falsified hypothesis: before runTurn the fold keeps the plan active (fact law), runTurn's entry pass appends exactly one PlanInvalidated with the recorded reason, and the model request carries no Active plan section"
+    - superseded hypothesis likewise invalidates; proposed/supported hypotheses leave the plan active and the brief unchanged
+    - multiple dead plans invalidate in insertion order across two appends; a plan without hypothesisId is never touched
+    - running the pass twice appends nothing the second time; replaying the whole stream reproduces the invalidations deterministically
+  failure_cases: 
+    - the pass never invents a hypothesis ref: "a plan whose hypothesisId is missing from the registry cannot occur (PlanSet fail-closed), and the pass treats unregistered ids as non-matching rather than throwing"
+    - "the pass must not resurrect or re-suspend: an already-invalidated or superseded plan is skipped; PAUSED/COMPLETED sessions reject the append as always (IllegalTransitionError propagates — the pass runs only in ACTIVE runTurn entry)"
+    - pre-M4 replay fixtures and streams remain loadable unchanged — no schema or vocabulary growth
+  artifacts: 
+    - packages/core/src/agent-loop/plan-invalidation.ts
+    - tests/plan-invalidation.test.ts
+    - tests/integration/epistemic-context.integration.test.ts
+    - docs/subsystems/core.md
+falsified_if: "The reducer starts auto-invalidating on HypothesisStatusChanged (breaking the M4-T001 seq-20 checkpoint), the pass consults the model or guesses beyond the falsified/superseded rule, the pass emits any new event type or contract change, or the pass is not idempotent / not replay-deterministic."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog: runtime behavior over settled contracts, no vocabulary growth. ADR-0012 reserved this exact decision for orchestration; this task delivers it. Deliberately deferred: challenge-driven legal-next-action changes and completion blocking (M4-T004), comparative real-model eval (M4-T005)."
