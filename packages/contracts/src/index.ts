@@ -215,6 +215,32 @@ export {
   ToolSucceededPayloadSchema,
 } from "./events/tool-events";
 export type {
+  ContextContributionContext,
+  ContextFragment,
+  EventHookContext,
+  ExtensionContext,
+  ExtensionFailurePolicy,
+  ExtensionHookName,
+  ExtensionModelResult,
+  ExtensionToolResultStatus,
+  ExtensionTurnOutcome,
+  ModelHookContext,
+  ModelResultHookContext,
+  PraxisExtension,
+  ToolHookContext,
+  ToolHookDecision,
+  ToolResultHookContext,
+  TurnEndHookContext,
+  TurnStartHookContext,
+} from "./extensions";
+export {
+  EXTENSION_FAILURE_POLICIES,
+  EXTENSION_HOOKS,
+  EXTENSION_TOOL_RESULT_STATUSES,
+  InvalidExtensionError,
+  validatePraxisExtension,
+} from "./extensions";
+export type {
   CapabilityLeaseId,
   ChallengeId,
   EventId,
