@@ -15,7 +15,9 @@ import type {
 } from "@praxis/contracts";
 import { EVENT_SCHEMA_VERSION } from "@praxis/contracts";
 import type { ContextBudget } from "../context/budget";
+import { DEFAULT_CONTEXT_BUDGET } from "../context/budget";
 import { buildContext } from "../context/builder";
+import { projectEpistemicBrief } from "../context/epistemic-brief";
 import type { DerivedSessionState } from "../state/reducer";
 import { foldSessionEvents } from "../state/reducer";
 import { validateToolDefinitions } from "../tools/effect-policy";
@@ -167,15 +169,22 @@ export async function runTurn(
   }
 
   let consecutiveFailures = 0;
+  const budget = options.budget;
   for (let step = 1; step <= guards.maxStepsPerTurn; step += 1) {
     const turnEvents = await deps.store.readStream(deps.sessionId);
+    const folded = foldSessionEvents(turnEvents);
+    const epistemicBrief = projectEpistemicBrief(folded, budget ?? DEFAULT_CONTEXT_BUDGET);
     const { messages, tools } = buildContext(
       {
         systemPrompt: deps.systemPrompt,
+        // docs/02 section 12.2: goal/plan/challenge/pending-indeterminate facts
+        // ride as structured fragments of the system message, re-folded fresh
+        // every step so mid-session facts reach the next model request.
+        ...(epistemicBrief === undefined ? {} : { epistemicBrief }),
         history: projectConversation(turnEvents),
         tools: modelTools,
       },
-      options.budget,
+      budget,
     );
     const request: ModelRequest = {
       model: deps.modelId,

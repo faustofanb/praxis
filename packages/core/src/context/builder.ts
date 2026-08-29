@@ -52,6 +52,12 @@ function fitText(text: string, maxBytes: number): FittedText {
 
 export type ContextBuildInput = {
   readonly systemPrompt: string;
+  /**
+   * Structured epistemic brief (docs/02 section 12.2), pre-rendered by
+   * projectEpistemicBrief. Composed into the single system fragment with a
+   * blank-line separator; undefined leaves the system prompt untouched.
+   */
+  readonly epistemicBrief?: string;
   readonly history: readonly ModelMessage[];
   readonly tools?: readonly ModelToolDefinition[];
 };
@@ -161,7 +167,11 @@ export function buildContext(
 ): BuiltContext {
   validateContextBudget(budget);
 
-  const fittedSystem = fitText(input.systemPrompt, budget.maxFragmentBytes);
+  const composedSystemPrompt =
+    input.epistemicBrief === undefined
+      ? input.systemPrompt
+      : `${input.systemPrompt}\n\n${input.epistemicBrief}`;
+  const fittedSystem = fitText(composedSystemPrompt, budget.maxFragmentBytes);
   const systemMessage: ModelMessage = {
     role: "system",
     text: fittedSystem.text,

@@ -17,6 +17,7 @@ const tinyBudget: ContextBudget = {
   maxRecentMessages: 3,
   maxFragmentBytes: 120,
   maxToolResultBytes: 60,
+  maxActiveObservations: 2,
   maxEstimatedTokens: 10_000,
 };
 
@@ -229,5 +230,36 @@ describe("buildContext failure modes", () => {
     expect(() =>
       buildContext(input, { ...DEFAULT_CONTEXT_BUDGET, maxEstimatedTokens: 1.5 }),
     ).toThrow(InvalidContextBudgetError);
+    expect(() =>
+      buildContext(input, { ...DEFAULT_CONTEXT_BUDGET, maxActiveObservations: 0 }),
+    ).toThrow(InvalidContextBudgetError);
+  });
+
+  test("composes the epistemic brief into the single system fragment", () => {
+    const built = buildContext({
+      systemPrompt: "You are Praxis.",
+      epistemicBrief: "## Goal\nGoal: restore the missing payment record",
+      history: [{ role: "user", text: "proceed" }],
+    });
+    const system = built.messages[0];
+    if (system?.role !== "system") {
+      throw new Error("expected the system message first");
+    }
+    expect(system.text).toBe(
+      "You are Praxis.\n\n## Goal\nGoal: restore the missing payment record",
+    );
+    expect(built.messages.filter((message) => message.role === "system")).toHaveLength(1);
+  });
+
+  test("omitting the brief keeps the system prompt byte-identical", () => {
+    const built = buildContext({
+      systemPrompt: "You are Praxis.",
+      history: [{ role: "user", text: "proceed" }],
+    });
+    const system = built.messages[0];
+    if (system?.role !== "system") {
+      throw new Error("expected the system message first");
+    }
+    expect(system.text).toBe("You are Praxis.");
   });
 });

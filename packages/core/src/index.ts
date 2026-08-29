@@ -43,6 +43,7 @@ export {
   ContextBudgetExceededError,
   InvalidContextError,
 } from "./context/builder";
+export { projectEpistemicBrief } from "./context/epistemic-brief";
 export type {
   DerivedSessionState,
   SessionStatus,

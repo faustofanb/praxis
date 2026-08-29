@@ -31,6 +31,7 @@ const budgetArb: fc.Arbitrary<ContextBudget> = fc.record({
   maxRecentMessages: fc.integer({ min: 1, max: 8 }),
   maxFragmentBytes: fc.integer({ min: MIN_FRAGMENT_CAP_BYTES, max: 600 }),
   maxToolResultBytes: fc.integer({ min: MIN_FRAGMENT_CAP_BYTES, max: 600 }),
+  maxActiveObservations: fc.integer({ min: 1, max: 8 }),
   maxEstimatedTokens: fc.integer({ min: 1, max: 100_000 }),
 });
 

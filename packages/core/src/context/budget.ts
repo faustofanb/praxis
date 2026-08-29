@@ -10,6 +10,8 @@ export type ContextBudget = {
   readonly maxFragmentBytes: number;
   /** Max UTF-8 bytes per tool result fragment. */
   readonly maxToolResultBytes: number;
+  /** Max observations entering the epistemic brief (docs/02 section 12.3). */
+  readonly maxActiveObservations: number;
   /** Max estimated tokens for the whole built context (bytes/4, rounded up). */
   readonly maxEstimatedTokens: number;
 };
@@ -24,6 +26,7 @@ export const DEFAULT_CONTEXT_BUDGET: ContextBudget = {
   maxRecentMessages: 64,
   maxFragmentBytes: 16 * 1024,
   maxToolResultBytes: 8 * 1024,
+  maxActiveObservations: 8,
   maxEstimatedTokens: 32 * 1024,
 };
 
@@ -52,6 +55,9 @@ export function validateContextBudget(budget: ContextBudget): void {
     throw new InvalidContextBudgetError(
       `maxToolResultBytes must be an integer >= ${MIN_FRAGMENT_CAP_BYTES}`,
     );
+  }
+  if (!isPositiveInt(budget.maxActiveObservations)) {
+    throw new InvalidContextBudgetError("maxActiveObservations must be a positive integer");
   }
   if (!isPositiveInt(budget.maxEstimatedTokens)) {
     throw new InvalidContextBudgetError("maxEstimatedTokens must be a positive integer");
