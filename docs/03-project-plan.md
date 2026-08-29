@@ -316,6 +316,8 @@ Plan 必须支持（M4-T003，详见 docs/02 §5.4 运行时决定）：
 - [ ] copy-on-history semantics；
 - [ ] old session immutable history。
 
+M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptance/M5.md` 推迟记录）：fork 需要新持久事件词汇 → 首次真实 schema 版本升级 + 迁移步 + ADR，成本对 optional 特性不可接受；docs/02 §15 的 "v1 后半段" 时序不因此违反（resume 半已交付）。
+
 ### Exit Criteria
 
 长 Session 不无限扩大 model context；所有不可压缩约束仍存在；旧 fixture 可恢复；crash matrix 无重复危险 side effect。
