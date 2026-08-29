@@ -143,13 +143,14 @@ as a warning.
 
 ### Risk-driven fast fix
 
-When the root cause is already known and the change is limited to one tracked business file with an
-annotation, null guard, condition, or parameter adjustment, finish the work without expanding the
-standard verification workflow:
+When the root cause is already known and the change is limited to one to three tracked files with a
+bounded diff and no high-risk content, finish the work without expanding the standard verification
+workflow. Repeat `--file` for each target:
 
 ```bash
 praxis fix record REQ-20260720-001 \
   --file WmsStocktakingDiffRecordMapper.java \
+  --file V1.0.0.260829.16.00__mes_fix.sql \
   --verification declined \
   --reason "用户要求单注解快速修复" \
   --command-count 2 \
@@ -158,16 +159,20 @@ praxis fix record REQ-20260720-001 \
 ```
 
 `fix record` does not run tests, compilation, full type checking, review, commit, or push. It checks
-that exactly one non-risk business file changed, derives or accepts one of
-`annotation|null_guard|condition|parameter`, records the omitted verification, creates one
+that exactly the declared one to three files changed, derives or accepts a bounded change kind,
+checks the actual diff for high-risk content, records the omitted verification, creates one
 `code-change` artifact, and records implementation in a single application operation. A direct
 check can be recorded with `--verification direct --risk ... --evidence ...` without claiming that
 tests passed.
 
-Evidence is keyed by the active worktree binding, HEAD, repository-relative target path, and file
-fingerprint, so an exact retry reuses the existing receipt and artifact. Micro fixes allow up to two
+Evidence is keyed by the active worktree binding, HEAD, sorted repository-relative target paths,
+and per-file fingerprints, so an exact retry reuses the existing receipt and artifact. Micro fixes allow up to two
 commands and target two minutes; the fast-fix hard stop is five commands or three minutes. A soft
 budget overrun requires `--new-risk-justification`; the hard stop cannot be overridden.
+
+If the user explicitly says to bypass, not use, or disable Praxis, the generated `AGENTS.md` and
+`CLAUDE.md` managed block tells the host Agent to make no Praxis MCP/CLI calls and return to its
+ordinary workflow. Quick-fix, target-only, and no-test requests remain inside the Praxis fast path.
 
 The generated `AGENTS.md` and `CLAUDE.md` managed block requires every command to name the risk it
 reduces and the decision changed by success or failure. It also forbids reflection tests for

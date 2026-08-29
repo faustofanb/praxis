@@ -70,6 +70,10 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "独立验证授权" in agents
     assert "rtk" in agents
     assert "codegraph-impact-analysis" in agents
+    assert "显式绕过 Praxis" in agents
+    assert "不调用 Praxis MCP/CLI" in agents
+    assert "快速修复”“只改这里”“不要跑测试”不等于绕过" in agents
+    assert agents.index("显式绕过 Praxis") < agents.index("入口：Praxis")
     assert claude.startswith("# Claude Code 项目规则")
     # 迁出细则改断言 SKILL.md 含该内容（AGENTS 不再重复正文）
     skill = _read_workflow_skill()
@@ -81,6 +85,8 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "正则匹配" in skill
     assert "目标文件指纹" in skill
     assert "禁止扩大为全仓构建" in skill
+    assert "显式绕过 Praxis" in skill
+    assert "本 Skill 不适用" in skill
 
 
 def test_agent_guidance_stops_on_broken_managed_markers(tmp_path: Path) -> None:

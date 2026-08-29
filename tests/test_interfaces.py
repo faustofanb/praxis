@@ -674,6 +674,8 @@ def test_fast_fix_record_cli_maps_risk_driven_governance() -> None:
             "REQ-1",
             "--file",
             "WmsStocktakingDiffRecordMapper.java",
+            "--file",
+            "V1__seed.sql",
             "--verification",
             "declined",
             "--reason",
@@ -689,7 +691,7 @@ def test_fast_fix_record_cli_maps_risk_driven_governance() -> None:
         "fix.record",
         {
             "requirement_id": "REQ-1",
-            "file": "WmsStocktakingDiffRecordMapper.java",
+            "file": ["WmsStocktakingDiffRecordMapper.java", "V1__seed.sql"],
             "verification": "declined",
             "reason": "用户要求单注解快速修复",
             "change_kind": "",

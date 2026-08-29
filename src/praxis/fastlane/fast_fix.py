@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,35 +18,23 @@ from praxis.worktree.service import resolve_worktree_binding
 _STATE_SCOPE = "fast_fix"
 _EVIDENCE_SCOPE = "fast_fix_evidence"
 _PROFILE = "fast-fix-v3"
-_CHANGE_KINDS = {"annotation", "null_guard", "condition", "parameter"}
-_FAST_SIGNALS = (
-    "快速修复",
-    "只改这里",
-    "不要走标准流程",
-    "就加个",
-    "单注解",
-    "不要跑测试",
-    "别写测试脚本",
-    "fast_fix",
-    "fast fix",
-)
 _RISK_PATH = re.compile(
-    r"(^|/)(?:migrations?|flyway|database|permissions?|generated|openapi|swagger)(/|$)|"
-    r"(^|/)(?:api|controllers?|shared|common|public)(/|$)|"
-    r"\.(?:sql)$",
+    r"(^|/)(?:permissions?|generated|openapi|swagger)(/|$)",
     re.IGNORECASE,
 )
 _RISK_ADDITION = re.compile(
     r"\b(?:transaction|transactional|for\s+update|lock|mutex|semaphore|"
-    r"synchronized|concurrent|create\s+table|alter\s+table|drop\s+table)\b|"
-    r"\b(?:select|insert|update|delete)\b.+\b(?:from|into|set|where)\b",
+    r"synchronized|concurrent|create\s+table|alter\s+table|drop\s+table|"
+    r"truncate\s+table|grant|revoke|update|delete)\b",
     re.IGNORECASE,
 )
 _PUBLIC_INTERFACE_ADDITION = re.compile(
-    r"^\s*(?:public\s+)?(?:class|interface|record|enum)\s+|"
+    r"^\s*public\s+(?:class|interface|record|enum)\s+|"
     r"^\s*export\s+(?:default\s+)?(?:class|function|interface|type)\b"
 )
-_TEST_PATH = re.compile(r"(^|/)(?:tests?|__tests__)(/|$)|(?:\.test|\.spec)\.[^/]+$")
+_CHANGE_KIND = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+_MAX_FILES = 3
+_MAX_CHANGED_LINES = 80
 _OMITTED = [
     "tests",
     "compile",
@@ -56,7 +45,7 @@ _OMITTED = [
 
 
 class FastFixService(FastLaneService):
-    """Record a risk-bounded one-file fix without expanding verification."""
+    """Record a risk-bounded small fix without expanding verification."""
 
     def __init__(self, root: Path | str):
         super().__init__(root)
@@ -66,7 +55,7 @@ class FastFixService(FastLaneService):
         self,
         requirement_id: str,
         *,
-        file: str,
+        file: str | Sequence[str],
         verification: str,
         reason: str,
         change_kind: str = "",
@@ -80,14 +69,8 @@ class FastFixService(FastLaneService):
         if not requirement:
             return Result(False, "REQUIREMENT_NOT_FOUND")
         normalized_reason = reason.strip()
-        if not normalized_reason or not any(
-            signal in normalized_reason.casefold() for signal in _FAST_SIGNALS
-        ):
-            return Result(
-                False,
-                "FAST_FIX_USER_INTENT_REQUIRED",
-                data={"required_signals": list(_FAST_SIGNALS)},
-            )
+        if not normalized_reason:
+            return Result(False, "FAST_FIX_REASON_REQUIRED")
         normalized_verification = verification.strip().casefold()
         if normalized_verification not in {"declined", "direct"}:
             return Result(False, "FAST_FIX_VERIFICATION_INVALID")
@@ -99,29 +82,26 @@ class FastFixService(FastLaneService):
             return binding_result
         binding_id, binding = binding_result
         repository = Path(str(binding["repository_path"])).resolve()
-        target_result = self._target_path(repository, file)
+        target_result = self._target_paths(repository, file)
         if isinstance(target_result, Result):
             return target_result
-        target, relative = target_result
+        targets = target_result
+        relatives = sorted(relative for _, relative in targets)
+        target_by_relative = {relative: target for target, relative in targets}
 
         changed_files = sorted(self._changed_paths(repository))
-        if changed_files != [relative]:
+        if changed_files != relatives:
             return Result(
                 False,
                 "FAST_FIX_TARGET_FILE_ONLY_REQUIRED",
-                data={"target_file": relative, "changed_files": changed_files},
+                data={"target_files": relatives, "changed_files": changed_files},
             )
-        if _RISK_PATH.search(relative):
+        risky_paths = [relative for relative in relatives if _RISK_PATH.search(relative)]
+        if risky_paths:
             return Result(
                 False,
                 "FAST_FIX_HIGH_RISK_PATH",
-                data={"target_file": relative},
-            )
-        if _TEST_PATH.search(relative):
-            return Result(
-                False,
-                "FAST_FIX_BUSINESS_FILE_REQUIRED",
-                data={"target_file": relative},
+                data={"target_files": risky_paths},
             )
 
         normalized_kind = self._change_kind(change_kind, normalized_reason)
@@ -129,11 +109,11 @@ class FastFixService(FastLaneService):
             return Result(
                 False,
                 "FAST_FIX_CHANGE_KIND_REQUIRED",
-                data={"allowed": sorted(_CHANGE_KINDS)},
+                data={"format": "lowercase letters, digits, underscores, or hyphens"},
             )
         diff = self._git_output(
             repository,
-            ["diff", "--unified=0", "--no-color", "HEAD", "--", relative],
+            ["diff", "--unified=0", "--no-color", "HEAD", "--", *relatives],
             strip=False,
         )
         if not diff.strip():
@@ -144,18 +124,20 @@ class FastFixService(FastLaneService):
             return Result(
                 False,
                 content_risk,
-                data={"target_file": relative},
+                data={"target_files": relatives},
             )
 
         head = self._git_output(repository, ["rev-parse", "HEAD"])
         if not head:
             return Result(False, "FAST_FIX_HEAD_UNAVAILABLE")
-        file_fingerprint = self._file_fingerprint(target)
+        file_fingerprints = {
+            relative: self._file_fingerprint(target_by_relative[relative])
+            for relative in relatives
+        }
         evidence_key = self._evidence_key(
             binding_id,
             head,
-            relative,
-            file_fingerprint,
+            file_fingerprints,
         )
         existing = self.store.get(_EVIDENCE_SCOPE, evidence_key)
         if existing:
@@ -194,14 +176,15 @@ class FastFixService(FastLaneService):
         prepared = self._prepare_requirement(requirement_id)
         if not prepared.ok:
             return prepared
+        representative = target_by_relative[relatives[0]]
         artifact = ArtifactService(self.root).add(
             requirement_id,
             "code-change",
-            target,
+            representative,
             stage="implementation",
             metadata={
                 "fast_fix_profile": _PROFILE,
-                "business_files": [relative],
+                "business_files": relatives,
                 "changed_lines": changed_lines,
                 "change_kind": normalized_kind,
                 "include_untracked": changed_files,
@@ -241,14 +224,22 @@ class FastFixService(FastLaneService):
                 else "not_run"
             ),
             "compile": "not_requested",
-            "scope": "target_file_only",
+            "scope": (
+                "target_file_only" if len(relatives) == 1 else "bounded_files_only"
+            ),
             "status": "implemented",
             "result_code": "FAST_FIX_RECORDED",
-            "target_file": relative,
+            "target_file": relatives[0],
+            "target_files": relatives,
             "change_kind": normalized_kind,
             "changed_lines": changed_lines,
             "head": head,
-            "file_fingerprint": file_fingerprint,
+            "file_fingerprint": (
+                file_fingerprints[relatives[0]]
+                if len(relatives) == 1
+                else self._combined_fingerprint(file_fingerprints)
+            ),
+            "file_fingerprints": file_fingerprints,
             "evidence_key": evidence_key,
             "reused_evidence": False,
             "reason": normalized_reason,
@@ -276,7 +267,7 @@ class FastFixService(FastLaneService):
         RequirementService(self.root).progress(
             requirement_id,
             (
-                "fast_fix 已一次登记目标文件、验证省略和 implementation；"
+                "fast_fix 已一次登记有界目标文件、验证省略和 implementation；"
                 "未运行测试、编译、全量类型检查或质量复核。"
             ),
         )
@@ -339,11 +330,35 @@ class FastFixService(FastLaneService):
         target = existing[0]
         return target, target.relative_to(repository).as_posix()
 
+    @classmethod
+    def _target_paths(
+        cls,
+        repository: Path,
+        requested: str | Sequence[str],
+    ) -> list[tuple[Path, str]] | Result:
+        values = [requested] if isinstance(requested, str) else list(requested)
+        if not 1 <= len(values) <= _MAX_FILES:
+            return Result(
+                False,
+                "FAST_FIX_TARGET_FILES_INVALID",
+                data={"count": len(values), "max_files": _MAX_FILES},
+            )
+        targets: list[tuple[Path, str]] = []
+        for value in values:
+            result = cls._target_path(repository, str(value))
+            if isinstance(result, Result):
+                return result
+            targets.append(result)
+        relatives = [relative for _, relative in targets]
+        if len(set(relatives)) != len(relatives):
+            return Result(False, "FAST_FIX_TARGET_FILES_INVALID", data={"duplicates": True})
+        return targets
+
     @staticmethod
     def _change_kind(explicit: str, reason: str) -> str:
         normalized = explicit.strip().casefold()
         if normalized:
-            return normalized if normalized in _CHANGE_KINDS else ""
+            return normalized if _CHANGE_KIND.fullmatch(normalized) else ""
         lowered = reason.casefold()
         for kind, signals in (
             ("annotation", ("注解", "annotation", "导入", "import")),
@@ -353,7 +368,7 @@ class FastFixService(FastLaneService):
         ):
             if any(signal in lowered for signal in signals):
                 return kind
-        return ""
+        return "bounded_change"
 
     @staticmethod
     def _changed_lines(diff: str) -> tuple[int, int]:
@@ -391,10 +406,23 @@ class FastFixService(FastLaneService):
     def _evidence_key(
         binding_id: str,
         head: str,
-        relative: str,
-        file_fingerprint: str,
+        file_fingerprints: dict[str, str],
     ) -> str:
-        payload = "\0".join((binding_id, head, relative, file_fingerprint))
+        identity = [
+            item
+            for relative, fingerprint in sorted(file_fingerprints.items())
+            for item in (relative, fingerprint)
+        ]
+        payload = "\0".join((binding_id, head, *identity))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _combined_fingerprint(file_fingerprints: dict[str, str]) -> str:
+        payload = "\0".join(
+            item
+            for relative, fingerprint in sorted(file_fingerprints.items())
+            for item in (relative, fingerprint)
+        )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
@@ -418,7 +446,12 @@ class FastFixService(FastLaneService):
             "soft_exceeded": (
                 command_count > max_commands or elapsed_seconds > target_seconds
             ),
-            "hard_exceeded": command_count > 5 or elapsed_seconds > 180,
+            "hard_max_changed_lines": _MAX_CHANGED_LINES,
+            "hard_exceeded": (
+                changed_lines > _MAX_CHANGED_LINES
+                or command_count > 5
+                or elapsed_seconds > 180
+            ),
         }
 
     def _prepare_requirement(self, requirement_id: str) -> Result:

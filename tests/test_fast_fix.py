@@ -145,28 +145,43 @@ def test_fast_fix_record_reuses_same_worktree_head_and_file_evidence(
     assert len(store.list_scope("verification_decline")) == 1
 
 
-def test_fast_fix_record_rejects_additional_changed_file_before_governance(
+def test_fast_fix_record_accepts_three_bounded_files_with_generic_change_kind(
     tmp_path: Path,
 ) -> None:
     service, requirement_id, repository = _workspace(tmp_path)
-    (repository / "src" / "Other.java").write_text("class Other {}\n")
+    other = repository / "src" / "Other.java"
+    migration = repository / "db" / "migration" / "V1__seed.sql"
+    migration.parent.mkdir(parents=True)
+    other.write_text("class Other {}\n")
+    migration.write_text("insert into config(name) values ('old');\n")
+    subprocess.run(["git", "add", str(other), str(migration)], cwd=repository, check=True)
+    subprocess.run(["git", "commit", "-qm", "add bounded files"], cwd=repository, check=True)
+    other.write_text("class Other { static final int LIMIT = 2; }\n")
+    migration.write_text("insert into config(name) values ('new');\n")
 
     recorded = service.record(
         requirement_id,
-        file="WmsStocktakingDiffRecordMapper.java",
-        verification="declined",
-        reason="用户要求单注解快速修复",
+        file=[
+            "WmsStocktakingDiffRecordMapper.java",
+            "Other.java",
+            "V1__seed.sql",
+        ],
+        verification="direct",
+        reason="根因已明确的三文件小改动",
+        change_kind="bounded_update",
+        risk="变更是否仅限于指定文件",
+        evidence="Git diff 显示仅三个指定文件变更",
     )
 
-    assert not recorded.ok
-    assert recorded.code == "FAST_FIX_TARGET_FILE_ONLY_REQUIRED"
-    assert recorded.data["changed_files"] == [
+    assert recorded.ok
+    assert recorded.data["scope"] == "bounded_files_only"
+    assert recorded.data["target_files"] == [
+        "db/migration/V1__seed.sql",
         "src/Other.java",
         "src/WmsStocktakingDiffRecordMapper.java",
     ]
-    store = StateStore(service.root)
-    assert not store.list_scope("artifact")
-    assert not store.list_scope("verification_decline")
+    assert recorded.data["change_kind"] == "bounded_update"
+    assert len(StateStore(service.root).list_scope("artifact")) == 1
 
 
 def test_fast_fix_record_requires_new_risk_reason_when_soft_budget_is_exceeded(
@@ -189,7 +204,7 @@ def test_fast_fix_record_requires_new_risk_reason_when_soft_budget_is_exceeded(
     assert recorded.data["requires"] == "new_risk_justification"
 
 
-def test_fast_fix_record_rejects_api_paths_and_transaction_changes(
+def test_fast_fix_record_allows_simple_api_path_but_rejects_transaction_changes(
     tmp_path: Path,
 ) -> None:
     api_service, api_requirement, _ = _workspace(
@@ -204,8 +219,7 @@ def test_fast_fix_record_rejects_api_paths_and_transaction_changes(
         reason="用户要求单注解快速修复",
     )
 
-    assert not api_result.ok
-    assert api_result.code == "FAST_FIX_HIGH_RISK_PATH"
+    assert api_result.ok
 
     transaction_service, transaction_requirement, transaction_repository = _workspace(
         tmp_path / "transaction-case"
@@ -231,7 +245,7 @@ def test_fast_fix_record_rejects_api_paths_and_transaction_changes(
     assert transaction_result.code == "FAST_FIX_HIGH_RISK_CONTENT"
 
 
-def test_fast_fix_record_rejects_test_file_as_business_target(tmp_path: Path) -> None:
+def test_fast_fix_record_allows_simple_test_file_change(tmp_path: Path) -> None:
     service, requirement_id, _ = _workspace(
         tmp_path,
         target_relative="src/mapping.test.ts",
@@ -244,8 +258,25 @@ def test_fast_fix_record_rejects_test_file_as_business_target(tmp_path: Path) ->
         reason="用户要求单注解快速修复",
     )
 
-    assert not recorded.ok
-    assert recorded.code == "FAST_FIX_BUSINESS_FILE_REQUIRED"
+    assert recorded.ok
+
+
+def test_fast_fix_record_auto_selects_bounded_change_without_magic_phrase(
+    tmp_path: Path,
+) -> None:
+    service, requirement_id, _ = _workspace(tmp_path)
+
+    recorded = service.record(
+        requirement_id,
+        file="WmsStocktakingDiffRecordMapper.java",
+        verification="direct",
+        reason="修正已明确的小问题",
+        risk="diff 是否超出单文件",
+        evidence="仅目标文件变更",
+    )
+
+    assert recorded.ok
+    assert recorded.data["change_kind"] == "bounded_change"
 
 
 def test_fast_fix_record_hard_stops_after_five_commands_or_three_minutes(

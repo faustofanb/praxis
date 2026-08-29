@@ -231,7 +231,12 @@ def _parser() -> argparse.ArgumentParser:
     _json_flag(fix_finish)
     fix_record = fix.add_parser("record")
     fix_record.add_argument("id")
-    fix_record.add_argument("--file", required=True)
+    fix_record.add_argument(
+        "--file",
+        action="append",
+        required=True,
+        help="目标文件，可重复 1–3 次",
+    )
     fix_record.add_argument(
         "--verification",
         choices=("declined", "direct"),
@@ -240,8 +245,8 @@ def _parser() -> argparse.ArgumentParser:
     fix_record.add_argument("--reason", required=True)
     fix_record.add_argument(
         "--change-kind",
-        choices=("annotation", "null_guard", "condition", "parameter"),
         default="",
+        help="可选的有界变更类型描述",
     )
     fix_record.add_argument("--risk", default="")
     fix_record.add_argument("--evidence", default="")

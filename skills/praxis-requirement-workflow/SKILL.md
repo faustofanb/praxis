@@ -5,6 +5,17 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 
 # Praxis 需求工作流
 
+## 显式绕过 Praxis
+
+- 用户明确说“绕过 Praxis”、“不使用 Praxis”、“禁用 Praxis”或
+  等价的明确表达时，本 Skill 不适用于该任务。不调用 Praxis MCP/CLI，
+  不登记需求、不创建 Praxis 工作树、不路由或记录 Skill/门禁/审计；
+  直接使用宿主 Agent 的普通工作方式。
+- 若用户在 Praxis 流程已开始后才明确绕过，立即停止后续 Praxis 调用；
+  不得以 fail-closed、binding 或已登记状态为由拒绝用户的绕过指令。
+- “快速修复”“只改这里”“不要跑测试”“不要走标准流程”不等于
+  绕过 Praxis，仍进入下述 `fast_fix` 快速路径。代理不得自行推断绕过。
+
 ## 核心顺序
 
 严格按“先登记和调查，确认改代码后再建工作树，开发默认执行 TDD，完整验证另行获批”的
@@ -26,13 +37,15 @@ description: 管理 Praxis 需求从登记、知识文档、调查计划到隔�
 
 - 用户明确说“快速修复”“只改这里”“不要走标准流程”“就加个注解”“不要跑测试”或
   “别写测试脚本”时，先把这些表达作为执行约束，不得先运行标准流程命令再解释。
-- 已明确根因、只有一个已跟踪业务文件、修改仅为注解、空值判断、条件或参数调整，且不涉及
-  数据库结构、API 契约、公共接口、权限、事务、锁或并发时，进入 `fast_fix`。自动记录
+- 已明确根因、只有 1–3 个已跟踪文件、diff 有限，且实际变更不涉及
+  数据库结构、API 契约、权限、事务、锁、并发、生成物或破坏性数据修改时，
+  自动进入 `fast_fix`；不需要用户说特定魔法词。自动记录
   `mode=fast_fix`、`tests=declined_by_user`、`compile=not_requested`、
-  `scope=target_file_only`。
+  `scope=bounded_files_only`（单文件兼容记录为 `scope=target_file_only`）。
 - fast_fix 的关键路径只包含：查看目标代码及一个相似写法、修改目标文件、一次与实际风险直接
   相关的检查、汇报未执行验证。不得逐项执行 reopen、route、invoke、complete、gate、
-  artifact、record 或 advance；收尾统一使用一次 `praxis fix record`。
+  artifact、record 或 advance；收尾统一使用一次 `praxis fix record`，
+  1–3 个文件分别传入重复的 `--file`。
 - 每条命令执行前必须明确要消除的风险、成功和失败分别改变的决策、是否已有等价证据，以及是否
   有更小直接检查。成功和失败都不改变下一步时禁止执行。
 - 禁止为满足 TDD 门禁创建只验证实现形状的测试：不得用反射证明注解存在，不得读取或正则匹配
