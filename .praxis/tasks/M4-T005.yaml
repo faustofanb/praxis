@@ -1,0 +1,92 @@
+schema_version: 1
+id: M4-T005
+title: establish comparative real-model epistemic eval suite
+milestone: M4
+status: accepted
+risk_class: B
+objective: "Close the M4 real_model_eval obligation ('formal eval begins; non-core-gating' per .praxis/milestones/M4.yaml) and the docs/08 section 3 promise that has been open since M2: 'evals/development-models/' does not exist. The M4 epistemic runtime — structured brief (M4-T002), falsification-to-invalidation pass (M4-T003), completion blocking (M4-T004) — is currently pinned only by ScriptedModel tests; nothing measures whether a real model, receiving only the epistemic brief, actually chooses the legal next action. Build a comparative eval suite at evals/development-models/: four scenario definitions (dead plan, completion-blocked challenge, pending INDETERMINATE execution, inconclusive verification) whose seeds are legal event streams that render the matching brief sections; one neutral decide_next_action tool with a fixed action vocabulary; a runner that drives runTurn through the OpenAI-compatible provider for every model in PRAXIS_EVAL_MODELS over the same scenarios; and a grader that reads the durable ToolProposed fact from the stream (never provider internals). Without OPENAI_API_KEY the runner prints a skip notice and exits 0 (scripts/smoke/openai-smoke.ts precedent); it is wired into no check chain, matching non-core-gating. CI-safe tests cover scenario integrity (seeds fold, brief markers, vocabulary), the grader, and the full harness via ScriptedModelProvider. Shared test fixtures (session-event factories, in-memory event store) move from tests/helpers into @praxis/testkit — the package whose architecture.yaml responsibility is exactly 'fixtures' — with re-export shims so existing tests are untouched."
+evidence: 
+  observed: 
+    - "evals/ does not exist; docs/08 section 3 says '从 M2 起建立 evals/development-models/' — never landed; .praxis/milestones/M4.yaml real_model_eval: 'formal eval begins; non-core-gating'"
+    - "M4 epistemic behavior is pinned only by ScriptedModel suites (tests/context-epistemic.test.ts, tests/reducer-epistemic.test.ts, tests/integration/epistemic-context.integration.test.ts); no evidence any real model rides the brief correctly"
+    - "packages/provider-openai is a complete ADR-0010 adapter (retry/backoff, timeout, cancellation); scripts/smoke/openai-smoke.ts establishes the no-key skip pattern and is the M2 real_model_eval evidence"
+    - "tests/helpers/session-events.ts (441 lines, pure contracts-only factories) and tests/helpers/in-memory-event-store.ts (42 lines) are exactly the fixtures the eval runner needs; architecture.yaml assigns testkit 'fixtures' as part of its responsibility"
+  expected: 
+    - "evals/development-models/scenarios.ts: four scenarios as pure data — seeds build legal event streams; each seed renders its target brief section (dead plan: no '## Active plan' after the entry pass; completion block: '## Completion blocked'; pending INDETERMINATE and inconclusive verification sections) while the user prompt stays neutral and identical across scenarios, so the eval measures brief steering, not prompt cleverness"
+    - "a single decide_next_action ToolDefinition (read_only, zod enum action vocabulary, no capability) shared by all scenarios; validateToolDefinitions accepts it; grading checks the chosen action against the scenario's expected set"
+    - "evals/development-models/run-eval.ts + grader: per (model, scenario) a fresh in-memory store is seeded, runTurn runs with the real provider, then the grader folds the stream, finds the decide_next_action ToolProposed, parses argumentsJson with the schema, and grades action-in-expected-set; no proposal / wrong action / unparseable arguments all grade fail with a reason"
+    - "comparative scorecard: one markdown table (scenario x model -> pass/fail + ms) printed and written under evals/development-models/results/; PRAXIS_EVAL_MODELS comma list (default single model), PRAXIS_EVAL_BASE_URL / PRAXIS_EVAL_TIMEOUT_MS overrides; missing OPENAI_API_KEY prints skip and exits 0"
+    - the suite is registered nowhere in mise/CI check chains (non-core-gating); eval code is still typechecked (evals tsconfig project referenced from the root) and knip-clean (knip.json entry)
+    - "suite tests (beside the suite, see scope_notes amendment): scenario integrity (seeds fold legally, brief markers present/absent, expected actions within vocabulary), grader unit tests (pass/wrong/missing/malformed), and an end-to-end harness test where ScriptedModelProvider plays a correct decide tool call through the real runner and grades pass — no network in any gate"
+    - "fixture move is behavior-preserving: tests/helpers/session-events.ts and in-memory-event-store.ts become re-export shims of @praxis/testkit; every existing suite still passes unmodified"
+  references: 
+    - docs/08-ai-model-development-strategy.md
+    - docs/02-system-design.md
+    - .praxis/milestones/M4.yaml
+    - packages/provider-openai/src/chat-provider.ts
+    - scripts/smoke/openai-smoke.ts
+hypothesis: "A real model that actually reads the epistemic brief will pick the legal next action from a neutral prompt when the decision is forced through one structured tool whose vocabulary is the same across scenarios — so per-model pass rates over the same four scenarios are a fair comparative signal, and the whole thing can stay outside the gating chain because evidence, not enforcement, is the deliverable."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M4-T005.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - evals/**
+    - knip.json
+    - tsconfig.json
+    - packages/testkit/**
+    - tests/**
+    - docs/08-ai-model-development-strategy.md
+    - docs/subsystems/testkit.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - apps/**
+    - scripts/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "No mise task for the runner on purpose: the quality-gates dependencies rule matches mise.toml and carries human_acceptance: true, and M4.yaml marks this eval non-core-gating — 'bun evals/development-models/run-eval.ts' is the documented invocation, same standing as scripts/smoke (which is also unreferenced by mise check chains beyond its own non-blocking task)."
+    - "The testkit move is fixture homing, not a refactor: architecture.yaml already names 'fixtures' in testkit's responsibility; tests/helpers keep their export surface via one-line re-export shims so no existing test file changes."
+    - "No new dependencies: runner uses only workspace packages (contracts, core, provider-openai, testkit) and Bun globals."
+    - "Real-model scores are not committed by this task: without OPENAI_API_KEY in the dev environment the machine evidence is the skip path plus the ScriptedModel harness test; running the comparative suite and recording results is an operator action documented in evals/development-models/README.md."
+    - "Amended during implementation: the suite's tests live beside the suite in evals/development-models/*.test.ts (the draft said tests/eval/) because composite tsconfig projects must keep tests and the code under test in one project (TS6307); the repo-wide vitest include ('**/*.{test,spec}.ts') discovers them, so gate coverage is unchanged. Also amended: the pending-indeterminate scenario is produced by a mid-turn check_external_write probe rather than a seed, because an indeterminate pending at turn entry pauses the session before the model is consulted (M3-T004 recovery law) — the model must live the UNKNOWN mid-turn, which is also how real sessions produce it."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/08-ai-model-development-strategy.md
+required_gates: 
+  - unit
+  - integration
+  - build
+  - knip
+acceptance: 
+  scenarios: 
+    - "each scenario's seed events fold through foldSessionEvents without IllegalTransitionError and project the intended brief section (verified in tests with the real brief renderer)"
+    - "a scripted model that answers the neutral prompt with a correct decide_next_action tool call is graded pass by the real runner+grader against the durable stream; a wrong action, a missing decision, and malformed arguments each grade fail with a distinct reason"
+    - without OPENAI_API_KEY the runner exits 0 with a skip notice; with keys it produces a comparative markdown scorecard for every model in PRAXIS_EVAL_MODELS
+    - the full vitest suite plus build/knip stay green with zero network access — the eval suite adds no gate-time network dependence
+  failure_cases: 
+    - "a scenario whose brief marker is absent (e.g. completion-blocked seed that does not render '## Completion blocked') must fail the integrity tests, not silently pass"
+    - "grading that inspected provider internals or the model's raw text instead of the durable ToolProposed fact would break replay discipline — rejected by design; the grader only folds the event stream"
+    - "moving fixtures to testkit must not weaken any existing suite: all pre-existing test files pass unmodified (shims only)"
+  artifacts: 
+    - evals/development-models/scenarios.ts
+    - evals/development-models/run-eval.ts
+    - evals/development-models/grader.ts
+    - evals/development-models/README.md
+    - evals/development-models/scenarios.test.ts
+    - evals/development-models/grader.test.ts
+    - evals/development-models/run-eval-harness.test.ts
+    - evals/tsconfig.json
+    - packages/testkit/src/session-events.ts
+    - packages/testkit/src/in-memory-event-store.ts
+falsified_if: "Scenarios cannot be built from legal event streams; the brief fails to steer a correct scripted model through the harness; grading depends on provider-internal state rather than durable facts; the suite leaks into any gating chain or adds gate-time network dependence; the testkit move modifies any existing test file's imports or weakens a suite; or the runner crashes rather than skipping without an API key."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk B per backlog (new eval harness over settled runtime; no core/contract change). Machine acceptance per ai-policy precedent (M0-T003). Deliberately deferred: scorecard history/CI workflow for evals, docs/08 task sets A-E beyond the epistemic axis, statistical repetition (v1 is one pass per model x scenario, n=1 evidence), and milestone-level M4 acceptance (docs/acceptance/M4.md, human_demo_required)."
