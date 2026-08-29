@@ -1,0 +1,102 @@
+schema_version: 1
+id: M5-T003
+title: establish versioned replay fixtures and migrations
+milestone: M5
+status: acceptance_ready
+risk_class: E
+objective: "Close docs/03 M5.2 '版本化 session fixtures / migration tests / regression session collection' and the M5 scenario acceptance 'old fixtures replay after migration' (.praxis/milestones/M5.yaml). Observed gaps: the envelope carries per-event schemaVersion and EVENT_SCHEMA_VERSION=1 (packages/contracts/src/envelope.ts), but nothing enforces a version window — a stream written by a newer runtime (schemaVersion 2 with current-shaped payloads) parses and folds silently under v1 rules today; there is no stepwise migration seam even though docs/02 section 4.1/4.3 already require 'schema 变更需要 schema version 与 migration 策略' and 'migration 必须单调版本号 / schema 变更要有旧 fixture replay test'; the five hand-written v1 fixtures are versioned only by filename with no manifest or collection law; the longest fixture is 28 events. Deliverable: (1) a versioned replay seam in contracts — envelope-first parse enforcing 1 <= schemaVersion <= EVENT_SCHEMA_VERSION (future-version streams fail closed at load, never fold) plus a monotonically-versioned stepwise migration table that transforms declared-version events to current before final schema validation — the table is empty today (v1 is current) and the seam is proven by a synthetic drill that migrates a real fixture stream and folds to the identical derived state; (2) a fixture manifest (tests/fixtures/replay/index.json) and replay-suite law: every manifest entry loads through the versioned seam, folds deterministically to its recorded terminal status, and manifest/directory completeness holds both directions; (3) the first long mixed regression session fixture (durable tool cycles + epistemic facts + reconciliation, hundreds of events) that is deterministically regenerable from @praxis/testkit factories with byte-equality pinned by a test — starting the regression session collection."
+evidence: 
+  observed: 
+    - "packages/contracts/src/envelope.ts:14-25: EVENT_SCHEMA_VERSION=1 and envelope schemaVersion is z.number().int().positive() — any positive version passes, so a schemaVersion 2 event with current-shaped payload folds under v1 rules with no error (verified by reading the schema; no test pins the window)"
+    - "packages/contracts/src/envelope.ts:16-28: envelopeBase is module-private — there is no exported envelope-first parse path; tests and stores parse directly with SessionEventUnionSchema, which validates shape but not version range"
+    - "grep schemaVersion/migration across packages: only store-sqlite persists/reads the column; no migration table, no stepwise pipeline, no old-fixture-migration machinery exists anywhere"
+    - "tests/fixtures/replay/: five hand-written v1 fixtures (12/28/18/23 events; session-tool-lifecycle), versioned only by filename; tests/replay/replay.test.ts hard-codes one loader per file with no manifest, no completeness law, no regeneration proof"
+    - "docs/02 sections 4.1/4.3 already state the requirement (schema version + migration strategy, monotonic versioning, old-fixture replay tests for schema changes); docs/03 M5.2 lists all three checkboxes unchecked; .praxis/milestones/M5.yaml scenario acceptance requires 'old fixtures replay after migration'"
+  expected: 
+    - packages/contracts/src/envelope.ts exports the envelope base schema (additive export; existing exports unchanged) so consumers can parse envelope identity before payload
+    - "packages/contracts/src/replay.ts (new): parseReplayStream(raw: unknown): SessionEventUnion[] and parseReplayEvent(raw: unknown): SessionEventUnion — envelope-first parse from unknown; reject schemaVersion > EVENT_SCHEMA_VERSION with an explicit future-version error and reject non-positive/non-integer versions; apply the stepwise migration table from the declared version (empty at v1 — identity) via the exported pure helper applyEventMigrations(event, migrations); then SessionEventUnionSchema.parse the migrated event; re-export EVENT_SCHEMA_VERSION for consumers"
+    - packages/contracts/src/index.ts exports the replay API (contracts owns schemas; loading/migration policy is a schema concern per docs/02 section 4.1)
+    - "migration drill test: a synthetic v1→v2 migration (e.g., renaming a payload field in a copy of a real fixture stream) is applied through applyEventMigrations, the migrated stream parses as schemaVersion current, and foldSessionEvents yields the identical derived state as the un-migrated stream — proving the stepwise pipeline preserves fold identity"
+    - "future-version rejection test: the same fixture with every schemaVersion bumped to EVENT_SCHEMA_VERSION+1 is rejected by parseReplayStream (fail closed at load) and never reaches foldSessionEvents"
+    - "tests/fixtures/replay/index.json manifest: one entry per fixture (file, schemaVersion, description, event count, terminal status); tests/replay/replay.test.ts iterates the manifest — every entry loads through parseReplayStream, folds to the recorded status, double-fold identical — and asserts manifest/directory completeness in both directions (no orphan fixture file, no dangling manifest entry)"
+    - "tests/fixtures/replay/regression-long-session-v1.json (new): a long mixed session (tool cycles incl. indeterminate+reconciled, epistemic facts, hundreds of events) generated deterministically from @praxis/testkit factories; a unit test regenerates the stream and asserts deep equality with the committed file, pinning regeneration determinism"
+    - "docs/02: the version-window law (1 <= schemaVersion <= EVENT_SCHEMA_VERSION, future streams fail closed at load) and the stepwise monotonically-versioned migration law (each bump adds one migration step; old fixtures must replay to identical derived state) recorded in the events/persistence section; docs/03 M5.2 all three checkboxes ticked with provenance; docs/subsystems/contracts.md documents the replay seam"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M5.yaml
+    - packages/contracts/src/envelope.ts
+    - tests/replay/replay.test.ts
+    - tests/fixtures/replay/
+    - docs/decisions/ADR-0003-event-store.md
+    - docs/decisions/ADR-0009-session-event-contracts-v1.md
+hypothesis: "The migration machinery can be established without any schema bump: the real defects today are the unenforced version window (future-version streams fold silently) and the missing stepwise seam; an envelope-first loader in contracts with an empty-but-structured migration table, proven by a synthetic drill on a real fixture stream, plus a manifest-law fixture collection and a deterministically regenerable long regression session, satisfies 'old fixtures replay after migration' machinery-wise and gives the first real schema bump a pinned procedure."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M5-T003.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/contracts/**
+    - tests/contracts-replay.test.ts
+    - tests/fixtures/replay/**
+    - tests/replay/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/contracts.md
+  forbidden_paths: 
+    - packages/core/**
+    - packages/store-sqlite/**
+    - packages/provider-openai/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+    - tests/property/**
+    - tests/integration/**
+    - tests/fault/**
+    - tests/security/**
+  scope_notes: 
+    - "No durable event shape changes: schemaVersion stays 1 and the migration table is empty; this task builds the machinery the first real bump will use. requires_adr false: additive schema-consumer module implementing the already-documented law (docs/02 section 4.1 'schema 是持久化边界，变更需要 schema version 与 migration 策略', section 4.3 migration rules); no event vocabulary, port, or boundary change — docs/07 section 4 stop-conditions do not trigger."
+    - "store-sqlite is deliberately untouched: its own monotonic schema migration law (docs/02 section 4.3, ADR-0004) is a separate seam from event-envelope versioning; only the contracts loading policy is established here. If evidence shows the store read path must route through parseReplayStream now, amend the contract first."
+    - "testkit is untouched: its session-event factories are already deterministic (fixed seq/id derivations), which is what makes byte-pinned fixture regeneration possible; if regeneration proves non-deterministic, amend the contract rather than adding a clock/seed mechanism."
+    - "No generator script is checked in: regeneration determinism is proven by a vitest unit test, not by scripts/ tooling (scripts/ is control-plane territory)."
+    - "Existing replay tests may be refactored to load through the manifest/seam but their assertions must not weaken: fold-to-recorded-state, double-fold identity, checkpoint/suffix property all stay."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "old fixtures replay after migration machinery: every manifest fixture loads through parseReplayStream (envelope-first, version-window enforced), folds to its recorded terminal status, and double-folds identically; the synthetic v1→v2 drill migrates a real fixture stream through applyEventMigrations and folds to the identical derived state"
+    - a future-version stream (schemaVersion = EVENT_SCHEMA_VERSION+1) is rejected at load with an explicit error and never reaches foldSessionEvents — the version window is fail closed
+    - "regression collection: the long mixed session regenerates deterministically from testkit factories (deep-equality pin) and replays through the same manifest law"
+  failure_cases: 
+    - accepting a newer-schema stream and folding it under current rules (silent under-versioned fold) — pinned by the future-version rejection test
+    - "a migration pipeline that skips/reorders steps or breaks fold identity — pinned by the drill: migrated stream must fold to the identical derived state as the un-migrated stream"
+    - "fixture drift: a fixture file without a manifest entry or a manifest entry without a file — pinned by both-direction completeness assertions"
+    - a regression fixture that cannot be regenerated deterministically — pinned by the deep-equality regeneration test
+    - "weakening any existing replay law (recorded terminal states, double-fold identity, checkpoint/suffix property) to make the seam pass"
+  artifacts: 
+    - packages/contracts/src/replay.ts
+    - packages/contracts/src/envelope.ts
+    - packages/contracts/src/index.ts
+    - tests/contracts-replay.test.ts
+    - tests/fixtures/replay/index.json
+    - tests/fixtures/replay/regression-long-session-v1.json
+    - tests/replay/replay.test.ts
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/contracts.md
+falsified_if: The version window or migration seam cannot live in contracts without touching core or adapters; the drill cannot demonstrate transform-then-fold identity on a real fixture stream; the long regression fixture cannot be both deterministic and regenerable from existing testkit factories; or existing replay tests/properties must be weakened to accommodate the seam.
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk E per backlog (durable-persistence adjacent machinery). Reaches ACCEPTANCE_READY; human sign-off required per ai-policy (risk E always). The first real schema bump (future milestone) must add exactly one migration step and keep every old fixture folding identically — that procedure is what this task pins. M5-T004 (crash matrix, risk D) follows and depends on this task's fixtures."
