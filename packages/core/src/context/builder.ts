@@ -5,8 +5,10 @@ import { DEFAULT_CONTEXT_BUDGET, validateContextBudget } from "./budget";
 /**
  * v0 deterministic ContextBuilder (docs/02 section 12, docs/03 M2.2).
  * Pure projection: same input and budget always build the same context.
- * No clock, randomness, environment reads, or I/O. Semantic retrieval and
- * conversation summarization are deferred by design.
+ * No clock, randomness, environment reads, or I/O. Model-generated
+ * summarization and semantic retrieval are deferred by design; messages
+ * that fall out of the window are compacted into a deterministic count
+ * recap (M5-T002) instead of vanishing silently.
  *
  * Truncation keeps the head of a fragment and appends a `…[+N bytes
  * truncated]` marker. Truncated assistant tool arguments are context
@@ -161,48 +163,83 @@ function fitHistoryMessage(message: ModelMessage, budget: ContextBudget): Fitted
   }
 }
 
+/**
+ * Deterministic compaction recap (docs/02 section 12.3, M5-T002): one
+ * structured section appended to the system fragment when messages drop out
+ * of the context window. Counts derive purely from the dropped messages;
+ * no clock, randomness, or model-generated prose. Durable events are never
+ * deleted — compaction bounds the working context only.
+ */
+function renderCompactionRecap(
+  fittedHistory: readonly FittedMessage[],
+  keptCount: number,
+  budget: ContextBudget,
+): string {
+  const dropped = fittedHistory.slice(0, fittedHistory.length - keptCount);
+  let user = 0;
+  let assistant = 0;
+  let tool = 0;
+  for (const { message } of dropped) {
+    if (message.role === "user") {
+      user += 1;
+    } else if (message.role === "assistant") {
+      assistant += 1;
+    } else if (message.role === "tool") {
+      tool += 1;
+    }
+  }
+  const countsLine = `${dropped.length} earlier messages compacted: ${user} user, ${assistant} assistant, ${tool} tool results`;
+  return `## Compacted history\n${fitText(countsLine, budget.maxFragmentBytes).text}`;
+}
+
 export function buildContext(
   input: ContextBuildInput,
   budget: ContextBudget = DEFAULT_CONTEXT_BUDGET,
 ): BuiltContext {
   validateContextBudget(budget);
 
-  const composedSystemPrompt =
+  const baseSystemPrompt =
     input.epistemicBrief === undefined
       ? input.systemPrompt
       : `${input.systemPrompt}\n\n${input.epistemicBrief}`;
-  if (
-    input.epistemicBrief !== undefined &&
-    utf8Bytes(composedSystemPrompt) > budget.maxFragmentBytes
-  ) {
-    // Tail-truncating the composed fragment could silently cut the brief's
-    // non-compactable sections (docs/02 section 12.2); with facts present
-    // the build fails closed instead. Without a brief the v0 head-truncation
-    // of a lone oversized prompt still applies.
-    throw new ContextBudgetExceededError(
-      `system prompt plus epistemic brief reach ${utf8Bytes(composedSystemPrompt)} bytes over the fragment cap of ${budget.maxFragmentBytes}; refusing to truncate structured non-compactable state`,
-    );
-  }
-  const fittedSystem = fitText(composedSystemPrompt, budget.maxFragmentBytes);
-  const systemMessage: ModelMessage = {
-    role: "system",
-    text: fittedSystem.text,
-  };
 
   const fittedHistory = input.history.map((message) => fitHistoryMessage(message, budget));
-  let truncatedFragments = fittedSystem.cutBytes > 0 ? 1 : 0;
-  for (const fitted of fittedHistory) {
-    truncatedFragments += fitted.truncatedFragments;
-  }
-
   const windowStart = Math.max(0, fittedHistory.length - budget.maxRecentMessages);
   let window = fittedHistory.slice(windowStart);
-  let droppedMessages = fittedHistory.length - window.length;
 
   const tools = input.tools ?? [];
   const toolTotalBytes = tools.reduce((sum, tool) => sum + toolBytes(tool), 0);
 
+  let historyTruncatedFragments = 0;
+  for (const fitted of fittedHistory) {
+    historyTruncatedFragments += fitted.truncatedFragments;
+  }
+
   while (true) {
+    const droppedMessages = fittedHistory.length - window.length;
+    const recapSection =
+      droppedMessages > 0 ? renderCompactionRecap(fittedHistory, window.length, budget) : null;
+    const composedSystemPrompt =
+      recapSection === null ? baseSystemPrompt : `${baseSystemPrompt}\n\n${recapSection}`;
+    if (
+      input.epistemicBrief !== undefined &&
+      utf8Bytes(composedSystemPrompt) > budget.maxFragmentBytes
+    ) {
+      // Tail-truncating the composed fragment could silently cut the brief's
+      // non-compactable sections (docs/02 section 12.2) or the compaction
+      // recap; with facts present the build fails closed instead. Without a
+      // brief the v0 head-truncation of a lone oversized prompt still applies.
+      throw new ContextBudgetExceededError(
+        `system prompt plus epistemic brief reach ${utf8Bytes(composedSystemPrompt)} bytes over the fragment cap of ${budget.maxFragmentBytes}; refusing to truncate structured non-compactable state`,
+      );
+    }
+    const fittedSystem = fitText(composedSystemPrompt, budget.maxFragmentBytes);
+    const systemMessage: ModelMessage = {
+      role: "system",
+      text: fittedSystem.text,
+    };
+    const truncatedFragments = historyTruncatedFragments + (fittedSystem.cutBytes > 0 ? 1 : 0);
+
     const totalBytes =
       messageBytes(systemMessage) +
       window.reduce((sum, fitted) => sum + messageBytes(fitted.message), 0) +
@@ -228,6 +265,5 @@ export function buildContext(
       );
     }
     window = window.slice(1);
-    droppedMessages += 1;
   }
 }

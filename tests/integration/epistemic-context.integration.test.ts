@@ -15,6 +15,8 @@ import {
   sessionCompleted,
   sessionCreated,
   TEST_SESSION_ID,
+  turnCompleted,
+  turnStarted,
 } from "../helpers/session-events";
 
 /**
@@ -234,6 +236,53 @@ describe("runTurn epistemic context projection", () => {
     expect(system.text).toContain("…[+12 older active hypotheses omitted]");
     expect(system.text).not.toContain("hypothesis number 1\n");
     expect(system.text).not.toContain("- [proposed] hypothesis number 5");
+  });
+
+  test("a 1000-turn session serves a bounded request with the compaction recap and the goal", async () => {
+    const provider = new ScriptedModelProvider([
+      { kind: "event", event: { type: "textDelta", text: "continuing the long restoration" } },
+      { kind: "event", event: { type: "completed", finishReason: "stop" } },
+    ]);
+    const harness = {
+      ...deps(provider),
+      newTurnId: () => asTurnId("turn-1001"),
+    };
+    const seed = [sessionCreated(1), goalSet(2, { goal: "restore the missing payment record" })];
+    for (let n = 1; n <= 1000; n += 1) {
+      seed.push(turnStarted(2 * n + 1, n, `step ${n} of the long restoration`));
+      seed.push(turnCompleted(2 * n + 2, n));
+    }
+    await harness.store.append(seed, 0);
+
+    const outcome = await runTurn(
+      harness,
+      { input: "proceed" },
+      { signal: new AbortController().signal },
+    );
+    expect(outcome.kind).toBe("completed");
+
+    // 1001 history messages (1000 seeded turns + this turn's input) compact
+    // to the 64-message window plus a deterministic count recap.
+    const request = provider.requests[0];
+    if (request === undefined) {
+      throw new Error("expected a served request");
+    }
+    expect(request.messages).toHaveLength(1 + 64);
+    const system = request.messages.find((message) => message.role === "system");
+    if (system?.role !== "system") {
+      throw new Error("expected a system message");
+    }
+    expect(system.text).toContain("Goal: restore the missing payment record");
+    expect(system.text).toContain(
+      "## Compacted history\n937 earlier messages compacted: 937 user, 0 assistant, 0 tool results",
+    );
+    const trailing = request.messages[request.messages.length - 1];
+    expect(trailing).toEqual({ role: "user", text: "proceed" });
+
+    // Full fidelity is untouched in the store: the durable stream still
+    // carries every seeded turn, compaction bound only the working context.
+    const stream = await harness.store.readStream(harness.sessionId);
+    expect(stream.filter((event) => event.type === "TurnStarted")).toHaveLength(1001);
   });
 
   test("fails closed before consulting the model when the non-compactable tier cannot fit", async () => {
