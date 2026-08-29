@@ -127,7 +127,11 @@ Budget
 
 # 3. Praxis Repo Eval
 
-从 M2 起建立 `evals/development-models/`。
+从 M2 起建立 `evals/development-models/`。M4-T005 起该目录落地第一条轴——**认识论对比
+eval**：同一组 M4 认识论场景（plan 失效、completion 阻断、中途 UNKNOWN、inconclusive
+验证）× 多个真实模型，度量 epistemic brief 是否把模型导向合法动作。运行方式、判分与
+场景表见 `evals/development-models/README.md`（non-core-gating：证据工具，不进
+check 链）。本节任务集（A–E）是其后的开发模型评测轴。
 
 不测试模型背算法题，而测试本项目真正需要的工作。
 
