@@ -1,0 +1,88 @@
+schema_version: 1
+id: M4-T002
+title: implement structured epistemic projection into context
+milestone: M4
+status: plan_ready
+risk_class: C
+objective: "Close the M4.2 gap: buildContext receives only systemPrompt/history/tools, so the epistemic slice M4-T001 now folds (goal, activePlan, observations, hypotheses, openChallenges, lastVerification) and pending INDETERMINATE tool executions never reach the model — docs/02 section 12.2 says exactly these facts must survive as structured fragments, not free summary. Land a pure deterministic projection: projectEpistemicBrief(state, budget) renders the sections in priority order (goal+constraints, active plan, open challenges, pending INDETERMINATE, latest verification, active hypotheses, capped observations), ContextBudget gains the maxActiveObservations cap section 12.3 already names, buildContext composes the optional brief into the single system fragment, and runTurn re-folds the stream each step and passes the brief. Empty epistemic state omits the brief entirely — pre-M4 sessions build byte-identical contexts. No orchestration: falsification-driven invalidation is M4-T003, challenge-driven legal-next-action changes are M4-T004."
+evidence: 
+  observed: 
+    - packages/core/src/context/builder.ts ContextBuildInput has only systemPrompt/history/tools; nothing reads DerivedSessionState.goal/activePlan/observations/hypotheses/openChallenges/lastVerification anywhere in packages/
+    - "docs/02 section 12.2 lists hard constraints, pending INDETERMINATE tool execution, open challenge, active plan, and required verification state as information that must live in structured fragments; section 12.3 names a max active observations cap that ContextBudget does not have"
+    - "packages/core/src/agent-loop/run-turn.ts already re-reads and re-folds the stream each step for the conversation projection, so the brief needs no new store access pattern"
+    - "docs/03 section 7 (M4.2) checkboxes are unchecked: current goal/constraints, active plan, partitioned observations and hypotheses, open challenge, pending indeterminate action"
+  expected: 
+    - "packages/core/src/context/epistemic-brief.ts: projectEpistemicBrief(state, budget) — pure, no clock/randomness/IO; renders only non-empty sections, returns undefined when the epistemic slice and pending indeterminates are all empty"
+    - "section priority follows docs/02 12.2: goal+hard constraints, active plan (with falsifiedIf and hypothesis ref), open challenges (target + claim), pending INDETERMINATE executions (id + name + reason), latest verification outcome, then the bulk partitions — active hypotheses (proposed/supported only; falsified/superseded never enter) and finally observations capped at maxActiveObservations with oldest dropped first"
+    - "each rendered line passes the per-fragment byte cap with the standard truncation marker, so one pathological claim cannot silently evict the open-challenge section; the composed system fragment keeps the existing whole-fragment fitText backstop and fails closed via ContextBudgetExceededError if system+brief alone busts the token cap"
+    - "ContextBudget.maxActiveObservations (positive integer, default 8) enforced by validateContextBudget; buildContext gains an optional epistemicBrief input composed as systemPrompt + blank line + brief into the single system message — the no-system-in-history law is unchanged"
+    - "runTurn resolves the budget once, folds the freshly-read stream each step, and passes the brief; ScriptedModel integration test proves the second model request's system message carries the observation/plan/challenge sections after mid-session facts"
+    - empty-state brief omission keeps every existing context-builder and agent-loop test passing unchanged — the projection is additive
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M4.yaml
+    - docs/decisions/ADR-0012-epistemic-event-contracts.md
+hypothesis: "The projection is a pure fold view, exactly like projectConversation: the same stream and budget always render the same brief, replay determinism is untouched because nothing reads the clock or environment, and every M4-T003/T004 behavior later composes over the same state without changing this renderer."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M4-T002.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/core/**
+    - tests/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/**
+  forbidden_paths: 
+    - packages/contracts/**
+    - apps/cli/**
+    - packages/provider-openai/**
+    - packages/store-sqlite/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - scripts/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - docs/decisions/**
+  scope_notes: 
+    - "No contract or vocabulary change: the brief reads DerivedSessionState that M4-T001 already owns, so packages/contracts is out of scope and requires_adr is false — the rendering laws live in docs/02 section 12, the owning doc, updated in this change."
+    - "The brief composes into the single system fragment instead of a second system message: buildContext's law says the system fragment comes from systemPrompt only, and provider portability of multiple system messages is not ours to assume."
+    - "maxActiveObservations drops oldest-first by insertion order (registry order = append order); the event history keeps everything — the cap bounds the working set, not the log."
+    - "observedAt and other envelope times are deliberately not rendered: the brief stays stable across replays and re-builds of the same stream."
+    - "current mode (section 12.2) has no v1 state — v1 has no mode field, so no mode section; noted here so the omission is a decision, not an oversight."
+architecture_refs: 
+  - docs/02-system-design.md
+  - .praxis/architecture.yaml
+required_gates: 
+  - unit
+  - property
+  - replay
+  - integration
+  - fault
+  - build
+  - store
+  - cli
+acceptance: 
+  scenarios: 
+    - "a session with GoalSet + ObservationRecorded + HypothesisProposed + PlanSet + open ChallengeRaised renders all sections in priority order with observations and hypotheses as separate partitions, and the same state renders the identical string twice (determinism)"
+    - "runTurn over a ScriptedModel: epistemic facts appended before the turn reach the model — the request system message contains the goal, active plan, and observation claim; after a tool-call step the re-built context still carries them"
+    - "a pending INDETERMINATE execution appears in the brief with its id, name, and reason, and disappears once a ToolReconciled fact settles it"
+    - more observations than maxActiveObservations keeps the newest N and drops the oldest; inactive (falsified/superseded) hypotheses never enter the brief
+    - "a session with no epistemic facts and no pending indeterminates builds a byte-identical context to the pre-M4 projection (brief omitted, not empty)"
+  failure_cases: 
+    - maxActiveObservations that is not a positive integer is rejected by validateContextBudget (InvalidContextBudgetError)
+    - "a pathological 16KB observation claim cannot evict later sections: each line is capped with the truncation marker, and the open-challenge section still renders"
+    - system prompt plus brief alone over the token cap throws ContextBudgetExceededError instead of silently dropping history or the brief tail
+  artifacts: 
+    - packages/core/src/context/epistemic-brief.ts
+    - tests/context-epistemic.test.ts
+    - tests/context-builder.test.ts
+    - tests/integration/context-builder.integration.test.ts
+    - docs/subsystems/core.md
+falsified_if: "The projection reads the clock, randomness, or the environment; renders falsified/superseded hypotheses or uncapped observations; changes ContextBuildInput outputs for sessions with no epistemic facts; weakens the no-system-in-history law; or needs contract changes (new event, schema, or port) to work."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog: core behavior composition over settled contracts. Human acceptance per the M3 rhythm (every task signed in-session). Deliberately deferred: falsifiable-plan orchestration (M4-T003), challenge-driven legal-next-action and completion blocking (M4-T004), semantic retrieval and conversation summarization (post-v1 per docs/02 section 12.3)."
