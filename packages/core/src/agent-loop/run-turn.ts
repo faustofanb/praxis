@@ -25,6 +25,7 @@ import type { ToolAuthorizer } from "../tools/tool-runtime";
 import { executeToolCall } from "../tools/tool-runtime";
 import { appendEvent, eventEnvelope } from "./append-event";
 import { projectConversation } from "./conversation";
+import { invalidatePlansFalsifiedByHypotheses } from "./plan-invalidation";
 import { pauseForUnresolvedIndeterminates, reconcileIndeterminateExecutions } from "./recovery";
 
 /**
@@ -126,6 +127,11 @@ export async function runTurn(
   if (await recoverDanglingWork(deps, state)) {
     state = foldSessionEvents(await deps.store.readStream(deps.sessionId));
   }
+
+  // Falsifiable-plan decision (ADR-0012 reserved it for the runtime, white
+  // paper "evidence can invalidate plan"): close active plans whose
+  // hypothesis died. Appends nothing when nothing matches.
+  await invalidatePlansFalsifiedByHypotheses(deps);
 
   // Crash-after-side-effect recovery (docs/02 section 17 steps 6-7): verify
   // what can be verified, then escalate instead of continuing a turn over an

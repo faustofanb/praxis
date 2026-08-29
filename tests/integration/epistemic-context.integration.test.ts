@@ -6,6 +6,8 @@ import { describe, expect, test } from "vitest";
 import { inMemoryEventStore } from "../helpers/in-memory-event-store";
 import {
   goalSet,
+  hypothesisProposed,
+  hypothesisStatusChanged,
   observationRecorded,
   planSet,
   sessionCreated,
@@ -106,5 +108,44 @@ describe("runTurn epistemic context projection", () => {
       throw new Error("expected a system message");
     }
     expect(system.text).toBe("You are Praxis running a read-only session.");
+  });
+
+  test("a falsified hypothesis invalidates its plan at turn entry, so the model sees no active plan", async () => {
+    const provider = new ScriptedModelProvider([
+      { kind: "event", event: { type: "textDelta", text: "replanning" } },
+      { kind: "event", event: { type: "completed", finishReason: "stop" } },
+    ]);
+    const harness = deps(provider);
+    await harness.store.append(
+      [
+        sessionCreated(1),
+        goalSet(2, { goal: "restore the missing payment record" }),
+        hypothesisProposed(3, 1),
+        hypothesisStatusChanged(4, 1, "falsified", { evidence: [1] }),
+        planSet(5, 1, { hypothesis: 1, nextAction: "replay the payment webhook" }),
+      ],
+      0,
+    );
+
+    const outcome = await runTurn(
+      harness,
+      { input: "proceed" },
+      { signal: new AbortController().signal },
+    );
+    expect(outcome.kind).toBe("completed");
+
+    // The turn-entry pass appended the invalidation as a durable fact.
+    const stream = await harness.store.readStream(harness.sessionId);
+    const invalidations = stream.filter((event) => event.type === "PlanInvalidated");
+    expect(invalidations).toHaveLength(1);
+
+    // The model was told the goal but not the dead plan.
+    const system = provider.requests[0]?.messages.find((message) => message.role === "system");
+    if (system?.role !== "system") {
+      throw new Error("expected a system message");
+    }
+    expect(system.text).toContain("Goal: restore the missing payment record");
+    expect(system.text).not.toContain("## Active plan");
+    expect(system.text).not.toContain("replay the payment webhook");
   });
 });

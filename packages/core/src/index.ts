@@ -6,6 +6,8 @@ import { packageName as contractsPackageName } from "@praxis/contracts";
  */
 
 export { projectConversation } from "./agent-loop/conversation";
+export type { PlanInvalidationReport } from "./agent-loop/plan-invalidation";
+export { invalidatePlansFalsifiedByHypotheses } from "./agent-loop/plan-invalidation";
 export type { ReconciliationReport, RecoveryDeps } from "./agent-loop/recovery";
 export {
   pauseForUnresolvedIndeterminates,
