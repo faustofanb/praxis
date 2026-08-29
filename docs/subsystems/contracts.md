@@ -21,6 +21,7 @@
   - `request.ts`：`ModelRequest`（model id、非空 `ModelMessage[]`、tools?、maxOutputTokens?、`providerOptions: Record<string, unknown>` escape hatch、correlationId?）。消息角色 `system | user | assistant | tool` 判别联合；工具参数以 `argumentsJson` 字符串过界，解析归工具运行时。
   - `events.ts`：流式事件 `textDelta | toolCallStart | toolCallDelta | toolCallEnd | usage | completed(finishReason: stop|toolCalls|length) | providerError`，camelCase 判别联合，刻意区别于 PascalCase 持久事件词汇。`providerError` 携带规范化 `kind`（network/rateLimit/invalidRequest/auth/overloaded/timeout/unknown）与 `retryable`，是每次 complete 尝试的终态事实之一。
   - `provider.ts`：`ModelProvider` port——`complete(request, signal): AsyncIterable<ModelEvent>`。取消为协作式静默结束（无 completed、无 providerError、不抛异常）；adapter 归一化 AbortError 并自持 provider 侧重试，Core 只消费规范化失败。
+- **Extension 词汇**（`src/extensions.ts`，M6-T001 起；docs/02 §19、ADR-0013）：`PraxisExtension` 八 hook（`EXTENSION_HOOKS` 钉死：onTurnStart/contributeContext/beforeModel/afterModel/beforeTool/afterTool/onEvent/onTurnEnd，全可选、sync/async 皆可），全部上下文为只读视图（携带 id 与冻结的 request/result，绝不携带 store 或可变状态）。`ToolHookDecision` 仅 deny（`{decision:"deny"; reason}` 或无意见）——"allow" 类型上不可表达，能力旁路不可构造。`ExtensionFailurePolicy = 'isolate' | 'fail_closed'`。`ContextFragment{source, text}`（source 由 core host 盖章）。`validatePraxisExtension`：name 规则（非空、字母数字开头、`[A-Za-z0-9._-]`、≤64 字符）、hook 必须函数或 undefined、failurePolicy 域校验；抛 `InvalidExtensionError`。返回形状违规（非数组 fragments、非 deny 决策）由 host 在调用时检测，与失败策略无关地抛错。
 
 ## 测试
 
@@ -31,4 +32,5 @@
 - 单元：`tests/model-events.test.ts`（M2-T004：模型 durable 事件 schema 校验、toolCalls 默认值、kind 枚举、TurnStarted.input / ToolProposed.toolCallId 可选字段、词汇外拒绝）。
 - 属性：`tests/property/contracts-events.property.test.ts`（fast-check：JSON 往返恒等、seq 恰为正整数时接受、词汇外类型拒绝——M4-T001 起过滤全集为整个 v1 词汇、turnId 保真；M4-T001 起 epistemic 九类事件生成器往返恒等、`to: "proposed"`/`outcome: "open"`/`outcome: "maybe"` 等词汇外变体在边界拒绝）。
 - 属性：`tests/property/tool-events.property.test.ts`（工具事件 JSON 往返恒等、result payload 往返保真、M3-T001 起三种 reconcile 变体往返恒等）。门：`mise run test:property`。
+- 单元：`tests/extensions/host.test.ts` 的 contracts 面（M6-T001：validatePraxisExtension 名字规则/非函数 hook/非法 failurePolicy 拒绝；见下 core.md 同文件其余条目）。
 - 单元：`tests/capability-policy.test.ts` 的 workspace scope 套件（M3-T002：normalizeWorkspaceRoot 规范化/拒绝、workspaceRootCovers 段前缀负例、scopeSatisfies 全局/带 scope 组合）。

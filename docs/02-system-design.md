@@ -1009,28 +1009,34 @@ API key 不写入 config/event/model context；telemetry 必须 redaction。
 
 v1 Extension 目标：让 Plan UI/Multi-Agent/Emergency/Audit 后续接入，但不把 Core 变成 Event Bus framework。
 
-只提供少量 seam：
+只提供少量 seam（M6-T001 落地，具体法见 ADR-0013；类型权威在 `packages/contracts/src/extensions.ts`）：
 
 ```ts
 type PraxisExtension = {
   name: string;
-  onTurnStart?(ctx: ExtensionContext): Promise<void>;
-  contributeContext?(ctx: ContextContributionContext): Promise<ContextFragment[]>;
-  beforeModel?(ctx: ModelHookContext): Promise<void>;
-  afterModel?(ctx: ModelResultHookContext): Promise<void>;
-  beforeTool?(ctx: ToolHookContext): Promise<ToolHookDecision | void>;
-  afterTool?(ctx: ToolResultHookContext): Promise<void>;
-  onEvent?(event: SessionEvent): Promise<void>;
-  onTurnEnd?(ctx: ExtensionContext): Promise<void>;
+  failurePolicy?: "isolate" | "fail_closed"; // 默认 isolate
+  onTurnStart?(ctx: TurnStartHookContext): void | Promise<void>;
+  contributeContext?(ctx: ContextContributionContext): ContextFragment[] | undefined | Promise<...>;
+  beforeModel?(ctx: ModelHookContext): void | Promise<void>;
+  afterModel?(ctx: ModelResultHookContext): void | Promise<void>;
+  beforeTool?(ctx: ToolHookContext): ToolHookDecision | undefined | Promise<...>;
+  afterTool?(ctx: ToolResultHookContext): void | Promise<void>;
+  onEvent?(ctx: EventHookContext): void | Promise<void>;
+  onTurnEnd?(ctx: TurnEndHookContext): void | Promise<void>;
 };
 ```
 
 约束：
 
-- hook 数量不随每个新需求增长；
-- extension 不能绕过 CapabilityPolicy；
-- extension 自己的 durable state 必须以 Event 或独立显式 storage 管理；
-- extension failure 是否阻断主循环由 hook contract 明确；默认 telemetry extension 不阻断，security/policy extension fail closed。
+- hook 数量不随每个新需求增长（固定八个，`EXTENSION_HOOKS` 钉死；增加即 ADR）；
+- extension 不能绕过 CapabilityPolicy —— `ToolHookDecision` 只有 deny（`{ decision: "deny"; reason }` 或无意见），"allow" 在类型上不可表达；`beforeTool` 在 authorizer 批准**之后**组合（ADR-0007 顺序不变），extension 只能收紧、永不能放宽；authorizer 拒绝时根本不咨询 extension；
+- extension 自己的 durable state 必须以 Event 或独立显式 storage 管理 —— `onEvent` 只读（每次 append 成功后逐事件触发），extension 通过 seam 不能 append 任何事件；
+- extension failure 是否阻断主循环由 hook contract 明确：每个 extension 声明 `failurePolicy`，默认 telemetry 走 `isolate`（吞掉错误、该 hook 零贡献），security/policy 走 `fail_closed`（包装成 `ExtensionHookError` 重抛，交给 §17 既有崩溃恢复——不存在第二条失败路径）；
+- host 实例作用域（`createExtensionHost()` 闭包持有全部状态，无模块级全局）：注册顺序即调用顺序，首个 deny 生效；`unload` 立即生效、无残留；
+- context 片段走 M5-T001 组合法则：host 亲自盖上 `source`（extension 无法冒名），渲染为 epistemic brief 之后的 `## Extension: <name>` 节；单节可截断（compactable），组合后仍超限则 fail closed，绝不挤占 goal/plan/challenge 等非压缩节；
+- 零扩展恒等：无 host（或空 host）时 runTurn/executeToolCall 产生与无扩展完全相同的事件流与模型请求。
+
+v1 明确拒绝（ADR-0013）：extension 注册新工具的 hook（tools 由应用通过 deps 持有）、请求改写、跨 extension 协调。
 
 ---
 
