@@ -1,6 +1,6 @@
 schema_version: 1
 id: M8
-status: planned
+status: accepted
 goal: Produce v1 release candidate with engineering, capability, human UX and recovery
   acceptance evidence.
 prerequisites:
