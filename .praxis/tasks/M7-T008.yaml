@@ -2,7 +2,7 @@ schema_version: 1
 id: M7-T008
 title: document the sqlite corruption and recovery policy
 milestone: M7
-status: planned
+status: accepted
 risk_class: A
 objective: "Close the docs/03 M7 quality-gate row 'SQLite corruption/recovery policy documented' (M7-T008, risk A, backlog entry added with this contract). Observed state: the substance already exists and is machine-tested, but it is scattered and the POLICY-level answer ('what does the system do when the sqlite file is corrupted, and what may an operator do about it') has no home. Facts available: docs/02 §17 owns the runtime recovery LAW (9-step orchestration + the six-cell crash matrix, M5-T004, embodied in tests/fault/crash-matrix.fault.test.ts + tests/store/crash-recovery.bun.test.ts) and the absolute-prohibitions list; docs/subsystems/store-sqlite.md owns current store behavior (WAL journal mode, optimistic-concurrency single-transaction append, per-row SessionEventUnionSchema.parse on read because persisted bytes are an untrusted boundary, monotonic migrations failing closed on version divergence, append-only public surface with no UPDATE/DELETE path); tests/store/store-sqlite.bun.test.ts pins corruption detection (a corrupted actor_json row fails validation on read — fail closed, no silent skip); ADR-0004 owns the bun:sqlite-without-ORM decision; docs/02 §16 owns the single-writer law. What is MISSING: (1) a corruption POLICY document that separates PREVENTION (WAL, append-only surface, single writer, transactional append, fail-closed migrations — corruption by construction is limited to out-of-process factors) from DETECTION (every read re-validates; version divergence fails at open) from RECOVERY (runtime-level = §17's law, linked not duplicated; file-level = v1 has NO online repair tooling by design — the event stream is the single source of truth so the runtime cannot and must not 'repair' it; the operator restores the database file from filesystem backup, after which prefix-replay + migration idempotence are already test-proven), and states explicitly what v1 does NOT provide (checksum columns, online repair, automatic backup tooling, partial stream recovery) and under what evidence those would be revisited; (2) the docs/03 row tick. Deliverable: docs/11-sqlite-corruption-recovery.md (new, the policy's ONE home — links every authority, duplicates no law), docs/subsystems/store-sqlite.md gains one pointer line to the policy, docs/03 ticked with provenance, .praxis/backlog.yaml gains the M7-T008 entry. No production code, no test changes: every policy statement must trace to an existing pinned fact or be an explicit, labeled v1 limitation."
 evidence: 
@@ -10,8 +10,8 @@ evidence:
     - "docs/03 M7 row 'SQLite corruption/recovery policy documented' unchecked; no doc answers the file-level corruption question"
     - "detection is test-pinned: tests/store/store-sqlite.bun.test.ts 'corrupted actor JSON fails validation on read' (raw UPDATE to 'not-json' outside the store API, readStream then throws)"
     - "prevention is real and documented in fragments: WAL (db.ts journal_mode), single-writer (docs/02 §16), single-transaction append with optimistic head check + gap rejection + metadata update in one transaction (store-sqlite.md), fail-closed version divergence (migrations.ts), append-only public surface"
-    - "runtime recovery law is fully documented in docs/02 §17 incl. crash matrix and prohibitions; M5-T004 embodied it in two test suites"
-    - "ADR-0004 owns the engine decision; the file-level corruption policy is NEW normative content (operator guidance + v1 limitations) that no existing doc owns"
+    - runtime recovery law is fully documented in docs/02 §17 incl. crash matrix and prohibitions; M5-T004 embodied it in two test suites
+    - ADR-0004 owns the engine decision; the file-level corruption policy is NEW normative content (operator guidance + v1 limitations) that no existing doc owns
   expected: 
     - "docs/11-sqlite-corruption-recovery.md (new): prevention / detection / recovery layers, each statement linked to its authority; runtime recovery = link to §17; file-level = restore-from-backup policy with the v1-no-online-repair limitation stated as normative; revisitable triggers listed"
     - "docs/subsystems/store-sqlite.md: one pointer line to the policy doc"
@@ -74,12 +74,12 @@ required_gates:
 acceptance: 
   scenarios: 
     - "the policy doc exists with prevention/detection/recovery layers, every normative statement tracing to a pinned test or law, and the v1 limitations explicitly labeled"
-    - "full unit gate green (unchanged code) — the evidence the policy cites re-proves itself every verify run"
-    - "docs/03 row ticked with provenance; store-sqlite.md points to the policy"
+    - full unit gate green (unchanged code) — the evidence the policy cites re-proves itself every verify run
+    - docs/03 row ticked with provenance; store-sqlite.md points to the policy
   failure_cases: 
     - "a policy claim with no backing fact (e.g. asserting a corruption mode is tolerated when no test pins it) — fabrication, stops acceptance"
     - "the doc duplicating §17's crash matrix or the prohibitions list instead of linking (one fact, one home)"
-    - "an edit to docs/02 or docs/decisions sneaked in to make the policy read better — out of scope"
+    - an edit to docs/02 or docs/decisions sneaked in to make the policy read better — out of scope
   artifacts: 
     - docs/11-sqlite-corruption-recovery.md
     - docs/03-project-plan.md M7 row tick
