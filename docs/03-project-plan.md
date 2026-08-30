@@ -361,7 +361,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [x] fault injection suite（M7-T002：`tests/fault/provider-adapter.fault.test.ts` 补齐 provider 故障边界——中途断连**逃逸后**禁重试（修复 P0：重试重放流致 durable text 翻倍与幽灵 tool call）、退避中 abort、retryable→非 retryable 降级、真实 runTurn 端到端诚实失败；既有 §17 崩溃矩阵/agent-loop/tool-runtime/extension 故障套件见各 owning docs）；
 - [x] security bypass suite（M7-T002：`tests/security/secret-confinement.security.test.ts` 钉死 §18 密钥禁锢——Authorization 头唯一在途位置，wire body/durable 事件/模型消息全图深搜零泄漏；既有 capability/extension/bash 对抗套件见各 owning docs）；
 - [x] soak 10k+ synthetic turns（M7-T003：`tests/soak/turn-soak.test.ts`——10,000 turn 全词汇表合成会话（59,227 事件：3,600 工具执行含 reject/failed 路径、1,428 观测、909 假设、769 计划、588 质询、434 验证）在 2k/4k/6k/8k/10k 五个 turn 边界检查点合法折叠；每检查点 context 恒为 1+64 条消息、token 在 32k 界内、丢弃/保留计数精确对账；派生态注册表与落档事实逐一相等（恰好线性增长）；每事件折叠成本 tripwire ≤10×（实测 ~4.4×，源于注册表不可变 Map 拷贝，正确性无损——10k turn 全量重折叠 1.0s））；
-- [ ] Knip zero unexpected findings；
+- [x] Knip zero unexpected findings（M7-T006：清零两处发现——`tests/helpers/full-vocabulary-machine.ts` 的 `SessionPlanBlock` 去掉死 `export`（M7-T001 影子机器内部类型，外部零导入，property 23/23 不变）；`knip.json` 顶层 entry 数组按 knip 6.x 提示迁入 `workspaces["."]` 块（三条 glob 逐字保留——实验证明删除 `scripts/ai/*.ts` 会令两个 script 变 unused file）；`bun run knip` 零输出零退出，并进本任务 required_gates 于验收 commit 复证）；
 - [ ] memory/context growth report；
 - [ ] SQLite corruption/recovery policy documented；
 - [x] dependency license inventory（M7-T004：`docs/09-dependency-inventory.md` 事实表——11 个外部直接依赖（唯一运行时 zod + 10 个 dev 工具链项）逐一记录许可@pinned 版本/用途/维护态势/失败影响/移除成本；`tests/dependency-inventory.test.ts` 漂移守卫——manifest↔清单双向集合相等、版本+许可与 node_modules pinned 安装逐项相等（升级改许可字段即暴露）、许可全部在宽松允许清单内（MIT/ISC/Apache-2.0，copyleft 入树须先 ADR）；法则仍以 AGENTS.md 为家，精确锁定/方向仍由 boundaries.test.ts 管）；

@@ -1,3 +1,7 @@
 {
-  "entry": ["scripts/ai/*.ts", "scripts/smoke/*.ts", "evals/development-models/*.ts"]
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/ai/*.ts", "scripts/smoke/*.ts", "evals/development-models/*.ts"]
+    }
+  }
 }

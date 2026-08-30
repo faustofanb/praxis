@@ -223,7 +223,7 @@ const turnStepArbitrary: fc.Arbitrary<FullVocabularyCommand> = fc.oneof(
  * optional terminal completion. All content stays random and the machine
  * still filters every command; the shape only guarantees depth.
  */
-export type SessionPlanBlock =
+type SessionPlanBlock =
   | { kind: "turn"; turn: number; steps: readonly FullVocabularyCommand[] }
   | { kind: "epistemic"; steps: readonly FullVocabularyCommand[] }
   | { kind: "pauseResume"; steps: readonly FullVocabularyCommand[] };
