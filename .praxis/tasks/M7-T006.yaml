@@ -1,0 +1,98 @@
+schema_version: 1
+id: M7-T006
+title: reach knip zero unexpected findings
+milestone: M7
+status: planned
+risk_class: A
+objective: "Close the docs/03 M7 quality-gate row 'Knip zero unexpected findings' and the backlog entry added for it (M7-T006, risk A, prerequisites [M7-T001]). The knip gate is fully wired already (mise task knip -> bun run knip; inside the mise check chain since M0; a registered quality-gates command; listed in .praxis/milestones/M7.yaml machine_gates and in the dependencies rule's require set) — but the gate has been RED since M7-T001 landed: bun run knip today reports (1) an unused exported type SessionPlanBlock in tests/helpers/full-vocabulary-machine.ts:226 — the M7-T001 shadow machine exports a type that nothing outside the module imports (verified: all usages — SessionPlanBlock reference at :232, turnBlockArbitrary at :236, interludeBlockArbitrary at :242 — are inside the same file; the property test imports only translateSessionPlan) — and (2) a knip configuration hint: the top-level knip.json entry array (scripts/ai/*.ts + scripts/smoke/*.ts + evals/development-models/*.ts) triggers knip 6.x's 'Remove, or move unused top-level entry to one of workspaces' hint, because knip now wants root entries declared inside a workspaces block. The hint alone does not fail the exit code (verified: after fixing only the type, knip exits 0) but it IS a finding in the report, and the row says ZERO unexpected findings. Deliverable, all verified experimentally before this contract: (a) tests/helpers/full-vocabulary-machine.ts — drop the export keyword on SessionPlanBlock (the type stays; it is module-private by use; SessionPlan remains exported and referenced through translateSessionPlan's signature — no behavior change, property suite 23/23 green after the edit); (b) knip.json — move the identical entry array under { workspaces: { .: { entry: [...] } } } exactly as the hint directs (the entries themselves are load-bearing: experimentally removing scripts/ai/*.ts makes knip flag scripts/ai/check-architecture.ts + praxis-dev.ts as unused files, so the globs stay byte-identical, only the shape moves); result: bun run knip prints NOTHING and exits 0 (verified on the working tree); (c) docs/03-project-plan.md — tick the M7 row 'Knip zero unexpected findings' with provenance. No gate wiring changes: knip rides the existing mise task/registry entries; required_gates for this contract adds knip itself so verify re-proves zero findings at the acceptance commit."
+evidence: 
+  observed: 
+    - "mise run knip fails today: 'Unused exported types (1) SessionPlanBlock type tests/helpers/full-vocabulary-machine.ts:226:13' + 'Configuration hints (1) [scripts/ai/*.ts, …] knip.json Remove, or move unused top-level entry to one of workspaces', exit 1"
+    - "knip wiring already exists everywhere it should: mise.toml [tasks.knip] in the check chain (line 108) and check:all; .praxis/quality-gates.yaml command id knip (line 55-58) + dependencies rule require (line 146); .praxis/milestones/M7.yaml machine_gates includes knip — the gap is findings, not wiring"
+    - "SessionPlanBlock usages are all intra-file (lines 232/236/242 of tests/helpers/full-vocabulary-machine.ts); the consuming property test imports translateSessionPlan only — the export keyword is dead weight, not API"
+    - "experiment: removing scripts/ai/*.ts from the entry array instead of relocating it produces TWO new 'Unused files' findings (check-architecture.ts, praxis-dev.ts) — the entry globs are required; only the top-level shape is deprecated"
+    - "experiment: with the export keyword dropped and the entry array moved under workspaces['.'], bun run knip prints nothing and exits 0; tsc -b clean; property suite 23/23; biome clean on both files"
+  expected: 
+    - "tests/helpers/full-vocabulary-machine.ts: 'export type SessionPlanBlock' -> 'type SessionPlanBlock' (one word removed, nothing else)"
+    - "knip.json: same three entry globs, relocated under { workspaces: { .: { entry: [...] } } }"
+    - "docs/03-project-plan.md: '- [ ] Knip zero unexpected findings' -> - [x] with (M7-T006: …) provenance"
+    - ".praxis/backlog.yaml: M7-T006 entry added (id/order 60/title/prerequisites [M7-T001]/risk A) — the row previously had no backlog entry, which this task records"
+    - "bun run knip: zero output, exit 0 — re-proven by the knip gate inside ai:verify at the acceptance commit"
+  references: 
+    - knip.json
+    - mise.toml
+    - .praxis/quality-gates.yaml
+    - tests/helpers/full-vocabulary-machine.ts
+    - docs/03-project-plan.md
+    - .praxis/backlog.yaml
+hypothesis: "The knip gate is red for exactly two mechanical reasons — one dead export keyword and one deprecated config shape — and reaches zero findings (no errors, no warnings, no hints) with a two-file diff that changes no behavior, no wiring, and no manifest. If clearing findings honestly required ignore-listing a real finding or touching a manifest/gate registry, the hypothesis would falsify."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T006.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - .praxis/backlog.yaml
+    - knip.json
+    - tests/helpers/full-vocabulary-machine.ts
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - tests/property/**
+    - tests/integration/**
+    - tests/replay/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/soak/**
+    - tests/store/**
+    - tests/extensions/**
+    - tests/provider-openai/**
+    - tests/*.test.ts
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - mise.toml
+    - vitest.config.ts
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/acceptance/**
+    - docs/02-system-design.md
+    - docs/09-dependency-inventory.md
+    - docs/subsystems/**
+    - docs/decisions/**
+    - AGENTS.md
+  scope_notes: 
+    - "knip.json is NOT one of the dependencies-rule matched manifests (package.json/bun.lock/mise.toml), so editing it does not trigger the human-acceptance dependencies rule — the knip gate rides that rule's require list unchanged and must PASS, which is the point of the task"
+    - "backlog.yaml edit is authoring the task's own existence (the M7 docs/03 rows never had backlog entries; flagged to the human in the M7-T005 close-out, and the human's continuation reply selected this direction) — one entry, mechanically matching the existing format"
+    - "The fix is genuinely two findings: any THIRD finding appearing on the acceptance run means the tree drifted mid-task and must be fixed in the same mechanical spirit or the contract re-plans — never ignore-listed"
+    - "No ADR: no decision changes — same entry globs, same gate wiring; knip 6.x config-shape migration is tool-guided"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/03-project-plan.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+  - knip
+acceptance: 
+  scenarios: 
+    - "bun run knip prints zero findings (no unused exports, no unused files, no configuration hints) and exits 0 — re-proven inside ai:verify at the acceptance commit"
+    - "property suite green after the export-keyword removal (the shadow machine is property-gate code): 23/23"
+    - "full unit gate green: the one-word diff breaks nothing"
+  failure_cases: 
+    - removing the entry globs entirely (instead of relocating) would resurface unused-file findings for scripts/ai — the experiment already proved this path wrong
+    - "ignore-listing SessionPlanBlock or adding knip ignore patterns to make findings disappear — that is weakening a gate, forbidden; the type genuinely has no external consumers"
+    - a new finding appearing between contract and acceptance (tree drift) blocks acceptance until cleared honestly
+  artifacts: 
+    - knip.json (workspaces shape)
+    - tests/helpers/full-vocabulary-machine.ts (module-private SessionPlanBlock)
+    - docs/03-project-plan.md M7 row tick
+    - .praxis/backlog.yaml M7-T006 entry
+falsified_if: "Knip cannot reach zero findings without ignore entries, manifest edits, or gate-registry changes — i.e. the two observed findings were symptoms of a deeper configuration problem rather than mechanical dead weight. Also falsified if the export-keyword removal breaks any consumer (it must not: knip proved zero external imports) or if the workspaces relocation changes which files knip considers entry points."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog authoring (two-file mechanical diff, both fixes experimentally verified on the working tree BEFORE the contract was written; knip zero-output zero-exit confirmed). requires_human_acceptance FALSE (precedent M7-T001/T003/T004/T005): the knip gate itself re-proves the deliverable inside verify. The knip gate had never run in my previous verify cycles because no prior M7 contract touched a dependencies-rule-matched manifest — this task makes it explicit in required_gates. Remaining untasked M7 docs/03 rows after this: Core coverage target, memory/context growth report, SQLite corruption/recovery policy, Bun 1.4 compatibility branch test — each needs its own backlog entry + cycle."

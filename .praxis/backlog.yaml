@@ -206,6 +206,11 @@ milestones:
       title: establish formal real-model eval matrix and baseline report
       prerequisites: [M7-T002, M7-T003]
       risk_class: B
+    - id: M7-T006
+      order: 60
+      title: reach knip zero unexpected findings
+      prerequisites: [M7-T001]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
