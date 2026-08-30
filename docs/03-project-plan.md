@@ -378,9 +378,9 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 ### Deliverables
 
 - [ ] CLI quickstart；
-- [ ] architecture current-state docs；
-- [ ] subsystem docs；
-- [ ] API docs；
+- [x] architecture current-state docs（M8-T001：`docs/12-architecture-current-state.md`——as-built 包图 / port→实现对应 / 机器执法清单 / 文档索引；只链接汇总不重述法则）；
+- [x] subsystem docs（M8-T001：九个子系统文档全部落地且随任务维护；`docs/subsystems/README.md` 索引终化——清除过时的"进行中 M2/M6"标注，改为每包一句话并链接 docs/12 全景）；
+- [x] API docs（M8-T001：docs/12 §3 公共 API 面逐包成文——自各包 `src/index.ts` 读出并核对（contracts/core/provider-openai/store-sqlite/tools-local/testkit/extensions/cli），描述性记录附阅读日期，机械 drift guard 留作后续可选）；
 - [ ] sample session/replay；
 - [ ] threat/limitation document；
 - [ ] release checklist；
