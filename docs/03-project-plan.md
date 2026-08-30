@@ -365,7 +365,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [x] memory/context growth report（M7-T007：`docs/10-memory-context-growth.md`——三层内存模型（store 线性全保真/派生态恰好线性/working context 恒界）+ 六 cap 预算表 + 10k turn 实测（context 恒 1+64、注册表逐一相等、折叠成本 ~4.4× tripwire ≤10×）+ 运营含义；数字的机器家仍在 soak 测试与 budget.ts，报告只引用链接，发明零新数字）；
 - [x] SQLite corruption/recovery policy documented（M7-T008：`docs/11-sqlite-corruption-recovery.md`——预防/检测/恢复三层策略，每条规范语句追溯到已钉死测试或法则；运行时恢复全权链接 §17 不复制；文件级 v1 立场为规范性限制声明（runtime 不修复不裁剪，操作员从备份恢复整库，无在线修复工具）并附重估触发条件；store-sqlite.md 加指针）；
 - [x] dependency license inventory（M7-T004：`docs/09-dependency-inventory.md` 事实表——11 个外部直接依赖（唯一运行时 zod + 10 个 dev 工具链项）逐一记录许可@pinned 版本/用途/维护态势/失败影响/移除成本；`tests/dependency-inventory.test.ts` 漂移守卫——manifest↔清单双向集合相等、版本+许可与 node_modules pinned 安装逐项相等（升级改许可字段即暴露）、许可全部在宽松允许清单内（MIT/ISC/Apache-2.0，copyleft 入树须先 ADR）；法则仍以 AGENTS.md 为家，精确锁定/方向仍由 boundaries.test.ts 管）；
-- [ ] Bun 1.4 compatibility branch test（不自动升级）。
+- [x] Bun 1.4 compatibility branch test（不自动升级）（M7-T009：`.github/workflows/ci.yml` 新增 `bun-compat` job——job 级 `MISE_BUN_VERSION: "1.4"` 覆盖 mise.toml 锁定（1.3.14 不动，升级须显式任务），跑 install（frozen）+ unit + store（bun:sqlite 是 1.4 最大风险面）+ build，`continue-on-error: true` 非门禁——回归是升级任务的输入证据而非阻断；本地隔离 worktree @ 1.4.0 已全绿预证：frozen install 159 包、unit 502/502、store 13/13、build 干净；动作 SHA 与既有 job 逐字一致）；
 
 ### Exit Criteria
 
