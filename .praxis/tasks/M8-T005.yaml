@@ -1,0 +1,92 @@
+schema_version: 1
+id: M8-T005
+title: freeze v1 non-goals changelog and release checklist
+milestone: M8
+status: planned
+risk_class: A
+objective: "Close the last four docs/03 M8 deliverable rows — 'threat/limitation document', 'release checklist', 'v1 non-goals locked', 'changelog' — completing the M8 backlog (M8-T005, risk A, prerequisites [M8-T003, M8-T004] both accepted). Deliverables, all documentation over pinned facts, each linking to its authority (one fact, one home): (a) docs/14-release-checklist.md (new) — the v1 RC release checklist: machine gates (mise check:all green, knip zero, coverage floor live) with status @ HEAD; clean-clone scenario acceptance (M8-T003 evidence); release eval baseline (M8-T004); dependency inventory + drift guard (M7-T004); Bun 1.4 compat evidence (M7-T009); non-goals freeze statement (linking docs/02 section 1.1 as the authority and declaring them LOCKED for v1); documentation set complete (docs/12 as-built, docs/13 quickstart); release-day items left explicitly open for the human (tag, publish, push). (b) docs/15-threats-and-limitations.md (new) — the honest threat/limitation record, every line linking its mitigation evidence or owning doc: threats (model manipulation of context cannot rewrite durable facts — brief is a projection; capability gates fail closed with workspace scope; secrets confined to the Authorization header — M7-T002 suite; runaway loops bounded by 16-step/failure-3 guards); limitations (no OS-level sandbox for bash — capability gate + cwd + timeout only per docs/02 s9.3; single writer per session; SQLite local single-file, corruption -> restore from backup per docs/11; provider retry only pre-escape — post-escape honest failure per s10; context bounded 1+64/32k — long dependencies ride durable facts, not context; eval baselines are n=1 evidence; deepseek-family completion bias documented across time points; ScriptFileModelProvider replays from start each process). (c) CHANGELOG.md (repo root) — milestone-level changelog M0->M8 summarizing what each milestone delivered with key artifacts. (d) docs/03-project-plan.md — tick the four rows. No code changes; the checklist's release-day items remain open for the human."
+evidence: 
+  observed: 
+    - "docs/03 M8 rows pending: threat/limitation document, release checklist, v1 non-goals locked, changelog"
+    - "v1 non-goals authority exists: docs/02 s1.1 (nine items: no Multi-Agent scheduling, no real-time contradiction classifier, no Critic/Judge agents, no cloud app server/IDE protocol, no workflow DSL, no automatic constitution/policy modification, no enterprise distributed DB, no exactly-once external-side-effect promise, no long-term autonomous production ops)"
+    - "v1 RC acceptance criteria exist: docs/03 'v1 RC Acceptance' six demonstrable scenarios — covered by the M8-T003 recorded evidence + M5 recovery suites"
+    - "all hardening evidence exists from M7/M8: coverage floor, knip zero, dependency inventory, Bun 1.4 compat, clean-clone acceptance, release eval baseline"
+  expected: 
+    - "docs/14-release-checklist.md with status @ HEAD and open release-day items"
+    - "docs/15-threats-and-limitations.md with linked mitigations"
+    - "CHANGELOG.md milestone summary"
+    - "docs/03 four rows ticked; M8 backlog complete -> milestone acceptance-ready"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/12-architecture-current-state.md
+    - docs/13-cli-quickstart.md
+    - evals/development-models/BASELINE.md
+    - docs/acceptance/M8.md
+hypothesis: "Every checklist item and limitation already has a pinned fact or evidence artifact from M0-M8 — the deliverables organize and link them. If any claimed mitigation lacks its evidence, the doc must flag it as an open item rather than assert it."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M8-T005.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - docs/14-release-checklist.md
+    - docs/15-threats-and-limitations.md
+    - CHANGELOG.md
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/**
+    - docs/02-system-design.md
+    - docs/07-architecture-conformance.md
+    - docs/09-dependency-inventory.md
+    - docs/10-memory-context-growth.md
+    - docs/11-sqlite-corruption-recovery.md
+    - docs/12-architecture-current-state.md
+    - docs/13-cli-quickstart.md
+    - docs/subsystems/**
+    - docs/acceptance/**
+    - docs/decisions/**
+    - .praxis/architecture.yaml
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - .praxis/backlog.yaml
+    - AGENTS.md
+    - mise.toml
+    - package.json
+    - bun.lock
+  scope_notes: 
+    - "Non-goals stay in docs/02 s1.1 (authority); docs/14 only declares them LOCKED for v1 and links — freezing is a release statement, not a copy"
+    - "The checklist's release-day items (git tag, push, publish) are deliberately left OPEN: pushing/tagging is human action (standing rule: never push)"
+    - "Threat doc is honest-first: limitations are stated as limitations (e.g. no OS sandbox claim), not spun as controls"
+    - "No ADR: no decision changes — the non-goals freeze restates docs/02 s1.1 which the design authority already owns"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/07-architecture-conformance.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "docs/14 checklist items carry status @ HEAD with evidence links; release-day items explicitly open"
+    - "docs/15 states each threat/limitation with its mitigation evidence or owning doc; nothing asserted without backing"
+    - "CHANGELOG.md summarizes M0-M8 at milestone granularity"
+    - "docs/03 four rows ticked; M8 backlog complete"
+  failure_cases: 
+    - "copying the non-goals text into docs/14 instead of linking (one fact, one home)"
+    - "a limitation claimed as mitigated without its evidence"
+    - "checking a release-day item that only the human can perform"
+  artifacts: 
+    - docs/14-release-checklist.md
+    - docs/15-threats-and-limitations.md
+    - CHANGELOG.md
+    - docs/03-project-plan.md four row ticks
+falsified_if: "The checklist or threat doc cannot be written from existing pinned evidence — i.e. an item surfaces with no backing fact (that item becomes an explicit open blocker in the doc, and if it is a real gap the contract re-plans). Also falsified if the freeze requires changing docs/02 (the authority already owns the non-goals)."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog (documentation organizing existing evidence). Machine-acceptable (flags false). After this task the M8 backlog is complete and the milestone is acceptance-ready: Human Demo + Exit Decision await the human (per docs/acceptance/M8.md)."
