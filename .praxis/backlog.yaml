@@ -226,6 +226,11 @@ milestones:
       title: add bun 1.4 compatibility branch test
       prerequisites: [M7-T003]
       risk_class: A
+    - id: M7-T010
+      order: 100
+      title: set and enforce the core coverage target
+      prerequisites: [M7-T003]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
