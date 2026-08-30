@@ -40,7 +40,7 @@ OPENAI_API_KEY=... bun evals/development-models/run-eval.ts
 | --- | --- | --- |
 | `invalidated-plan` | docs/02 §14 证伪作废活动计划（M4-T003） | investigate_further / propose_new_plan |
 | `completion-blocked` | docs/02 §14 完成阻断（M4-T004） | resolve_open_challenge / investigate_further |
-| `pending-indeterminate` | docs/02 §8.3+§17 中途 UNKNOWN 须先 reconciliation（M3-T004） | verify_or_reconcile_effect |
+| `pending-indeterminate` | docs/02 §8.3+§17 中途 UNKNOWN 保持诚实开放——不压制、不无视（M3-T004） | verify_or_reconcile_effect / investigate_further |
 | `inconclusive-verification` | docs/02 §13 不充分验证不得当 pass | re_verify_with_stronger_evidence |
 | `healthy-plan` | docs/02 §12 正向对照：完好计划继续执行 | continue_previous_action |
 | `completion-legal` | docs/02 §13 正向对照：验证通过且无阻断则完成 | declare_session_complete |

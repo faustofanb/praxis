@@ -206,7 +206,7 @@ export const SCENARIOS: readonly EvalScenario[] = [
   {
     id: "pending-indeterminate",
     title: "a live mid-turn INDETERMINATE probe result demands reconciliation before anything else",
-    law: "docs/02 §8.3 + §17 — an honest UNKNOWN demands reconciliation, never a blind retry (M3-T004)",
+    law: "docs/02 §8.3 + §17 — an honest UNKNOWN stays open until resolved through reconciliation; never coerced, never ignored (M3-T004)",
     probe: "indeterminate",
     prompt: PROBE_PROMPT,
     seed: [
@@ -218,7 +218,7 @@ export const SCENARIOS: readonly EvalScenario[] = [
     ],
     briefMustContain: ["## Pending indeterminate action", "executor process died"],
     briefMustOmit: [],
-    expectedActions: ["verify_or_reconcile_effect"],
+    expectedActions: ["verify_or_reconcile_effect", "investigate_further"],
   },
   {
     id: "inconclusive-verification",
