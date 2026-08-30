@@ -52,15 +52,19 @@ PRAXIS_EVAL_MODELS="model-a,model-b" PRAXIS_EVAL_BASE_URL=https://... \
 
 ## 基线状态
 
-**未运行真实模型基线。** 本节不发明任何数字。
+首次真实模型基线已运行（2026-08-30，操作员执行）：
 
-按 M4 里程碑验收（`docs/acceptance/M4.md`）确立的边界：真实模型跑分是**操作员
-动作**，不在仓库内执行，不作为验收依赖。本 commit 的机器证据为：
+```text
+- 2026-08-30 | models: deepseek-v4-flash | scorecard: results/eval-2026-08-30T09-37-48-489Z.md | 1/8 PASS——完成偏置 3×（invalidated-plan/completion-blocked/inconclusive-verification 均选 declare_session_complete，含完成阻断场景无视 ## Completion blocked）；healthy-plan 警报偏置（选 investigate_further）；completion-legal 通过（管线端到端证明）；resolved-indeterminate 因连续模型请求失败 turn paused 未决（n=1，网关对特定请求形态的稳定性问题而非决策错误）；plan-challenge 选 propose_new_plan；pending-indeterminate 选近亲动作 re_verify_with_stronger_evidence
+```
 
-- 8 行矩阵完整性：每行种子合法折叠、期望动作 ∈ 词表、law 引用 docs/02（unit 门）；
-- 端到端 harness：真实 runner 路径（种子 → runTurn → durable 流判分）× 8 行，
-  ScriptedModel 正确决策 PASS、brief 标记在/不在 deciding 请求上逐一验证（unit 门）；
-- 无 key skip 路径（退出 0）。
+n=1/场景——证据不是基准。矩阵按设计区分模型：正向对照通过证明判分管线工作，
+其余 7 败呈现的是模型读 brief 的纪律缺陷（完成偏置/警报偏置/近亲动作混淆），
+而非场景或判分缺陷。历史行不删改；重跑追加新行。
+
+此前状态（M7-T005 落档时）：未运行真实模型基线，机器证据为矩阵完整性 +
+harness 套件（unit 门内 31 项 ScriptedModelProvider 测试，零网络）+ 无 key skip
+路径——该证据随每个 verify 周期持续复证。
 
 ### 记录一次基线运行
 
