@@ -1,0 +1,87 @@
+schema_version: 1
+id: M8-T004
+title: run release real-model eval and produce the v1 baseline
+milestone: M8
+status: planned
+risk_class: B
+objective: "Close the docs/03 M8 deliverable row 'benchmark/eval baseline' and the M8.yaml real_model_eval 'release eval required' (M8-T004, risk B, prerequisites [M8-T003] accepted). The eval matrix is final (v3: 8 rows, anchored vocabulary, unknown-faithfulness grading — M7-T013/T014) and five model configurations were baselined on 2026-08-30; but those runs predate the M8 RC-state commits (T001 docs, T002 CLI approval wiring). The release record must pin the RC HEAD. Deliverable: (a) re-run ALL FIVE configurations (deepseek-v4-flash default + xhigh via the operator gateway, gpt-5.6-sol default, zai-org/GLM-5.3 thinking-enabled, gpt-5.6-luna reasoning-effort-high via the second gateway; PRAXIS_EVAL_PROVIDER_OPTIONS via the M7-T011 passthrough; n=1 per model x scenario, timeout 120-150s) at the current HEAD and register the five scorecards in evals/development-models/BASELINE.md under a new '## v1 release baseline (M8)' section — matrix/protocol unchanged from v3, so scores ARE comparable to the v3 section and variance between the two runs is itself recorded information (n=1 evidence, not a benchmark); (b) docs/acceptance/M8.md 'Real-model Eval' section filled with the release summary + scorecard links and the Evidence Artifacts 'Real-model eval summary where required' tick; (c) docs/03 'benchmark/eval baseline' row ticked. Security law: gateway URLs redacted from committed scorecards, credentials never written to any file (grep-verified before each commit). No production code changes; the release eval is a measurement + registration task."
+evidence: 
+  observed: 
+    - "matrix v3 (M7-T014) is the final grading design; five configs baselined at pre-RC commits, registered in BASELINE.md matrix-v3 section"
+    - "M8 RC-state commits since (T001 docs-only, T002 CLI wiring + docs, T003 acceptance record) do not touch contracts/core/provider — eval-relevant behavior unchanged, but the release record should pin the RC HEAD honestly rather than reference stale commits"
+    - "operator gateways and keys from this session; results/ scorecards land locally and need URL redaction before commit"
+  expected: 
+    - "five scorecards at RC HEAD registered under '## v1 release baseline (M8)' in BASELINE.md with a variance note vs the v3 section"
+    - "docs/acceptance/M8.md Real-model Eval filled; Evidence Artifacts real-model tick; docs/03 row ticked"
+    - "zero production changes; secret-free commits (verified by grep)"
+  references: 
+    - evals/development-models/BASELINE.md
+    - evals/development-models/scenarios.ts
+    - docs/acceptance/M8.md
+    - docs/03-project-plan.md
+hypothesis: "The five configs reproduce v3-level results at the RC HEAD (eval-relevant code identical since M7-T012/T013/T014); any large divergence is itself a release-relevant finding to record. If a gateway becomes unavailable (no-decision/pause patterns), the row is recorded honestly as infra-variance, exactly as the v2/v3 sections did."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M8-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - evals/development-models/BASELINE.md
+    - evals/development-models/results/**
+    - docs/acceptance/M8.md
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/development-models/scenarios.ts
+    - evals/development-models/grader.ts
+    - evals/development-models/run-eval.ts
+    - evals/development-models/run-eval-harness.test.ts
+    - evals/development-models/scenarios.test.ts
+    - evals/development-models/README.md
+    - mise.toml
+    - package.json
+    - bun.lock
+    - vitest.config.ts
+    - knip.json
+    - .github/**
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/02-system-design.md
+    - docs/12-architecture-current-state.md
+    - docs/13-cli-quickstart.md
+    - docs/subsystems/**
+    - docs/decisions/**
+    - AGENTS.md
+  scope_notes: 
+    - "scenarios/grader/runner are FORBIDDEN: the matrix is frozen at v3 — a release eval that changes the instrument is not a baseline"
+    - "n=1 per (model, scenario) per the standing protocol; the release record adds a second time-point for every config, so variance across the two runs is visible — that is a feature of the record, not noise to hide"
+    - "Credentials stay in the session: command lines only, never files; scorecard gateway URLs redacted (established pattern)"
+    - "No ADR: no decision changes — measurement and registration over a frozen instrument"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/08-ai-model-development-strategy.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "five configs re-run at RC HEAD; scorecards registered in BASELINE.md under the release-baseline section with variance notes vs v3"
+    - "M8.md Real-model Eval section filled with scorecard links; docs/03 row ticked"
+    - "full required_gates green (unchanged code)"
+  failure_cases: 
+    - "a matrix/instrument change smuggled into the release run (frozen instrument)"
+    - "any credential or unredacted gateway URL entering a committed file"
+    - "fabricated numbers (every scorecard must exist under results/ and be linked)"
+  artifacts: 
+    - evals/development-models/BASELINE.md (v1 release baseline section)
+    - docs/acceptance/M8.md real-model section
+    - docs/03-project-plan.md row tick
+falsified_if: "The instrument must change to make the release run passable (matrix frozen at v3), or a config becomes entirely unrunnable (gateway dead) — the latter is recorded as an honest limitation with the failing runs attached, not silently dropped."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk B per backlog (real-model measurement over a frozen instrument; machine-acceptable on recorded evidence with scorecards as artifacts). After this: M8-T005 (non-goals/changelog/release checklist, risk A) completes the M8 backlog; milestone human acceptance follows."
