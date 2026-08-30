@@ -216,6 +216,11 @@ milestones:
       title: author the memory and context growth report
       prerequisites: [M7-T003]
       risk_class: A
+    - id: M7-T008
+      order: 80
+      title: document the sqlite corruption and recovery policy
+      prerequisites: [M5]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
