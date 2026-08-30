@@ -16,11 +16,11 @@ last_acceptance:
   accepted_at: 2026-08-30
   evidence: docs/acceptance/M7.md
 next_legal_actions: 
-  - plan M8-T001 (finalize current-state architecture subsystem and API documentation)
+  - generate handoff
   - select next eligible task in current milestone
 last_verification: 
-  task: M7-T014
-  at: 2026-08-30T11:13:06.140Z
+  task: M8-T001
+  at: 2026-08-30T12:00:34.073Z
   result: PASS
   gates: 
     - gate: architecture
