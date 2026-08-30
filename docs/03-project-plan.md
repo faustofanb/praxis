@@ -357,7 +357,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 ### Quality Gates
 
 - [ ] Core branch/statement coverage target；
-- [ ] fast-check state machine suite；
+- [x] fast-check state machine suite（M7-T001：`tests/property/state-machine.property.test.ts` + 独立影子模型 `tests/helpers/full-vocabulary-machine.ts`——全词汇表模型一致性/前缀结构不变量/任意切分点恢复恒等/前置条件违例拒绝/终态吸收）；
 - [ ] fault injection suite；
 - [ ] security bypass suite；
 - [ ] soak 10k+ synthetic turns；
