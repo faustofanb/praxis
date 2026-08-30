@@ -356,7 +356,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 
 ### Quality Gates
 
-- [ ] Core branch/statement coverage target；
+- [x] Core branch/statement coverage target（M7-T010：目标决策 **statements ≥95% / branches ≥90%，仅限 `packages/core/src/**`**（docs/03 行的"Core"字面范围）——接进 `vitest.config.ts` thresholds（glob 门槛，v8 provider 实验证明咬合：拔到不可能值时 59 文件 502 测试全过仍 exit 1 并打印精确 ERROR）；实测基线 97.58%（847/868）/94.31%（497/527），floor 低 ~2.6/~4.3pt 容纳开发自然波动、真退化即 CI 红（check:all→test:coverage）；store-sqlite 的 vitest 采集数（~7%）是测量伪影——bun-only 测试按设计不进 vitest 收集，真实证据在 `test:store`，勿当质量信号读）；
 - [x] fast-check state machine suite（M7-T001：`tests/property/state-machine.property.test.ts` + 独立影子模型 `tests/helpers/full-vocabulary-machine.ts`——全词汇表模型一致性/前缀结构不变量/任意切分点恢复恒等/前置条件违例拒绝/终态吸收）；
 - [x] fault injection suite（M7-T002：`tests/fault/provider-adapter.fault.test.ts` 补齐 provider 故障边界——中途断连**逃逸后**禁重试（修复 P0：重试重放流致 durable text 翻倍与幽灵 tool call）、退避中 abort、retryable→非 retryable 降级、真实 runTurn 端到端诚实失败；既有 §17 崩溃矩阵/agent-loop/tool-runtime/extension 故障套件见各 owning docs）；
 - [x] security bypass suite（M7-T002：`tests/security/secret-confinement.security.test.ts` 钉死 §18 密钥禁锢——Authorization 头唯一在途位置，wire body/durable 事件/模型消息全图深搜零泄漏；既有 capability/extension/bash 对抗套件见各 owning docs）；
