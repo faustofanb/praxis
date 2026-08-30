@@ -20,3 +20,5 @@
 store 套件使用 Bun 原生 test runner（`bun:sqlite` 需要 Bun 运行时；Node vitest 全量切 Bun 存在 zod CJS interop 缺陷，故双运行时分工）：`tests/store/store-sqlite.bun.test.ts`，`*.bun.test.ts` 已从 vitest 收集范围排除。门：`mise run test:store`。
 
 覆盖：分批 append+回读恒等、过期 head 冲突且零写入、间隙批次原子拒绝、重开库 migration 幂等+重放一致、全生命周期经 core reducer 折叠、afterSeq 检查点、损坏行（坏 JSON/未知类型）读取时校验失败、公共面仅四方法（含 listSessions）。 M5-T004 起另有 `tests/store/crash-recovery.bun.test.ts`：before-result-append 崩溃格的持久性证据——库带着 dangling EXECUTING 关闭、同一文件重开后前缀逐字节回放、经 runTurn 恢复（ToolIndeterminate → ToolReconciled → turn 收口），side effect 跨进程边界恰好发生一次。
+
+损坏与恢复的分层策略（预防/检测/恢复 + v1 文件级限制声明）见 `docs/11-sqlite-corruption-recovery.md`（M7-T008）；运行时恢复法则在 docs/02 §17。
