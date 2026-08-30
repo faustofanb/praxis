@@ -1,0 +1,101 @@
+schema_version: 1
+id: M6-T002
+title: implement telemetry observer extension
+milestone: M6
+status: plan_ready
+risk_class: B
+objective: "Close docs/03 M6 'sample extension：只读 telemetry'（.praxis/milestones/M6.yaml required_deliverables 'telemetry extension'）by shipping the FIRST real consumer of the M6-T001 seams — proving M6 scenario acceptance 'extension adds tool/context/event observer without core edit' for the telemetry half with ZERO edits under packages/core and packages/contracts (enforced by forbidden_paths). Observed state: the seams exist and are pinned (M6-T001 accepted c605a82; ADR-0013; host/observing-store/deny-only beforeTool/all eight invocation points), but every extension in the tree is a test fixture — no product extension exists anywhere (grep createExtensionHost outside tests/core: only run-turn/tool-runtime wiring). docs/02 §19 fixes the failure-policy default for this exact class ('默认 telemetry 走 isolate') and docs/02 §20 fixes the redaction law ('禁止把秘密、完整敏感 Tool output 无条件写 telemetry'，line 1096; 'telemetry 必须 redaction'，line 1004) — neither is yet embodied in code. Deliverable: (1) new private workspace package @praxis/extension-telemetry (deps: @praxis/contracts ONLY — the extension is an app-owned value implementing the contracts interface; it must not depend on core, and core must not know it exists); (2) createTelemetryObserver(options?) returning an instance-scoped observer {extension, snapshot()} whose extension (name 'telemetry-observer', failurePolicy 'isolate' per docs/02 §19) implements the observe-only hooks: onTurnStart/onTurnEnd (turn counts, outcome histogram, turn duration), beforeModel/afterModel (request count, latency, provider errors, endedSilently, tool-call count), afterTool (per-tool-name per-status histogram over EXTENSION_TOOL_RESULT_STATUSES), onEvent (per-event-type histogram + total) — deliberately NOT contributeContext (observe-only extension adds no prompt bytes) and NOT beforeTool (telemetry must never sit on the veto path); closure-scoped counters only (AGENTS.md no-module-global law), injectable now() clock for determinism, optional sink callback per observed fact for later CLI wiring; (3) redaction made STRUCTURAL: TelemetrySnapshot's schema carries only counts/durations/enums/names — no field is capable of holding tool arguments, tool output, or model text — pinned by a marker test asserting the serialized snapshot contains none of the payload markers; (4) tests/extensions/telemetry.test.ts: full-turn accuracy against ScriptedModel + a real tools-local tool through runTurn (snapshot histograms exactly equal the folded stream, not merely ≥), REJECTED + providerError paths counted, injected-clock determinism, throwing sink leaves the turn unbroken (isolate at consumer level), snapshot readable and frozen after host.unload with counts stopped; (5) docs/subsystems/extension-telemetry.md + README.md index row; docs/03 M6 'sample extension' ticked with M6-T002 provenance."
+evidence: 
+  observed: 
+    - "grep -rn 'createExtensionHost' packages apps: only packages/core/src (the host itself) — every extension in the tree lives inside a test file; .praxis/milestones/M6.yaml required_deliverables lists 'telemetry extension' and docs/03 M6 line 338 has 'sample extension：只读 telemetry（M6-T002）' unticked"
+    - "docs/02 §19 line 1034 already fixes this extension's failure policy: '默认 telemetry 走 isolate（吞掉错误、该 hook 零贡献）'; §19 line 1096 + line 1004 fix the redaction law: no secrets, no full sensitive tool output, telemetry must redact"
+    - "M6.yaml scenario_acceptance: 'extension adds tool/context/event observer without core edit' — M6-T001 landed the seams but no shipped extension demonstrates the scenario; M6-T004 (unload/failure isolation) lists M6-T002 as a prerequisite, so this task must exist before the audit"
+    - "packages layout precedent: app-owned capabilities ship as sibling private packages (tools-local: name @praxis/tools-local, exports ./src/index.ts, deps @praxis/contracts 0.0.0 exact, own tsconfig extending tsconfig.base.json, referenced from root tsconfig.json)"
+  expected: 
+    - "packages/extension-telemetry/package.json (private, module, exports '.', deps @praxis/contracts 0.0.0 only) + tsconfig.json (extends ../../tsconfig.base.json, composite, include src) + root tsconfig.json gains the project reference"
+    - "packages/extension-telemetry/src/telemetry.ts: TelemetrySnapshot (frozen, serializable: turns{started,completed,byOutcome}, model{requests,providerErrors,endedSilently,toolCalls,totalLatencyMs,turnDurationsMs?}, tools per name per EXTENSION_TOOL_RESULT_STATUSES count, events per SessionEventUnion type count, totals) — no string field that could carry payload; createTelemetryObserver(options?: {now?: () => number; sink?: (record: TelemetryRecord) => void}): TelemetryObserver {extension: PraxisExtension ('telemetry-observer', isolate); snapshot(): TelemetrySnapshot}"
+    - "hook coverage exactly: onTurnStart, onTurnEnd, beforeModel, afterModel, afterTool, onEvent (six of eight; contributeContext/beforeTool intentionally absent and documented)"
+    - "tests/extensions/telemetry.test.ts: (a) full scripted turn with one SUCCEEDED read_file + one extension-denied/REJECTED path through the real host in runTurn deps — snapshot tools/test-event histograms EXACTLY match the stream's folded facts; (b) marker redaction: tool output text, model text, and tool arguments markers absent from JSON.stringify(snapshot()); (c) injected fake clock yields exact latencyMs values; (d) sink that throws on every record — turn still completes with correct events (isolate consumer evidence); (e) host.unload('telemetry-observer') then another turn — snapshot unchanged by the second turn, still readable"
+    - "docs/subsystems/extension-telemetry.md (current behavior, links to docs/02 §19/§20 + ADR-0013, no law duplication) + index row in docs/subsystems/README.md; docs/03 M6 'sample extension' ticked (M6-T002)"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M6.yaml
+    - packages/contracts/src/extensions.ts
+    - packages/core/src/extensions/host.ts
+    - docs/decisions/ADR-0013-extension-seams-v1.md
+    - packages/tools-local/package.json
+hypothesis: "The M6-T001 surface is complete for real consumers: a read-only telemetry observer is pure composition over the six observe-only hooks with zero edits to packages/core or packages/contracts, and every datum it needs (turn outcomes, model result kinds, tool names/statuses, event types) is already carried by the hook contexts M6-T001 defined. Redaction can be structural rather than procedural: if the snapshot schema has no payload-capable field, no future hook bug can leak tool output or model text. Determinism comes from an injected clock, not from trusting wall time."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M6-T002.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/extension-telemetry/**
+    - tsconfig.json
+    - tests/extensions/telemetry.test.ts
+    - docs/03-project-plan.md
+    - docs/subsystems/extension-telemetry.md
+    - docs/subsystems/README.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/**
+    - packages/store-sqlite/**
+    - packages/provider-openai/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - docs/acceptance/**
+    - tests/integration/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/replay/**
+    - tests/property/**
+    - tests/fixtures/**
+    - tests/helpers/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/extensions/host.test.ts
+    - tests/praxis-dev.test.ts
+  scope_notes: 
+    - "risk B: additive out-of-core package; the M6 'without core edit' scenario is enforced mechanically — packages/core/** and packages/contracts/** are forbidden paths, so any seam gap discovered mid-task stops the task for evidence (falsified_if) rather than a Core patch"
+    - "No durable-event vocabulary change and no stream writes: the observer consumes hooks only; its own state is closure-scoped counters (ADR-0013: extension durable state is out of scope for v1; snapshot() is an in-memory read, not an Event)"
+    - "contributeContext and beforeTool are intentionally NOT implemented: observe-only extensions add zero prompt bytes and must never sit on the veto path (beforeTool is the deny seam; telemetry has no opinion). The context-contributor sample is M6-T003."
+    - "External sinks are app wiring: the optional sink callback is the only integration point; wiring it into apps/cli is out of scope (apps/** forbidden). Default is in-memory snapshot only."
+    - "M6-T004 audits unload/failure isolation adversarially across shipped extensions; this task pins consumer-level behavior (snapshot survives unload, throwing sink isolates) sufficient for the M6 scenario row."
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+  - docs/decisions/ADR-0013-extension-seams-v1.md
+required_gates: 
+  - unit
+  - integration
+  - replay
+  - fault
+  - security
+  - build
+acceptance: 
+  scenarios: 
+    - "telemetry observer registered via the real createExtensionHost into runTurn deps over a scripted tool-calling turn: snapshot turn/model/tool/event histograms exactly equal the folded stream facts; the event stream is identical to the same run without the observer (zero-extension identity preserved — the observer writes nothing)"
+    - "redaction is structural: serialized snapshot contains no tool-argument/tool-output/model-text markers (marker test) because the schema carries only counts/durations/enums/names"
+    - "determinism: injected clock produces exact recorded latencies/durations; two runs with the same clock and scripts produce identical snapshots"
+    - "unload: after host.unload, a subsequent turn grows zero counters while snapshot() stays readable and frozen"
+  failure_cases: 
+    - a throwing sink on every record — the turn completes with the correct event stream (docs/02 §19 isolate law at consumer level)
+    - "mis-counting (asserting exact histogram equality against the folded stream, not ≥/contains) — a wrong count fails acceptance"
+    - "the observer influencing the loop in any way (added events, changed requests, vetoed tools) — structurally absent (no such hooks) and pinned by stream identity"
+  artifacts: 
+    - "packages/extension-telemetry (package.json, tsconfig.json, src/index.ts, src/telemetry.ts)"
+    - root tsconfig.json project reference
+    - tests/extensions/telemetry.test.ts
+    - docs/subsystems/extension-telemetry.md
+    - docs/03-project-plan.md M6 tick
+falsified_if: "Any required telemetry datum (turn outcome, model result kind, tool name/status, event type, ordering) is missing from the M6-T001 hook contexts so the observer needs Core edits; or accurate counting is impossible without reading payloads (it must not); or latency/duration cannot be measured with an injected clock; or the snapshot can be made to carry payload text; or unload corrupts/freeze-breaks the snapshot."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk B per backlog (prerequisite M6-T001 accepted c605a82). No ADR: the boundary decision is ADR-0013's; this task is its first consumer and must not move any boundary. Machine acceptance per ai-policy for risk B; M6 milestone promotion still requires independent/human acceptance (M6.yaml). M6-T003 (context/tool sample) and M6-T004 (isolation audit) follow."
