@@ -1,0 +1,91 @@
+schema_version: 1
+id: M7-T004
+title: establish dependency license and maintenance inventory
+milestone: M7
+status: plan_ready
+risk_class: A
+objective: "Close .praxis/backlog.yaml M7-T004 (risk A, prerequisites [M6] — accepted 2026-08-30) and the docs/03 M7 quality-gate row 'dependency license inventory'. Observed state: AGENTS.md 'Dependencies' section states the admission law ('Do not add a dependency without checking standard-library alternatives, license, maintenance, failure impact, and removal cost') and tests/boundaries.test.ts enforces two structural facts (ADR-0002 dependency directions; exact pinned versions everywhere since line 112) — but NO artifact records the five-fact assessment for the dependencies actually in the tree, and nothing mechanical stops the assessment from drifting when a dependency is added, removed, or upgraded. The tree today is small and clean: ONE external runtime dependency (zod 4.4.3, MIT — contracts + provider-openai), ten external dev-toolchain entries at the root (@biomejs/biome, @commitlint/cli + config-conventional, @types/bun, @vitest/coverage-v8, fast-check, knip, lefthook, typescript, vitest), all workspace-internal @praxis/* references excepted; license fields read from the PINNED node_modules manifests are all permissive (MIT / MIT OR Apache-2.0 / ISC / Apache-2.0). Deliverable: (1) docs/09-dependency-inventory.md — the single home of the inventory fact table: scope statement (direct workspace-manifest dependencies; transitives are pinned by bun.lock and audited by the same test on demand), one row per external dependency with the five AGENTS.md facts (license @ pinned version, purpose/where used, maintenance posture, failure impact, removal cost), the allowlist policy statement (permissive only — MIT/ISC/Apache-2.0 duals; copyleft or proprietary requires an ADR before admission), and a machine-readable fenced JSON block that is the sync target; the LAW stays in AGENTS.md (link, no duplication); (2) tests/dependency-inventory.test.ts — the drift guard riding the existing unit gate: parse the doc's JSON block, collect external deps from every workspace manifest (root + packages/* + apps/*, skipping @praxis/* internal refs), assert SET EQUALITY both directions (nothing undeclared, nothing stale), assert version AND license match the installed node_modules manifest at the pinned version (the honest source — license drift surfaces at upgrade time), and assert every license is in the allowlist. Tick the docs/03 M7 row with provenance."
+evidence: 
+  observed: 
+    - ".praxis/backlog.yaml M7-T004 'establish dependency license and maintenance inventory' (risk A, prerequisites [M6]); docs/03-project-plan.md M7 row 'dependency license inventory' unchecked; no doc or test in the repo records per-dependency license/maintenance/failure-impact/removal-cost"
+    - "AGENTS.md Dependencies section is the admission law's home; tests/boundaries.test.ts enforces dependency directions (ADR-0002) and exact pins (line 112) — neither covers the five-fact assessment or license allowlist"
+    - "external direct dependencies at pinned versions with node_modules license fields: zod 4.4.3 MIT (runtime, packages/contracts + packages/provider-openai); dev root: @biomejs/biome 2.5.10 MIT OR Apache-2.0, @commitlint/cli 21.2.2 MIT, @commitlint/config-conventional 21.2.2 MIT, @types/bun 1.3.14 MIT, @vitest/coverage-v8 4.1.11 MIT, fast-check 4.9.0 MIT, knip 6.32.2 ISC, lefthook 2.1.10 MIT, typescript 7.0.2 Apache-2.0, vitest 4.1.11 MIT — all permissive, zero copyleft"
+    - transitives are pinned by bun.lock (M0-T001 frozen-install CI) — direct-manifest scope keeps the inventory honest without a 300-row transitive dump
+  expected: 
+    - "docs/09-dependency-inventory.md (new): scope statement + five-fact row per external dependency + allowlist policy + machine-readable fenced JSON block; links AGENTS.md for the law and tests/boundaries.test.ts for pin/direction enforcement (one fact, one home)"
+    - "tests/dependency-inventory.test.ts (new, unit gate): doc-JSON ↔ workspace-manifests set equality both directions; version+license equality against installed node_modules at the pinned version; allowlist membership (MIT, ISC, Apache-2.0, MIT OR Apache-2.0)"
+    - "docs/03-project-plan.md: '- [ ] dependency license inventory' → - [x] with (M7-T004: …) provenance"
+    - "NO manifest changes: package.json/bun.lock/mise.toml untouched (the dependencies registry rule makes those human-acceptance events; an inventory needs none); no new gate — the test rides the existing vitest include"
+  references: 
+    - AGENTS.md
+    - docs/03-project-plan.md
+    - tests/boundaries.test.ts
+    - .praxis/milestones/M7.yaml
+    - package.json
+hypothesis: "The dependency tree is and remains admissible: every external direct dependency is exactly pinned, permissively licensed, and carries a recorded five-fact assessment; any add/remove/upgrade that skips updating the inventory (or admits a copyleft/provincial license) fails the unit gate. A dependency discovered outside the inventory is drift, not a reason to weaken the allowlist."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - docs/09-dependency-inventory.md
+    - tests/dependency-inventory.test.ts
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - mise.toml
+    - vitest.config.ts
+    - .praxis/quality-gates.yaml
+    - docs/acceptance/**
+    - docs/02-system-design.md
+    - docs/decisions/**
+    - AGENTS.md
+    - tests/boundaries.test.ts
+    - tests/helpers/**
+    - tests/property/**
+    - tests/integration/**
+    - tests/replay/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/soak/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/extensions/**
+    - tests/provider-openai/**
+  scope_notes: 
+    - "Docs+test task, zero production code, zero manifest edits: the inventory is a fact table (docs/09 is its ONE home — AGENTS.md keeps the law, boundaries.test.ts keeps pins/directions, the new test keeps inventory sync); no ADR — no decision changes, the allowlist merely encodes the existing admission law's license clause"
+    - "Scope is DIRECT workspace-manifest dependencies only; bun.lock-pinned transitives are named in the scope statement and auditable by extending the same test later — dumping 300 transitive rows now would be maintenance debt, not hardening"
+    - "If a future dependency needs a copyleft/proprietary exception, that is an ADR + registry-rule event, NOT an in-scope allowlist edit — the test's allowlist is deliberately inline and small"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - AGENTS.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "doc JSON block ↔ manifests: set equality both directions across root + packages/* + apps/* external deps (workspace @praxis/* refs excluded)"
+    - version and license in the doc equal the installed node_modules package.json at the pinned version for every entry
+    - "every entry's license is in the permissive allowlist"
+  failure_cases: 
+    - a dependency added/removed/upgraded in any manifest without the inventory following (drift fails the unit gate)
+    - "an installed package's license field changing on upgrade without the doc noticing"
+    - a copyleft or unlicensed package entering the tree
+    - the test weakening boundaries.test.ts or duplicating its pin/direction laws instead of linking them
+  artifacts: 
+    - docs/09-dependency-inventory.md
+    - tests/dependency-inventory.test.ts
+    - docs/03-project-plan.md M7 row tick
+falsified_if: "Making the guard pass requires editing any manifest, boundaries.test.ts, AGENTS.md, or the gates registry — the inventory must describe the tree as it IS. Discovering a non-permissive or unlicensed dependency in the tree stops the task for an ADR decision rather than an allowlist exception smuggled into scope. A manifest/inventory mismatch that cannot be resolved by documenting the existing pinned state also falsifies the 'tree is admissible' hypothesis."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog (docs+test over an already-frozen tree). requires_human_acceptance FALSE (precedent M7-T001/T003): the drift guard passing IS the acceptance evidence; M7 milestone promotion remains human-gated regardless. The inventory deliberately avoids maintenance-health SUBJECTIVE scores — posture is a one-line factual note (release cadence/backing), not a grade; grading belongs to whoever reads it. After this: M7-T005 (formal real-model eval matrix, risk B, prereqs T002+T003 both satisfied) is the last backlog task."
