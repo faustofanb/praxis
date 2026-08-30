@@ -332,7 +332,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 
 - [x] 六类稳定 hook（M6-T001：八 hook 全落 `packages/contracts/src/extensions.ts` + core host/接缝，ADR-0013）；
 - [x] context contributor（M6-T001：`contributeContext` → `## Extension: <name>` 节，走 M5-T001 上限组合法则，host 盖 source 防冒名）；
-- [ ] tool registration（M6-T003：v1 无注册新工具的 hook——extension 走 tool 生命周期 seam（deny/observe），工具由应用持有；见 ADR-0013 拒绝清单）；
+- [x] tool registration（M6-T003：v1 无注册新工具的 hook——`packages/extension-standing-orders` 经 tool 生命周期 seam 演示 deny（组合于 authorizer 之后）+ context 贡献，fail_closed 格落地，工具由应用持有；见 ADR-0013 拒绝清单）；
 - [x] event observer（M6-T001：`onEvent` 经 observing-store 装饰器在每次 append 成功后触发，只读）；
 - [x] extension failure semantics（M6-T001：`isolate`/`fail_closed` 每 extension 声明，fail_closed 骑 §17 既有崩溃恢复）；
 - [x] sample extension：只读 telemetry（M6-T002：`packages/extension-telemetry` 六观察 hook + 结构化 redaction 快照，core/contracts 零改动；simple plan renderer 归 M6-T003 样例一并考虑）。
