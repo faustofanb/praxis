@@ -1,6 +1,6 @@
 schema_version: 1
 id: M6
-status: planned
+status: accepted
 goal: Stabilize minimal extension seams without moving core invariants into optional
   plugins.
 prerequisites:
