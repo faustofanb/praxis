@@ -16,6 +16,9 @@ packages:
   tools-local:
     responsibility: local filesystem and process tools
     may_depend_on: [contracts]
+  extension-telemetry:
+    responsibility: read-only telemetry observer extension over the ADR-0013 seams
+    may_depend_on: [contracts]
   testkit:
     responsibility: scripted model fault model fake tools deterministic ids clocks fixtures
     may_depend_on: [contracts, core]
@@ -35,6 +38,7 @@ tiers:
     - packages/store-sqlite/src/**
     - packages/provider-openai/src/**
     - packages/tools-local/src/**
+    - packages/extension-telemetry/src/**
   tier2:
     - apps/**
     - docs/**
