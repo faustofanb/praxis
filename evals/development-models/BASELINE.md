@@ -61,6 +61,17 @@ PRAXIS_EVAL_MODELS="model-a,model-b" PRAXIS_EVAL_BASE_URL=https://... \
 - 2026-08-30 | models: gpt-5.6-luna（reasoning_effort high，M7-T011 透传） | scorecard: results/eval-2026-08-30T10-14-20-899Z.md | 5/8 PASS——完成纪律与质询程序全对（completion-blocked/inconclusive/completion-legal/plan-challenge/invalidated-plan）；两败 healthy-plan（investigate_further）与 resolved-indeterminate（提前 declare_session_complete）；pending-indeterminate 同款近亲混淆
 - 矩阵级发现（4 模型汇总）：`pending-indeterminate` 0/4、`healthy-plan` 0/4——全部模型都在"执行后果未知的核实"上选了近亲动作（re_verify_with_stronger_evidence），全部模型都不敢/不愿在完好计划上直接继续。这不是四个模型共同的偶然：指向 eval 设计本身的两处可改进点——decide 工具 description 对 verify_or_reconcile_effect 与 re_verify_with_stronger_evidence 的区隔不足，以及 brief 的 `## Active plan` 分节缺少"计划未被挑战即继续"的显式引导。改进属矩阵变更，须改场景+测试并重跑全部基线（历史行不删改，可比性中断须记录）
 - 2026-08-30 | models: deepseek-v4-flash（reasoning_effort xhigh，M7-T011 透传；**M7-T012 wire 修复后**） | scorecard: results/eval-2026-08-30T10-30-50-927Z.md | 2/8 PASS——对比同模型默认档（1/8，上方首行）的变化全部来自 M7-T012：resolved-indeterminate 从"连续 400 pause 未决"变为正常决策（虽选错 declare_session_complete），inconclusive-verification 转为 PASS；8 场景全部正常完成 turn——harness 在弱模型 + 严格网关上端到端可用，分数即模型质量信号。仍存完成偏置（completion-blocked 仍无视阻断宣布完成）与全矩阵共有的两处弱点（pending-indeterminate/healthy-plan）
+
+## 矩阵 v2（M7-T013 锐化词表后；与 v1 分数不可比）
+
+v1 → v2 变更：decide 工具七个动作描述锚定到各自事实面（执行后果未知 vs 验证记录不结论）并写入两条 runtime 法则（计划作为 plan of record 持续至证伪/更替/质询；完成在质询未决时被 runtime 拒绝）。种子、prompt、期望集、法则引用零改动。
+
+- 2026-08-30 | models: deepseek-v4-flash（默认档，矩阵 v2） | scorecard: results/eval-2026-08-30T10-47-03-608Z.md | 3/8 PASS（v1: 1/8）——plan-challenge 转 PASS（resolve_open_challenge）；完成偏置仍在（invalidated-plan/completion-blocked/resolved-indeterminate 宣布完成）
+- 2026-08-30 | models: deepseek-v4-flash（xhigh，矩阵 v2） | scorecard: results/eval-2026-08-30T10-50-26-694Z.md | 5/8 PASS（v1: 2/8）——completion-blocked 转 PASS（rationale 明确引用"runtime refuses completion"法则锚——词表锐化直接起效）、healthy-plan 转 PASS（rationale 引用 plan-of-record 持续法则）、invalidated-plan 转 PASS；剩 pending-indeterminate（investigate_further）与 resolved-indeterminate（提前收工）
+- 2026-08-30 | models: gpt-5.6-sol（默认档，矩阵 v2） | scorecard: results/eval-2026-08-30T10-53-45-769Z.md | 6/8 PASS（v1 同分）——失败模式从 re_verify 近亲变为 investigate_further；healthy-plan 仍 propose_new_plan
+- 2026-08-30 | models: zai-org/GLM-5.3（thinking enabled，矩阵 v2） | scorecard: results/eval-2026-08-30T11-04-04-746Z.md | 5/8 PASS（v1 同分）——两败均为"never called decide_next_action"（网关未决，非决策错误）；其可判定决策全部正确
+- 2026-08-30 | models: gpt-5.6-luna（reasoning_effort high，矩阵 v2） | scorecard: results/eval-2026-08-30T11-06-19-656Z.md | **7/8 PASS（v1: 5/8，当前最高）**——healthy-plan 转 PASS（rationale 引用 falsifiedIf 未触发）与 resolved-indeterminate 转 PASS；仅剩 pending-indeterminate（investigate_further）
+- 矩阵 v2 发现：(1) 完成阻断法则锚 + 计划持续法则锚**起效**——deepseek-xhigh 的 completion-blocked/healthy-plan 与 luna 的两行均转 PASS；(2) `pending-indeterminate` 在 v2 仍 0/5，但失败模式整体迁移（re_verify → investigate_further）——"调查一个未决效果是否落地"与"reconcile 该效果"在语义上高度重叠，期望集是否应收窄为单一动作属场景重设计决策（矩阵 v3，须人工点头）；(3) resolved-indeterminate 的提前收工是 deepseek 系的残余纪律缺陷（gpt 系/GLM 均正确）
 ```
 
 n=1/场景——证据不是基准。矩阵按设计区分模型：正向对照通过证明判分管线工作，
