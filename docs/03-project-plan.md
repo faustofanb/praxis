@@ -377,11 +377,11 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 
 ### Deliverables
 
-- [ ] CLI quickstart；
+- [x] CLI quickstart（M8-T002：`docs/13-cli-quickstart.md`——read（--script 确定性脚本全事件流）/ write approval（缺省 durable ToolRejected fail-closed → `--allow-write` 落盘）/ 真实模型（--model）/ resume 与 sessions 检视 / 退出码表；全部命令逐字复制可运行，提交前已在临时目录按文验证；README 与 docs/12 链接）；
 - [x] architecture current-state docs（M8-T001：`docs/12-architecture-current-state.md`——as-built 包图 / port→实现对应 / 机器执法清单 / 文档索引；只链接汇总不重述法则）；
 - [x] subsystem docs（M8-T001：九个子系统文档全部落地且随任务维护；`docs/subsystems/README.md` 索引终化——清除过时的"进行中 M2/M6"标注，改为每包一句话并链接 docs/12 全景）；
 - [x] API docs（M8-T001：docs/12 §3 公共 API 面逐包成文——自各包 `src/index.ts` 读出并核对（contracts/core/provider-openai/store-sqlite/tools-local/testkit/extensions/cli），描述性记录附阅读日期，机械 drift guard 留作后续可选）；
-- [ ] sample session/replay；
+- [x] sample session/replay（M8-T002：quickstart 内嵌完整示例会话——`--script` 确定性会话含逐条 durable 事件流（即重放面），`--session` 续跑即崩溃恢复重放（kill→resume→finish 路径，§17 编排自动处理悬挂执行），`sessions` 会话检视；形式化场景验收（clean install→read→write→approval→resume）归 M8-T003）；
 - [ ] threat/limitation document；
 - [ ] release checklist；
 - [ ] v1 non-goals locked；

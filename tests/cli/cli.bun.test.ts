@@ -208,6 +208,129 @@ describe("praxis run", () => {
   });
 });
 
+describe("capability approval surface (M8-T002)", () => {
+  const WRITE_STEP = [
+    { type: "toolCallStart", toolCallId: "call-1", name: "write_file" },
+    {
+      type: "toolCallDelta",
+      toolCallId: "call-1",
+      argumentsDelta: '{"path":"out.txt","content":"written by cli"}',
+    },
+    { type: "toolCallEnd", toolCallId: "call-1" },
+    { type: "completed", finishReason: "toolCalls" },
+  ];
+
+  test("--allow-write authorizes the write: durable SUCCEEDED fact plus filesystem effect", async () => {
+    const fx = fixture();
+    const script = fx.script([WRITE_STEP, FINAL_STEP("the file is written")]);
+
+    const result = await cli([
+      "run",
+      "--db",
+      fx.db,
+      "--root",
+      fx.root,
+      "--allow-write",
+      "--script",
+      script,
+      "--input",
+      "write out.txt",
+    ]);
+
+    expect(result.code).toBe(0);
+    const stream = result.out.filter((line) => line.startsWith("[")).join("\n");
+    expect(stream).toContain("ToolProposed write_file (reconcilable_write)");
+    expect(stream).toContain("ToolAuthorized");
+    expect(stream).toContain("ToolSucceeded");
+    const store = openSessionStore(fx.db);
+    try {
+      const sessions = store.listSessions();
+      const created = sessions[0];
+      if (created === undefined) {
+        throw new Error("expected one session");
+      }
+      const state = foldSessionEvents(await store.readStream(created.sessionId));
+      const snapshot = [...state.toolExecutions.values()][0];
+      expect(snapshot?.status).toBe("SUCCEEDED");
+    } finally {
+      store.close();
+    }
+    expect(await Bun.file(join(fx.root, "out.txt")).text()).toBe("written by cli");
+  });
+
+  test("without the flag the write is a durable ToolRejected fact and no file appears", async () => {
+    const fx = fixture();
+    const script = fx.script([WRITE_STEP, FINAL_STEP("acknowledged the rejection")]);
+
+    const result = await cli([
+      "run",
+      "--db",
+      fx.db,
+      "--root",
+      fx.root,
+      "--script",
+      script,
+      "--input",
+      "write out.txt",
+    ]);
+
+    expect(result.code).toBe(0);
+    const stream = result.out.filter((line) => line.startsWith("[")).join("\n");
+    expect(stream).toContain("ToolProposed write_file (reconcilable_write)");
+    expect(stream).toContain("ToolRejected");
+    expect(stream).toContain("requires human approval");
+    expect(stream).not.toContain("ToolSucceeded write");
+    expect(await Bun.file(join(fx.root, "out.txt")).exists()).toBe(false);
+  });
+
+  test("--allow-bash grants shell.exec for a bash round-trip", async () => {
+    const fx = fixture();
+    const BASH_STEP = [
+      { type: "toolCallStart", toolCallId: "call-1", name: "bash" },
+      {
+        type: "toolCallDelta",
+        toolCallId: "call-1",
+        argumentsDelta: '{"command":"echo cli-bash-ok"}',
+      },
+      { type: "toolCallEnd", toolCallId: "call-1" },
+      { type: "completed", finishReason: "toolCalls" },
+    ];
+    const script = fx.script([BASH_STEP, FINAL_STEP("bash ran")]);
+
+    const result = await cli([
+      "run",
+      "--db",
+      fx.db,
+      "--root",
+      fx.root,
+      "--allow-bash",
+      "--script",
+      script,
+      "--input",
+      "run echo",
+    ]);
+
+    expect(result.code).toBe(0);
+    const stream = result.out.filter((line) => line.startsWith("[")).join("\n");
+    expect(stream).toContain("ToolProposed bash (non_idempotent_write)");
+    expect(stream).toContain("ToolSucceeded");
+    const store = openSessionStore(fx.db);
+    try {
+      const sessions = store.listSessions();
+      const created = sessions[0];
+      if (created === undefined) {
+        throw new Error("expected one session");
+      }
+      const state = foldSessionEvents(await store.readStream(created.sessionId));
+      const snapshot = [...state.toolExecutions.values()][0];
+      expect(snapshot?.status).toBe("SUCCEEDED");
+      expect(snapshot?.resultJson ?? "").toContain("cli-bash-ok");
+    } finally {
+      store.close();
+    }
+  });
+});
+
 describe("praxis sessions", () => {
   test("an empty store lists no sessions", async () => {
     const fx = fixture();

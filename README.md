@@ -25,6 +25,8 @@
 - `docs/06-ai-development-control-plane.md`：AI 自动规划、守界、测试、验收与交接机制。
 - `docs/07-architecture-conformance.md`：把系统设计转化为可由 guard/CI 检查的架构合同。
 - `docs/08-ai-model-development-strategy.md`：主力编码模型、独立 Review、真实模型 Eval 与换模规则。
+- `docs/12-architecture-current-state.md`：as-built 架构全景（包图、port→实现、公共 API 面、机器执法清单）。
+- `docs/13-cli-quickstart.md`：CLI 快速上手——read/write/approval/resume 全流程示例（复制即可运行）。
 - `AGENTS.md`：每次 AI 编码会话都必须进入上下文的短规则。
 - `.agents/rules/`：按主题拆分的详细规则。
 - `.agents/skills/`：高频开发任务的操作 Skill。

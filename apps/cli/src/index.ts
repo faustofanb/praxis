@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type {
+  CapabilityGrant,
   EventActor,
   EventId,
   EventStore,
@@ -19,10 +20,15 @@ import {
   asTurnId,
   EVENT_SCHEMA_VERSION,
 } from "@praxis/contracts";
-import { type AgentLoopDeps, runTurn } from "@praxis/core";
+import {
+  type AgentLoopDeps,
+  type CapabilityPolicyConfig,
+  capabilityAuthorizer,
+  runTurn,
+} from "@praxis/core";
 import { OpenAIChatProvider } from "@praxis/provider-openai";
 import { openSessionStore, type SessionStore } from "@praxis/store-sqlite";
-import { localReadTools } from "@praxis/tools-local";
+import { localReadTools, localWriteTools } from "@praxis/tools-local";
 import { ScriptFileModelProvider } from "./scripted-provider";
 
 /**
@@ -32,8 +38,13 @@ import { ScriptFileModelProvider } from "./scripted-provider";
  * lives in core; the CLI adds no loop or recovery logic of its own.
  *
  * Commands (docs/03 M2.5):
- *   run [--db P] [--session ID] [--input TEXT] [--root DIR] --script FILE
+ *   run [--db P] [--session ID] [--input TEXT] [--root DIR] [--allow-write]
+ *       [--allow-bash] ( --script FILE | --model NAME [--api-key KEY] [--base-url URL] )
  *   sessions [--db P]
+ *
+ * Capability grants are static per invocation (--allow-write / --allow-bash).
+ * Without them, write attempts are durable ToolRejected facts carrying the
+ * requires_approval reason (ADR-0007: approval UX stays fail-closed).
  *
  * Exit codes: 0 completed/listed; 1 usage or runtime error; 2 paused or
  * cancelled (turn left open — resume with `run --session ID`).
@@ -41,6 +52,7 @@ import { ScriptFileModelProvider } from "./scripted-provider";
 
 const DEFAULT_DB_PATH = "praxis.db";
 const DEFAULT_SYSTEM_PROMPT = "You are a local Praxis agent. Use the provided tools.";
+const BOOLEAN_FLAGS = new Set(["allow-write", "allow-bash"]);
 
 export const packageName = "@praxis/cli";
 
@@ -77,6 +89,7 @@ function usage(io: CliIo): void {
     [
       "usage:",
       "  praxis run [--db PATH] [--session ID] [--input TEXT] [--root DIR]",
+      "            [--allow-write] [--allow-bash]",
       "            ( --script FILE | --model NAME [--api-key KEY] [--base-url URL] )",
       "  praxis sessions [--db PATH]",
       "",
@@ -85,6 +98,9 @@ function usage(io: CliIo): void {
       "deterministic script file; --model uses an OpenAI-compatible Chat",
       "Completions endpoint (key from --api-key or OPENAI_API_KEY). Durable",
       "events stream to stdout as they append.",
+      "--allow-write grants fs.write and --allow-bash grants shell.exec for",
+      "this invocation (workspace-scoped); without them, write attempts are",
+      "rejected as durable facts (fail closed).",
       "sessions: list session ids with status and head seq.",
     ].join("\n"),
   );
@@ -92,13 +108,22 @@ function usage(io: CliIo): void {
 
 function parseFlags(flags: readonly string[]): Map<string, string> {
   const parsed = new Map<string, string>();
-  for (let index = 0; index < flags.length; index += 2) {
+  for (let index = 0; index < flags.length; index += 1) {
     const flag = flags[index];
-    const value = flags[index + 1];
-    if (flag === undefined || !flag.startsWith("--") || value === undefined) {
-      throw new Error(`expected --flag value pairs, got: ${flags.join(" ")}`);
+    if (flag === undefined || !flag.startsWith("--")) {
+      throw new Error(`expected --flag [value] pairs, got: ${flags.join(" ")}`);
     }
-    parsed.set(flag.slice(2), value);
+    const name = flag.slice(2);
+    if (BOOLEAN_FLAGS.has(name)) {
+      parsed.set(name, "true");
+      continue;
+    }
+    const value = flags[index + 1];
+    if (value === undefined) {
+      throw new Error(`flag --${name} requires a value`);
+    }
+    parsed.set(name, value);
+    index += 1;
   }
   return parsed;
 }
@@ -176,6 +201,8 @@ async function runCommand(flags: readonly string[], io: CliIo): Promise<number> 
   const modelFlag = options.get("model");
   const sessionFlag = options.get("session");
   const input = options.get("input");
+  const allowWrite = options.get("allow-write") === "true";
+  const allowBash = options.get("allow-bash") === "true";
 
   if (scriptPath !== undefined && modelFlag !== undefined) {
     throw new Error("run takes either --script FILE or --model NAME, not both");
@@ -223,7 +250,13 @@ async function runCommand(flags: readonly string[], io: CliIo): Promise<number> 
       const outcome = await runTurn(
         loopDeps(store, sessionId, model, modelId, root),
         input === undefined ? {} : { input },
-        { signal: controller.signal },
+        {
+          signal: controller.signal,
+          authorizer: capabilityAuthorizer({
+            policy: capabilityPolicy(root, allowWrite, allowBash),
+            now: () => Date.now(),
+          }),
+        },
       );
       switch (outcome.kind) {
         case "completed":
@@ -266,6 +299,26 @@ async function createSession(store: EventStore): Promise<SessionId> {
   return sessionId;
 }
 
+function capabilityPolicy(
+  root: string,
+  allowWrite: boolean,
+  allowBash: boolean,
+): CapabilityPolicyConfig {
+  const grants: CapabilityGrant[] = [];
+  if (allowWrite) {
+    grants.push({ name: "fs.write", scope: { kind: "workspace", root } });
+  }
+  if (allowBash) {
+    grants.push({ name: "shell.exec", scope: { kind: "workspace", root } });
+  }
+  return {
+    workspaceRoots: [root],
+    grants,
+    leases: [],
+    approvableCapabilities: ["fs.write", "shell.exec"],
+  };
+}
+
 function loopDeps(
   store: EventStore,
   sessionId: SessionId,
@@ -273,7 +326,7 @@ function loopDeps(
   modelId: string,
   root: string,
 ): AgentLoopDeps {
-  const tools: readonly ToolDefinition[] = localReadTools(root);
+  const tools: readonly ToolDefinition[] = [...localReadTools(root), ...localWriteTools(root)];
   return {
     store,
     sessionId,
