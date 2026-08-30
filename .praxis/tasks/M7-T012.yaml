@@ -2,7 +2,7 @@ schema_version: 1
 id: M7-T012
 title: fix wire-invalid duplicate tool responses for reconciled executions
 milestone: M7
-status: planned
+status: accepted
 risk_class: B
 objective: "Operator directive 2026-08-30: 'harness 不能因为模型能力低就没法工作啊，有问题就修复'. Root-caused with a reproduced 400: any session whose durable history contains an execution that went INDETERMINATE and was later Reconciled produces a wire-INVALID chat-completions request — projectConversation honestly emits TWO tool facts for one execution (indeterminate, then reconciled; docs/02 s12 law: the model sees the settled outcome verbatim AFTER the earlier indeterminate message — never instead of it) and packages/provider-openai toChatMessages renders each as its own role:'tool' message with the SAME tool_call_id. Strict OpenAI-wire validators (reproduced on the operator's deepseek gateway; HTTP 400 'Messages with role role tool must be a response to a preceding message with tool_calls', bisected via curl: single tool response 200, duplicate-id second response 400) reject the second response for the same id — every model request of such a turn fails invalidRequest (non-retryable), the turn honestly pauses after 3 consecutive failures, and the session is effectively unusable on strict gateways for reconciled histories. This is a provider wire-law adaptation gap (docs/02 s10: the adapter maps port to wire), NOT a projection bug. Deliverable: (a) packages/provider-openai/src/chat-provider.ts toChatMessages — merge CONSECUTIVE tool messages that share a toolCallId into ONE wire message whose content is a JSON array of the fact bodies in event order (indeterminate first, reconciled second — verbatim facts preserved, ordering law intact, wire-valid single response per id); non-adjacent or different-id tool messages (parallel tool calls) stay separate; single-fact case renders EXACTLY as before (content stays the bare body, not wrapped in an array — zero-change identity for every existing conversation shape). (b) tests/provider-openai/chat-provider.test.ts — new cases: (1) assistant(tool_calls) + two same-id tool facts => ONE wire tool message, content JSON array [indeterminate, reconciled] in order; (2) parallel calls (two distinct ids interleaved) => separate messages unchanged; (3) single indeterminate fact alone (M4 pending state, never reconciled) => bare content unchanged. (c) a fault-style end-to-end proof lives in the existing diag (operator /tmp script): after the fix the resolved-indeterminate turn completes against the strict gateway — recorded in the acceptance evidence, the durable repro being the curl bisect + the diag script output."
 evidence: 
@@ -12,10 +12,10 @@ evidence:
     - "projectConversation (core) emits both facts by law (comment: 'never instead of it'); toChatMessages (provider) maps 1:1 with no id de-duplication — the gap is wire-side only"
     - "all four real-model baselines hit variations of this family; deepseek's resolved-indeterminate pause and GLM's completion-blocked 400-loop (if retried) stem from histories the strict gateways reject"
   expected: 
-    - "toChatMessages merges consecutive same-id tool messages into one wire message with content = JSON array; all other shapes byte-identical"
-    - "3 new provider unit tests green; all existing 16 provider tests unaffected (zero-change identity for single-fact shapes)"
+    - toChatMessages merges consecutive same-id tool messages into one wire message with content = JSON array; all other shapes byte-identical
+    - 3 new provider unit tests green; all existing 16 provider tests unaffected (zero-change identity for single-fact shapes)
     - "diag script vs strict gateway: resolved-indeterminate turn reaches completed (or an honest model-level failure unrelated to wire shape)"
-    - "deepseek-v4-flash xhigh baseline then runs all 8 scenarios with no invalidRequest pauses"
+    - deepseek-v4-flash xhigh baseline then runs all 8 scenarios with no invalidRequest pauses
   references: 
     - packages/provider-openai/src/chat-provider.ts
     - packages/core/src/agent-loop/conversation.ts
@@ -74,12 +74,12 @@ required_gates:
 acceptance: 
   scenarios: 
     - "provider unit tests: two same-id consecutive tool facts => one wire message with JSON-array content in event order; distinct ids stay separate; single fact stays bare"
-    - "all existing provider unit tests byte-unaffected (zero-change identity for non-duplicate shapes)"
+    - all existing provider unit tests byte-unaffected (zero-change identity for non-duplicate shapes)
     - "operator diag vs strict gateway: resolved-indeterminate no longer produces HTTP 400 loops; the turn reaches a legal terminal outcome"
-    - "required_gates incl. fault+security green (provider rule)"
+    - required_gates incl. fault+security green (provider rule)
   failure_cases: 
-    - "merging non-adjacent tool messages or different-id messages (parallel calls must stay separate)"
-    - "changing the single-fact content shape (would break zero-change identity and existing tests)"
+    - merging non-adjacent tool messages or different-id messages (parallel calls must stay separate)
+    - changing the single-fact content shape (would break zero-change identity and existing tests)
     - "touching core projection or contracts to 'fix' the wire issue (law lives there; the adapter adapts)"
   artifacts: 
     - packages/provider-openai/src/chat-provider.ts (merge in toChatMessages)

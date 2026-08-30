@@ -18,13 +18,15 @@ next_legal_actions:
   - generate handoff
   - select next eligible task in current milestone
 last_verification: 
-  task: M7-T011
-  at: 2026-08-30T10:03:52.770Z
+  task: M7-T012
+  at: 2026-08-30T10:27:21.496Z
   result: PASS
   gates: 
     - gate: architecture
       result: PASS
     - gate: build
+      result: PASS
+    - gate: fault
       result: PASS
     - gate: format
       result: PASS
@@ -35,6 +37,8 @@ last_verification:
     - gate: property
       result: PASS
     - gate: replay
+      result: PASS
+    - gate: security
       result: PASS
     - gate: typecheck
       result: PASS
