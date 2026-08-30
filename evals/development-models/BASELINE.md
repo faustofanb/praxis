@@ -56,6 +56,7 @@ PRAXIS_EVAL_MODELS="model-a,model-b" PRAXIS_EVAL_BASE_URL=https://... \
 
 ```text
 - 2026-08-30 | models: deepseek-v4-flash | scorecard: results/eval-2026-08-30T09-37-48-489Z.md | 1/8 PASS——完成偏置 3×（invalidated-plan/completion-blocked/inconclusive-verification 均选 declare_session_complete，含完成阻断场景无视 ## Completion blocked）；healthy-plan 警报偏置（选 investigate_further）；completion-legal 通过（管线端到端证明）；resolved-indeterminate 因连续模型请求失败 turn paused 未决（n=1，网关对特定请求形态的稳定性问题而非决策错误）；plan-challenge 选 propose_new_plan；pending-indeterminate 选近亲动作 re_verify_with_stronger_evidence
+- 2026-08-30 | models: gpt-5.6-sol | scorecard: results/eval-2026-08-30T09-49-34-388Z.md | 6/8 PASS——读 brief 纪律显著更强：尊重完成阻断（resolve_open_challenge）、作废后正确重立计划、inconclusive 正确重验、reconciled 后正确回到计划、质询先解决、完成合法时正确收工；两败为 healthy-plan 警报偏置变体（完好计划下选 propose_new_plan）与 pending-indeterminate 近亲动作混淆（选 re_verify_with_stronger_evidence——与 deepseek 同一弱点，verify_or_reconcile_effect 的语义锚定是全词表最弱一环）
 ```
 
 n=1/场景——证据不是基准。矩阵按设计区分模型：正向对照通过证明判分管线工作，
