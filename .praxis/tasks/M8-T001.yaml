@@ -1,0 +1,95 @@
+schema_version: 1
+id: M8-T001
+title: finalize current-state architecture subsystem and API documentation
+milestone: M8
+status: planned
+risk_class: A
+objective: "Close three docs/03 M8 deliverable rows — 'architecture current-state docs', 'subsystem docs', 'API docs' — with one coherent documentation deliverable (M8-T001, risk A, prerequisites [M7] accepted). Observed state: (1) the DESIGN authority (docs/02) and CONFORMANCE authority (docs/07) are current, and ten per-package subsystem docs exist — but docs/subsystems/README.md's index still marks every package '进行中（M2…/M6…）' with stale milestone parentheticals (verified by reading it: contracts/core/store/provider/tools say M2, telemetry/standing-orders say M6, cli says M2 — all false as of M8); (2) there is NO current-state ('as-built') architecture document anywhere: a reader cannot find one page mapping the implemented package graph, the port->implementation pairs, the machine enforcement map (what test:architecture/ai:guard/boundaries.test.ts/coverage floor/knip actually enforce), and the documentation index; (3) there are NO API docs: the public surface of the eight workspace packages (contracts 35 export lines incl. the full durable event vocabulary, core 25 lines incl. runTurn/foldSessionEvents/buildContext/projectEpistemicBrief, provider-openai 4, store-sqlite 5 incl. openSessionStore, tools-local 8 incl. localReadTools/localWriteTools, testkit 4 incl. ScriptedModelProvider, two extensions) exists only as source code. Deliverable: (a) docs/12-architecture-current-state.md (new) — the as-built map: the implemented dependency graph (contracts <- core <- {provider-openai, store-sqlite, tools-local} <- {extensions, cli}; testkit dev-side over contracts+core), the port->implementation table (EventStore -> SqliteEventStore, ModelProvider -> OpenAIChatProvider, tools -> local read/write sets, extensions -> telemetry/standing-orders), the per-package PUBLIC API surface section (hand-written from the index.ts files read this session, one line per export family — descriptive, no per-export prose dump), the machine enforcement map (architecture.yaml via test:architecture + ai:guard; boundaries.test.ts exact pins + ADR-0002 directions; core coverage floor 95/90 in test:coverage; knip zero; fault 27 + security 40 adversarial suites; soak tripwire), and the documentation index (which doc owns which kind of fact: 02 design / 03 plan / 05 acceptance strategy / 06 control plane / 07 conformance / 08 model strategy / 09 dependency inventory / 10 growth report / 11 sqlite policy / 12 this doc / subsystems implementation detail / decisions ADRs). (b) docs/subsystems/README.md — index finalized: statuses become '当前（M8）' with a one-line what-it-is per package, no stale milestone parentheticals. (c) docs/03-project-plan.md — tick the three rows with provenance. Every statement links or summarizes; nothing duplicates the design or conformance authorities (one fact, one home). No code, no test, no gate changes."
+evidence: 
+  observed: 
+    - "docs/subsystems/README.md index stale: all nine rows marked 进行中 with M2/M6 milestone parentheticals — drift since the docs were written"
+    - "no as-built/current-state architecture doc exists (docs/02 = design why, docs/07 = conformance rules; neither maps the implemented whole)"
+    - "no API surface doc exists; public exports verified by reading each packages/*/src/index.ts this session (counts: contracts 35, core 25, provider-openai 4, store-sqlite 5, tools-local 8, testkit 4, extensions 2+2)"
+    - "machine enforcement inventory verified across the session: test:architecture (M0-T004), ai:guard scope law, boundaries.test.ts pins/directions, 95/90 core coverage floor (M7-T010), knip zero (M7-T006), fault 27 / security 40 suites (M7-T002 et al.), soak tripwire (M7-T003)"
+  expected: 
+    - "docs/12-architecture-current-state.md: as-built graph + port/implementation table + API surface + enforcement map + docs index, all linking to owners"
+    - "docs/subsystems/README.md: finalized statuses"
+    - "docs/03: three M8 rows ticked with provenance"
+    - "zero code/test/manifest/gate changes"
+  references: 
+    - docs/02-system-design.md
+    - docs/07-architecture-conformance.md
+    - docs/subsystems/README.md
+    - packages/*/src/index.ts
+    - .praxis/architecture.yaml
+hypothesis: "The as-built state is fully describable from existing authorities plus the index.ts files already read — the doc is a map, not new claims. If any package's public surface or enforcement claim cannot be stated from pinned facts, the hypothesis falsifies and the gap becomes that package's doc task."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M8-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - docs/12-architecture-current-state.md
+    - docs/subsystems/README.md
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/**
+    - docs/02-system-design.md
+    - docs/07-architecture-conformance.md
+    - docs/09-dependency-inventory.md
+    - docs/10-memory-context-growth.md
+    - docs/11-sqlite-corruption-recovery.md
+    - docs/subsystems/contracts.md
+    - docs/subsystems/core.md
+    - docs/subsystems/store-sqlite.md
+    - docs/subsystems/provider-openai.md
+    - docs/subsystems/tools-local.md
+    - docs/subsystems/testkit.md
+    - docs/subsystems/cli.md
+    - docs/subsystems/extension-telemetry.md
+    - docs/subsystems/extension-standing-orders.md
+    - docs/acceptance/**
+    - docs/decisions/**
+    - .praxis/architecture.yaml
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - .praxis/backlog.yaml
+    - AGENTS.md
+    - mise.toml
+    - package.json
+  scope_notes: 
+    - "One fact, one home: docs/12 is a MAP — it links to owners and never restates their laws; subsystem docs keep implementation detail; docs/02/07 keep design/conformance authority"
+    - "All nine individual subsystem docs are FORBIDDEN to edit: they are current (owned by their tasks); only the index is stale"
+    - "API surface section is descriptive (read from index.ts this session); a mechanical drift guard is possible future work but out of scope — the doc states its read date"
+    - "backlog.yaml edit not needed: M8-T001 already has a backlog entry (original M8 planning)"
+    - "No ADR: no decision changes — pure documentation"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/07-architecture-conformance.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "docs/12 exists with the five sections and its API/enforcement claims trace to index.ts files and gate registrations"
+    - "subsystems index statuses are current (no stale milestone parentheticals)"
+    - "docs/03 M8 rows 'architecture current-state docs' / 'subsystem docs' / 'API docs' ticked with provenance"
+    - "full gates green (unchanged code)"
+  failure_cases: 
+    - "a claim in docs/12 contradicting docs/02 or docs/07 (the map must match the authorities)"
+    - "restating another doc's law instead of linking (one fact, one home)"
+    - "an API surface entry that does not exist in the package's index.ts"
+  artifacts: 
+    - docs/12-architecture-current-state.md
+    - docs/subsystems/README.md (finalized index)
+    - docs/03-project-plan.md three row ticks
+falsified_if: "The as-built map cannot be written without discovering a real architecture divergence from docs/02/07 — that would trigger the architecture-change protocol, not a doc sentence. Also falsified if any documented export does not exist in its package's index.ts."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog (documentation over verified reality; every claim traced this session). requires_human_acceptance FALSE (standing precedent). Next M8 tasks: T002 CLI quickstart + sample/replay demo (risk B), T003 release acceptance + recovery demo (risk C), T004 release eval baseline (risk B), T005 non-goals/changelog/release checklist (risk A)."
