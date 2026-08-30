@@ -241,6 +241,11 @@ milestones:
       title: fix wire-invalid duplicate tool responses for reconciled executions
       prerequisites: [M7-T002]
       risk_class: B
+    - id: M7-T013
+      order: 130
+      title: sharpen the decide vocabulary and re-baseline the matrix
+      prerequisites: [M7-T005]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10

@@ -1,0 +1,84 @@
+schema_version: 1
+id: M7-T013
+title: sharpen the decide vocabulary and re-baseline the matrix
+milestone: M7
+status: planned
+risk_class: A
+objective: "Operator-approved matrix fix (2026-08-30 '继续' after the real-task experiment report). Five baselines across four models exposed two matrix-level design defects — rows pending-indeterminate and healthy-plan are 0/5 with every model failing IDENTICALLY (all chose re_verify_with_stronger_evidence on the pending-indeterminate row; healthy-plan drew investigate_further x3 / propose_new_plan x2), and deepseek completion-blocked kept declaring completion despite the ## Completion blocked section. When every model fails a row the same way, the signal points at the vocabulary surface, not the models: the decide tool's action descriptions under-separate the two verification-family actions and never state the runtime laws that make actions available or refused. A real-task control (same model 3/3 correct through a multi-step tool loop) rules out general incapacity. Deliverable — eval-ONLY, zero production code, seeds/prompts/expected sets/law fields/brief markers all UNCHANGED (only the vocabulary descriptions sharpen): (a) evals/development-models/scenarios.ts decideToolDefinition parametersJson — per-action descriptions rewritten to (1) anchor each action to its OWN fact surface: verify_or_reconcile_effect = check whether an EXECUTION with unknown outcome actually happened (the Pending indeterminate section) — reconciliation of an action's effect; re_verify_with_stronger_evidence = redo a VERIFICATION that recorded an inconclusive outcome (the Latest verification section); (2) state the persistence law for continue_previous_action (the active plan is the plan of record and persists until falsified, superseded, or challenged — when the brief presents a plan, its next action is the recorded path); (3) state the runtime refusal law for declare_session_complete (the runtime refuses completion while a completion-target challenge is open). All descriptions remain model-neutral facts (vocabulary semantics + runtime laws), identical across models and scenarios — no per-scenario answer leaking. (b) evals/development-models/scenarios.test.ts — pin the sharpening: each of the three clarified actions' descriptions must cite its anchor (pending indeterminate / latest verification / plan-of-record persistence / runtime refusal). (c) The matrix version bump is recorded in BASELINE.md at the re-registration step (operator evidence commits follow acceptance): scores before/after are NOT comparable — all five baseline configs re-run on the new vocabulary and appended as new rows, historical rows preserved. This row closes the loop the eval harness opened: the harness found its own measurement defect."
+evidence: 
+  observed: 
+    - "pending-indeterminate row: 0/5 (deepseek default + xhigh, gpt-5.6-sol, GLM-5.3 thinking, gpt-5.6-luna high) — every model chose re_verify_with_stronger_evidence"
+    - "healthy-plan row: 0/5 (investigate_further x3, propose_new_plan x2) — no model continues an intact plan on the current description"
+    - "deepseek completion-blocked: declared completion with ## Completion blocked in the brief both runs — the brief never states that declare_session_complete is runtime-refused"
+    - "real-task control (same deepseek, real multi-step tool loop, 3/3 correct) rules out general incapacity — the defect is in how the vocabulary distinguishes its actions"
+    - "current descriptions: 'verify_or_reconcile_effect: check whether an unknown-effect action actually happened' vs 're_verify_with_stronger_evidence: redo a verification that was inconclusive' — the execution/verification distinction is implicit; continue_previous_action says only 'repeat the plan's recorded next action'; declare_session_complete says only 'the goal is met and completion is legal'"
+  expected: 
+    - "scenarios.ts: the seven action descriptions rewritten with fact-surface anchors and the two runtime laws (persistence, refusal); seeds, prompts, expectedActions, law fields, brief markers, DECIDE_ACTIONS order all byte-unchanged"
+    - "scenarios.test.ts: new assertions pinning the anchors on the clarified descriptions"
+    - "unit gate green (eval suites 31+ items); no production file touched"
+    - "BASELINE.md: after acceptance, five re-run registrations appended with an explicit matrix-version comparability break; docs/acceptance/M7.md real-model section updated"
+  references: 
+    - evals/development-models/scenarios.ts
+    - evals/development-models/scenarios.test.ts
+    - evals/development-models/BASELINE.md
+    - docs/acceptance/M7.md
+hypothesis: "The identical-failure rows stem from vocabulary under-specification on the decide tool surface, not from scenario seeds or expected sets — sharpening the descriptions (fact-surface anchors + the two runtime laws) lets models that already read the brief (gpt-5.6-sol passed 6/8) differentiate the verification family and trust the plan of record. If models STILL fail identically on the re-run, the rows themselves are mis-designed (expected set or scenario premise) and must be re-scrutinized as such — a scenario-design question, not a description tweak."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T013.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - .praxis/backlog.yaml
+    - evals/development-models/scenarios.ts
+    - evals/development-models/scenarios.test.ts
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/development-models/run-eval.ts
+    - evals/development-models/grader.ts
+    - evals/development-models/run-eval-harness.test.ts
+    - evals/development-models/BASELINE.md
+    - evals/development-models/results/**
+    - evals/development-models/README.md
+    - mise.toml
+    - package.json
+    - bun.lock
+    - vitest.config.ts
+    - knip.json
+    - .github/**
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/**
+    - AGENTS.md
+  scope_notes: 
+    - "BASELINE.md/README/M7.md are forbidden HERE: the matrix-version note and the five re-run registrations are operator evidence commits made after acceptance (precedent 78200e6/2f53d87/6b14836/4cf7d70) — keeping the contract purely the vocabulary change"
+    - "Seeds/prompts/expected sets unchanged: the rows' laws are sound (docs/02 s8.3/s13/s14 are the runtime's actual behavior); only the vocabulary surface that models read was under-specified — if the re-run disproves that, the next change is a scenario redesign with its own contract"
+    - "Descriptions stay model-neutral and scenario-independent: they describe what each action MEANS and which runtime laws govern it — the same text every model sees on every scenario (no answer leaking; the per-row expected sets remain the grading truth)"
+    - "No core change: the completion refusal law goes in the decide description, not the core brief renderer — the brief already states the blocking fact; the vocabulary states the consequence. If the re-run shows the brief itself needs new sections, that is a core task with its own contract"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "the seven descriptions carry the anchors: verify_or_reconcile names executions/unknown outcome; re_verify names verification records/inconclusive; continue names plan-of-record persistence; declare names runtime refusal; pinned by scenarios.test.ts"
+    - "DECIDE_ACTIONS order, seeds, prompts, expectedActions, law fields byte-unchanged — only description strings differ"
+    - "full unit gate green; grader/harness suites unaffected"
+  failure_cases: 
+    - "an expected-set or seed change smuggled in as a description tweak"
+    - "a description that leaks a per-scenario answer (e.g. naming a specific action as correct in a specific situation)"
+    - "a core or contracts edit"
+  artifacts: 
+    - evals/development-models/scenarios.ts (seven descriptions)
+    - evals/development-models/scenarios.test.ts (anchor pins)
+falsified_if: "The vocabulary sharpening cannot be expressed without touching seeds, prompts, expected sets, or production code — i.e. the defect was not in the descriptions. In that case the failing rows go back to scenario design with a new contract."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog authoring (eval-owned description strings + test pins; zero production code). Direct operator authorization 2026-08-30 ('继续' on the two-defect report). Matrix version bump: v1 descriptions -> v2 anchored descriptions; comparability break recorded at re-registration."
