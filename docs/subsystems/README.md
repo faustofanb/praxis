@@ -16,5 +16,6 @@
 | `store-sqlite.md` | `packages/store-sqlite` | 进行中（M1：SQLite EventStore 适配器已落地） |
 | `provider-openai.md` | `packages/provider-openai` | 进行中（M2：Chat Completions adapter + adapter 自有重试/取消/超时已落地） |
 | `tools-local.md` | `packages/tools-local` | 进行中（M2：read_file/list_dir 已落地） |
+| `extension-telemetry.md` | `packages/extension-telemetry` | 进行中（M6：只读 telemetry observer 已落地） |
 | `testkit.md` | `packages/testkit` | 进行中（M2：ScriptedModelProvider 已落地） |
 | `cli.md` | `apps/cli` | 进行中（M2：run/sessions 命令、脚本文件 provider、`--model` 真实端点接线已落地） |
