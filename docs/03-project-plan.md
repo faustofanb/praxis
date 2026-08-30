@@ -360,7 +360,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [x] fast-check state machine suite（M7-T001：`tests/property/state-machine.property.test.ts` + 独立影子模型 `tests/helpers/full-vocabulary-machine.ts`——全词汇表模型一致性/前缀结构不变量/任意切分点恢复恒等/前置条件违例拒绝/终态吸收）；
 - [x] fault injection suite（M7-T002：`tests/fault/provider-adapter.fault.test.ts` 补齐 provider 故障边界——中途断连**逃逸后**禁重试（修复 P0：重试重放流致 durable text 翻倍与幽灵 tool call）、退避中 abort、retryable→非 retryable 降级、真实 runTurn 端到端诚实失败；既有 §17 崩溃矩阵/agent-loop/tool-runtime/extension 故障套件见各 owning docs）；
 - [x] security bypass suite（M7-T002：`tests/security/secret-confinement.security.test.ts` 钉死 §18 密钥禁锢——Authorization 头唯一在途位置，wire body/durable 事件/模型消息全图深搜零泄漏；既有 capability/extension/bash 对抗套件见各 owning docs）；
-- [ ] soak 10k+ synthetic turns；
+- [x] soak 10k+ synthetic turns（M7-T003：`tests/soak/turn-soak.test.ts`——10,000 turn 全词汇表合成会话（59,227 事件：3,600 工具执行含 reject/failed 路径、1,428 观测、909 假设、769 计划、588 质询、434 验证）在 2k/4k/6k/8k/10k 五个 turn 边界检查点合法折叠；每检查点 context 恒为 1+64 条消息、token 在 32k 界内、丢弃/保留计数精确对账；派生态注册表与落档事实逐一相等（恰好线性增长）；每事件折叠成本 tripwire ≤10×（实测 ~4.4×，源于注册表不可变 Map 拷贝，正确性无损——10k turn 全量重折叠 1.0s））；
 - [ ] Knip zero unexpected findings；
 - [ ] memory/context growth report；
 - [ ] SQLite corruption/recovery policy documented；
