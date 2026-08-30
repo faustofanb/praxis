@@ -1,0 +1,80 @@
+schema_version: 1
+id: M8-T003
+title: run engineering release acceptance and recovery demo
+milestone: M8
+status: planned
+risk_class: C
+objective: "Run the formal engineering portion of the M8 acceptance over a CLEAN CLONE (M8-T003, risk C, prerequisites [M8-T001, M8-T002] both accepted) and record the evidence in docs/acceptance/M8.md. Experiments — all performed in a throwaway `git clone` of the repo at the pre-task HEAD into /tmp (main tree untouched; the clone carries only committed state, which is what clean install means): SCENARIO ACCEPTANCE (M8.yaml scenario 1 'clean install -> read task -> write task -> approval -> resume/fork' + scenario 2 'kill process -> resume -> finish'): (1) mise trust + `mise run install` in the clone (frozen lockfile on the pinned toolchain); (2) read task via the quickstart's --script walkthrough -> turn completed with the full durable event stream; (3) write task WITHOUT --allow-write -> durable ToolRejected carrying the requires_approval reason, no filesystem effect (fail closed); (4) same write WITH --allow-write -> ToolAuthorized -> ToolSucceeded and the file lands; (5) kill -> resume -> finish: start a scripted run whose turn is still open, SIGINT the process (exit 2, turn open), then resume with --session (no --input) and observe the turn complete with the remaining script consumed — §17 recovery applied to the dangling model request. FAILURE ACCEPTANCE (M8.yaml 'release blocker regression suite' per docs/05: gates must be proven to FAIL on injected defects, in the clone, never the main tree): (a) inject an architecture violation (deep cross-package import of core internals from an adapter) -> `mise run test:architecture` exits non-zero naming the violation; (b) inject an exact-pin violation (^-ranged version in a package manifest) -> `bunx vitest run tests/boundaries.test.ts` fails; revert both injections. Deliverable: docs/acceptance/M8.md — Scenario Acceptance and Failure Acceptance sections ticked with the recorded commands/outputs and clone HEAD; Evidence Artifacts updated. No main-tree code changes; no milestones state change (Human Demo, Real-model eval M8-T004, Exit Decision stay pending)."
+evidence: 
+  observed: 
+    - "M8-T001/T002 accepted: the quickstart surface (read/write/approval/resume) exists and its commands were verified verbatim against a temp dir during T002"
+    - "tests/cli already prove crash->resume semantics in-process (dangling execution -> INDETERMINATE -> escalation; zero re-execution); M8-T003 upgrades that to a LIVE process-level kill/resume demo over a clean clone"
+    - "docs/05 failure-acceptance rule: gates must be shown to fail on injection, not only pass when green"
+  expected: 
+    - "clean clone: frozen install green; four walkthrough scenarios recorded with outputs; kill->resume->finish recorded"
+    - "two injected defects fail their gates with exit non-zero and are reverted; main tree never touched"
+    - "docs/acceptance/M8.md Scenario Acceptance + Failure Acceptance ticked with evidence; other sections stay pending"
+  references: 
+    - docs/13-cli-quickstart.md
+    - docs/acceptance/M8.md
+    - tests/cli/cli.bun.test.ts
+    - docs/05-acceptance-strategy.md
+hypothesis: "The scenario path runs end-to-end on a clean clone because M8-T002 verified it verbatim and the clone is the same committed state; the failure injections fail their gates because those gates are wired and the violations are real. If the clean-clone install or any scenario step diverges from the T002 verification (e.g. mise trust or frozen-install behavior in a fresh dir), that is exactly the release blocker the task exists to surface — re-plan, do not work around."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M8-T003.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - docs/acceptance/M8.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/12-architecture-current-state.md
+    - docs/13-cli-quickstart.md
+    - docs/subsystems/**
+    - docs/decisions/**
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - .praxis/architecture.yaml
+    - mise.toml
+    - package.json
+    - bun.lock
+    - knip.json
+    - vitest.config.ts
+    - .github/**
+    - AGENTS.md
+  scope_notes: 
+    - "All experiments in /tmp clones; the main tree is only touched by this contract, state.yaml, handoffs, and docs/acceptance/M8.md"
+    - "risk C per backlog: an acceptance-run task over already-accepted surfaces (M7-T003 risk-C precedent: machine acceptance on recorded evidence)"
+    - "Human Demo, Real-model eval (M8-T004), non-goals/changelog (M8-T005), and the M8 Exit Decision stay pending — this task closes the engineering scenario/failure portions only"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/07-architecture-conformance.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+  - cli
+  - store
+acceptance: 
+  scenarios: 
+    - "clean clone: frozen install + all four walkthrough scenarios + kill->resume->finish recorded with real outputs at the clone HEAD"
+    - "failure injections (architecture violation, pin violation) fail their gates with non-zero exits and are reverted"
+    - "docs/acceptance/M8.md scenario/failure sections ticked with the recorded evidence"
+  failure_cases: 
+    - "a scenario step that only passes in the main tree (clone divergence is the blocker this task hunts)"
+    - "an injection that does NOT fail its gate (a gate that cannot fail is not a gate — re-plan)"
+    - "experiments leaking into the main tree (any uncommitted main-tree change from the experiments)"
+  artifacts: 
+    - docs/acceptance/M8.md (scenario + failure sections with evidence)
+falsified_if: "The clean clone cannot complete the scenario path (frozen install failure, quickstart divergence) or a gate fails to fail on a real injected violation — either is a release blocker that must be reported and re-planned, never worked around in the clone."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk C per backlog: acceptance-run over accepted surfaces, machine acceptance on recorded evidence (M7-T003 precedent). Real-model release eval is M8-T004; non-goals/changelog/release-checklist is M8-T005; M8 milestone human acceptance follows."
