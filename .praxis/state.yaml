@@ -1,8 +1,8 @@
 schema_version: 1
 current_milestone: M6
 last_accepted_milestone: M5
-active_task: M6-T004
-development_state: ACCEPTANCE_READY
+active_task: null
+development_state: ACCEPTED
 blockers: 
   []
 open_adrs: 
@@ -15,9 +15,8 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-29
 next_legal_actions: 
-  - implement only within Task Contract scope
-  - run ai:guard
-  - run ai:verify
+  - prepare the M6 milestone acceptance record (docs/acceptance/M6.md) per the milestone-acceptance skill
+  - human/independent M6 milestone acceptance (promotion_requires_independent_or_human_acceptance)
 last_verification: 
   task: M6-T004
   at: 2026-08-30T06:54:02.340Z
