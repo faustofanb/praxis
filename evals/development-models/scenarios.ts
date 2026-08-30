@@ -84,7 +84,13 @@ export function decideToolDefinition(): ToolDefinition {
           type: "string",
           enum: [...DECIDE_ACTIONS],
           description:
-            "continue_previous_action: repeat the plan's recorded next action; investigate_further: gather evidence before deciding; propose_new_plan: replace a dead or missing plan; verify_or_reconcile_effect: check whether an unknown-effect action actually happened; resolve_open_challenge: answer an open challenge before proceeding; re_verify_with_stronger_evidence: redo a verification that was inconclusive; declare_session_complete: the goal is met and completion is legal.",
+            "continue_previous_action: the active plan is the session's plan of record and persists until falsified, superseded, or challenged — when the brief presents an active plan, repeating its recorded next action is the recorded path; " +
+            "investigate_further: gather more evidence before deciding, when the facts on file do not yet determine the path; " +
+            "propose_new_plan: replace a dead or missing plan — one invalidated by a falsified hypothesis, or no plan at all; " +
+            "verify_or_reconcile_effect: check whether an EXECUTION with unknown outcome actually happened (the brief's Pending indeterminate section) — this reconciles an action's effect and is not a re-verification; " +
+            "resolve_open_challenge: answer an open challenge before proceeding (a challenge targeting the plan, a hypothesis, or completion); " +
+            "re_verify_with_stronger_evidence: redo a VERIFICATION that recorded an inconclusive outcome (the brief's Latest verification section) — this concerns verification records, not executions; " +
+            "declare_session_complete: the goal is met, no verification is inconclusive, and nothing blocks completion — the runtime refuses completion while a completion-target challenge is open.",
         },
         rationale: {
           type: "string",

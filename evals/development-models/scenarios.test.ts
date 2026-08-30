@@ -4,6 +4,7 @@ import {
   checkExternalWriteTool,
   DECIDE_ACTIONS,
   DECIDE_TOOL_NAME,
+  type DecideAction,
   decideToolDefinition,
   PROBE_TOOL_NAME,
   SCENARIOS,
@@ -59,6 +60,41 @@ describe("epistemic eval scenario integrity", () => {
     const graded = SCENARIOS.flatMap((scenario) => scenario.expectedActions);
     for (const action of DECIDE_ACTIONS) {
       expect(graded, `no row grades "${action}" as correct`).toContain(action);
+    }
+  });
+
+  test("each clarified action anchors to its own fact surface or runtime law (M7-T013)", () => {
+    // The v1 vocabulary let every model conflate the verification family
+    // (0/5 on pending-indeterminate) and miss the plan-persistence and
+    // completion-refusal laws (0/5 healthy-plan, repeated completion bias).
+    // The descriptions must carry the anchors that separate them — facts
+    // about the vocabulary and the runtime, identical for every model.
+    const decide = decideToolDefinition();
+    const description = JSON.parse(decide.parametersJson) as {
+      properties: { action: { description: string } };
+    };
+    const text = description.properties.action.description;
+    const anchors: readonly [DecideAction, readonly string[]][] = [
+      ["continue_previous_action", ["plan of record", "persists until falsified"]],
+      [
+        "verify_or_reconcile_effect",
+        ["EXECUTION", "unknown outcome", "Pending indeterminate", "not a re-verification"],
+      ],
+      [
+        "re_verify_with_stronger_evidence",
+        ["VERIFICATION", "inconclusive", "Latest verification", "not executions"],
+      ],
+      ["declare_session_complete", ["runtime refuses completion", "completion-target challenge"]],
+      ["resolve_open_challenge", ["open challenge"]],
+      ["propose_new_plan", ["falsified", "missing"]],
+      ["investigate_further", ["evidence"]],
+    ];
+    for (const [action, needles] of anchors) {
+      const segment = text.slice(text.indexOf(`${action}:`));
+      expect(segment, `no anchor for ${action}`).toContain(action);
+      for (const needle of needles) {
+        expect(segment, `${action} missing anchor "${needle}"`).toContain(needle);
+      }
     }
   });
 
