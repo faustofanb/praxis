@@ -11,6 +11,7 @@
         "@praxis/cli": "0.0.0",
         "@praxis/contracts": "0.0.0",
         "@praxis/core": "0.0.0",
+        "@praxis/extension-telemetry": "0.0.0",
         "@praxis/provider-openai": "0.0.0",
         "@praxis/store-sqlite": "0.0.0",
         "@praxis/testkit": "0.0.0",
@@ -45,6 +46,13 @@
     },
     "packages/core": {
       "name": "@praxis/core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@praxis/contracts": "0.0.0",
+      },
+    },
+    "packages/extension-telemetry": {
+      "name": "@praxis/extension-telemetry",
       "version": "0.0.0",
       "dependencies": {
         "@praxis/contracts": "0.0.0",
@@ -247,6 +255,8 @@
     "@praxis/contracts": ["@praxis/contracts@workspace:packages/contracts"],
 
     "@praxis/core": ["@praxis/core@workspace:packages/core"],
+
+    "@praxis/extension-telemetry": ["@praxis/extension-telemetry@workspace:packages/extension-telemetry"],
 
     "@praxis/provider-openai": ["@praxis/provider-openai@workspace:packages/provider-openai"],
 
