@@ -2,19 +2,19 @@ schema_version: 1
 id: M7-T011
 title: add providerOptions passthrough for reasoning control
 milestone: M7
-status: planned
+status: accepted
 risk_class: A
 objective: "Operator-directed (2026-08-30 session): run the real-model eval baselines with HIGH thinking intensity — but thinking/reasoning params are request-body fields (zai-style thinking:{type:enabled} for zai-org/GLM-5.3; OpenAI-style reasoning_effort:'high' for gpt-5.6-luna), and there is NO path from the caller to the wire today: contracts ModelRequestSchema already declares optional providerOptions (packages/contracts/src/model/request.ts:62) and packages/provider-openai spreads it into the chat body (toChatRequestBody line 260: ...(request.providerOptions ?? {})), but runTurn constructs the request as {model, messages, tools?, correlationId} (run-turn.ts:249-254) and nothing in core ever populates providerOptions — the field is dead plumbing. Deliverable: (a) packages/core/src/agent-loop/run-turn.ts — AgentLoopDeps gains optional readonly providerOptions?: Record<string, unknown> (documented: pass-through request fields for provider capabilities like reasoning effort; never used for runtime rules — capabilities/state/completion stay independent of model self-discipline); request construction spreads it conditionally (exactOptionalPropertyTypes). Zero-change identity: absent field => request bytes identical to before. (b) tests/integration/provider-options.integration.test.ts (new) — ScriptedModelProvider captures the request: with deps.providerOptions set, the ModelRequest the provider sees carries providerOptions deep-equal; without, the field is absent (both directions pinned). (c) evals/development-models/run-eval.ts — PRAXIS_EVAL_PROVIDER_OPTIONS env (JSON object string) parsed once and set on deps, so operator runs can raise thinking intensity per gateway; README env table row. (d) backlog entry + docs tick not needed (no docs/03 row; this is eval enablement during M7 acceptance evidence gathering — recorded here and in the acceptance doc's evidence reference which will move to the final commit)."
 evidence: 
   observed: 
     - "operator directive: run baselines for zai-org/GLM-5.3 (api.commandcode.ai) and gpt-5.6-luna (cpa.sulian.org) with thinking intensity high; smoke tests verified both gateways accept their params (GLM thinking:{type:enabled} -> reasoning_content emitted; gpt-5.6-luna reasoning_effort:'high' -> reasoning_tokens counted)"
-    - "contracts ModelRequestSchema.providerOptions exists (request.ts:62) and provider-openai spreads it (toChatRequestBody:260) but core never populates it — grep over packages/core shows zero usages"
+    - contracts ModelRequestSchema.providerOptions exists (request.ts:62) and provider-openai spreads it (toChatRequestBody:260) but core never populates it — grep over packages/core shows zero usages
     - "run-turn.ts:249-254 builds the request without providerOptions; wired IS deps (line 133-136), so deps-level field flows with zero extra wiring"
   expected: 
-    - "AgentLoopDeps.providerOptions optional field + one conditional spread in request construction; no other core file touched"
+    - AgentLoopDeps.providerOptions optional field + one conditional spread in request construction; no other core file touched
     - "new integration test pins BOTH directions (present deep-equals, absent stays absent)"
-    - "run-eval.ts parses PRAXIS_EVAL_PROVIDER_OPTIONS; README documents it"
-    - "full gates green; existing tests byte-unaffected (zero-change identity)"
+    - run-eval.ts parses PRAXIS_EVAL_PROVIDER_OPTIONS; README documents it
+    - full gates green; existing tests byte-unaffected (zero-change identity)
   references: 
     - packages/contracts/src/model/request.ts
     - packages/provider-openai/src/chat-provider.ts
@@ -59,7 +59,7 @@ scope:
     - docs/**
     - AGENTS.md
   scope_notes: 
-    - "contracts and provider-openai are FORBIDDEN because they already implement their half — any edit there would be scope creep"
+    - contracts and provider-openai are FORBIDDEN because they already implement their half — any edit there would be scope creep
     - "providerOptions is request personalization (reasoning effort, thinking toggles), NOT a runtime-rule channel: capabilities, state transitions, and completion requirements must never depend on it — documented on the deps field"
     - "Zero-change identity is the regression law: absent field => byte-identical request; the integration test pins the absent direction too"
     - "BASELINE.md registration of the two upcoming high-thinking runs happens AFTER this task's acceptance, as operator evidence commits (precedent 78200e6/2f53d87)"
@@ -75,11 +75,11 @@ required_gates:
 acceptance: 
   scenarios: 
     - "integration test: deps with providerOptions => provider-visible ModelRequest.providerOptions deep-equals; deps without => field absent"
-    - "full gates green; all 59 existing test files unaffected (zero-change identity)"
-    - "eval runner accepts PRAXIS_EVAL_PROVIDER_OPTIONS JSON (harness tests still pass without it set)"
+    - full gates green; all 59 existing test files unaffected (zero-change identity)
+    - eval runner accepts PRAXIS_EVAL_PROVIDER_OPTIONS JSON (harness tests still pass without it set)
   failure_cases: 
-    - "providerOptions influencing reducer/recovery/capability behavior in any way (it must not — it rides the request only)"
-    - "the field being required or defaulted (optional + absent-means-unchanged only)"
+    - providerOptions influencing reducer/recovery/capability behavior in any way (it must not — it rides the request only)
+    - the field being required or defaulted (optional + absent-means-unchanged only)
     - "an edit to contracts/provider-openai to 'fix' the passthrough (their half already works)"
   artifacts: 
     - packages/core/src/agent-loop/run-turn.ts (deps field + spread)
