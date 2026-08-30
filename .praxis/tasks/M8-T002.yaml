@@ -2,12 +2,12 @@ schema_version: 1
 id: M8-T002
 title: finalize cli quickstart sample sessions and replay demo
 milestone: M8
-status: planned
+status: accepted
 risk_class: B
 objective: "Close the docs/03 M8 deliverable rows 'CLI quickstart' and 'sample session/replay' (M8-T002, risk B, prerequisites [M7]). Observed gap: apps/cli currently wires ONLY localReadTools (src/index.ts:276) and passes NO authorizer to runTurn — so the M8 scenario acceptance path 'clean install -> read task -> write task -> approval -> resume/fork' is impossible at the CLI layer today: there is no write task and no approval surface. The runtime pieces all exist: runTurn accepts options.authorizer (ToolAuthorizer; absent = readOnlyAuthorizer so writes are always rejected), and core exports capabilityAuthorizer({policy, now}) whose CapabilityPolicyConfig semantics are exactly the approval story — a grant allows, a capability listed in approvableCapabilities WITHOUT a grant returns requires_approval and rejects fail-closed with an explicit reason (ADR-0007: 'approval UX is an extension, and its absence must never open the gate'). Deliverable: (a) apps/cli/src/index.ts — wire localWriteTools alongside localReadTools (both bound to --root), add two flags --allow-write and --allow-bash that append the corresponding grants ({name: 'fs.write'|'shell.exec', scope {kind workspace, root}}) to a capabilityAuthorizer policy whose workspaceRoots=[root], approvableCapabilities=['fs.write','shell.exec'], leases=[], now=the CLI clock; pass that authorizer in runTurn options. Semantics: no flag => write attempts are durable ToolRejected with the requires_approval reason (honest, fail-closed); --allow-write => write_file executes. Usage text and help updated. (b) tests/cli/cli.bun.test.ts — new cases: a write task WITH --allow-write lands the file (SUCCEEDED fact + filesystem effect); WITHOUT the flag the write is rejected as a durable ToolRejected fact with the approval reason and no filesystem effect; --allow-bash grants shell.exec (one bash round-trip). (c) docs/13-cli-quickstart.md (new) — the quickstart: install (mise), a deterministic read task via --script (full script-file sample + real output excerpt), a real-model run via --model, the write task with approval semantics (default-deny shown, then --allow-write), crash/resume demo (SIGINT or killed process -> --session resume; the kill->resume->finish acceptance path), sessions listing (replay/inspection demo), and the exit-code table. Every command copy-paste runnable. (d) README.md links the quickstart. (e) docs/subsystems/cli.md — owning doc updated for the new flags/tools/authorizer wiring. (f) docs/03-project-plan.md — tick 'CLI quickstart' and 'sample session/replay'. This delivers the M8 scenario-acceptance surface; its formal acceptance run is M8-T003."
 evidence: 
   observed: 
-    - "apps/cli/src/index.ts:276 wires localReadTools only; no authorizer is passed to runTurn (defaults to readOnlyAuthorizer) — no write path at the CLI layer"
+    - apps/cli/src/index.ts:276 wires localReadTools only; no authorizer is passed to runTurn (defaults to readOnlyAuthorizer) — no write path at the CLI layer
     - "run-turn.ts:124 exposes options.authorizer (ToolAuthorizer: name/effect/argumentsJson/requiredCapability -> authorized|rejected-with-reason); core exports capabilityAuthorizer + CapabilityPolicyConfig (workspaceRoots/grants/leases/approvableCapabilities) with requires_approval rejecting fail-closed (ADR-0007)"
     - "write tools declare requiredCapability scoped to the bound root (write-tools.ts:75 fs.write, :184 shell.exec) — they register fine and are gated at authorization time"
     - "tests/cli/cli.bun.test.ts exists (bun runner) and drives main(argv, io) directly — the new flag cases extend that suite"
@@ -15,7 +15,7 @@ evidence:
     - "CLI: write tools always registered alongside read tools; --allow-write/--allow-bash append grants; capabilityAuthorizer wired into every runTurn call; help/usage updated"
     - "new bun cli tests: authorized write lands (fact + fs), unauthorized write rejected as durable ToolRejected with approval reason (no fs effect), bash round-trip under --allow-bash"
     - "docs/13-cli-quickstart.md: copy-paste-runnable quickstart incl. sample session via --script, replay/resume demo, approval demo, exit codes"
-    - "README links quickstart; docs/subsystems/cli.md updated; two docs/03 rows ticked"
+    - README links quickstart; docs/subsystems/cli.md updated; two docs/03 rows ticked
   references: 
     - apps/cli/src/index.ts
     - packages/core/src/capability/authorizer.ts
@@ -59,10 +59,10 @@ scope:
     - AGENTS.md
   scope_notes: 
     - "Default stays fail-closed: without --allow-write/--allow-bash the CLI behavior for write attempts is a durable ToolRejected fact carrying the requires_approval reason — the quickstart demos this BEFORE the allowed path"
-    - "bash is a separate flag from write (shell.exec is the wider blast radius); neither implies the other"
+    - bash is a separate flag from write (shell.exec is the wider blast radius); neither implies the other
     - "No interactive approval prompt in v1: grants are static per invocation — interactive approval UX is explicitly an extension concern (ADR-0007) and the policy's approvableCapabilities field documents what a future extension may lease"
     - "core/contracts FORBIDDEN: the entire surface already exists there"
-    - "quickstart uses --script for the deterministic walkthrough AND --model for the real-model path; no new package exports needed"
+    - quickstart uses --script for the deterministic walkthrough AND --model for the real-model path; no new package exports needed
 architecture_refs: 
   - .praxis/architecture.yaml
   - docs/07-architecture-conformance.md
@@ -76,13 +76,13 @@ required_gates:
   - build
 acceptance: 
   scenarios: 
-    - "bun cli suite green incl. the three new authorization cases (authorized write lands; unauthorized write durable-rejected with approval reason; bash round-trip)"
-    - "quickstart commands reproduce end-to-end on a clean temp dir (script-based walkthrough) — verified before commit"
+    - bun cli suite green incl. the three new authorization cases (authorized write lands; unauthorized write durable-rejected with approval reason; bash round-trip)
+    - quickstart commands reproduce end-to-end on a clean temp dir (script-based walkthrough) — verified before commit
     - "docs/03 rows 'CLI quickstart' and 'sample session/replay' ticked; cli.md owning doc current"
   failure_cases: 
-    - "a flag that grants silently beyond its name (--allow-write must not touch shell.exec and vice versa)"
-    - "write attempts that vanish without a durable rejection fact when unauthorized"
-    - "an authorizer that bypasses the workspace scope check (root escapes deny outright)"
+    - a flag that grants silently beyond its name (--allow-write must not touch shell.exec and vice versa)
+    - write attempts that vanish without a durable rejection fact when unauthorized
+    - an authorizer that bypasses the workspace scope check (root escapes deny outright)
   artifacts: 
     - apps/cli/src/index.ts (write tools + authorizer wiring + flags)
     - tests/cli/cli.bun.test.ts (3 new cases)
