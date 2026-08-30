@@ -364,7 +364,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [ ] Knip zero unexpected findings；
 - [ ] memory/context growth report；
 - [ ] SQLite corruption/recovery policy documented；
-- [ ] dependency license inventory；
+- [x] dependency license inventory（M7-T004：`docs/09-dependency-inventory.md` 事实表——11 个外部直接依赖（唯一运行时 zod + 10 个 dev 工具链项）逐一记录许可@pinned 版本/用途/维护态势/失败影响/移除成本；`tests/dependency-inventory.test.ts` 漂移守卫——manifest↔清单双向集合相等、版本+许可与 node_modules pinned 安装逐项相等（升级改许可字段即暴露）、许可全部在宽松允许清单内（MIT/ISC/Apache-2.0，copyleft 入树须先 ADR）；法则仍以 AGENTS.md 为家，精确锁定/方向仍由 boundaries.test.ts 管）；
 - [ ] Bun 1.4 compatibility branch test（不自动升级）。
 
 ### Exit Criteria
