@@ -221,6 +221,11 @@ milestones:
       title: document the sqlite corruption and recovery policy
       prerequisites: [M5]
       risk_class: A
+    - id: M7-T009
+      order: 90
+      title: add bun 1.4 compatibility branch test
+      prerequisites: [M7-T003]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10

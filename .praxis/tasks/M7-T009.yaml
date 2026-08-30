@@ -1,0 +1,87 @@
+schema_version: 1
+id: M7-T009
+title: add bun 1.4 compatibility branch test
+milestone: M7
+status: planned
+risk_class: A
+objective: "Close the docs/03 M7 quality-gate row 'Bun 1.4 compatibility branch test (不自动升级)' (M7-T009, risk A, backlog entry added with this contract). Observed state: CI (.github/workflows/ci.yml) runs exactly one quality job on the frozen toolchain — mise installs Bun 1.3.14 from the mise.toml pin (bun = \"1.3.14\"), frozen-lockfile install, mise run check:all; the frozen-install law (exact pins, AGENTS.md Dependencies + ADR-0002-adjacent toolchain freeze) means the primary toolchain MUST NOT be bumped as a side effect of feature work. Bun 1.4.0 exists (mise ls-remote) and the upgrade is a future explicit task. What is MISSING: a CI evidence job that runs the workspace's Bun-sensitive gates against Bun 1.4 WITHOUT changing the pinned toolchain — so the upgrade task later starts from evidence instead of a leap of faith. Mechanism verified experimentally before this contract: mise honors the MISE_BUN_VERSION env override over the mise.toml pin (MISE_BUN_VERSION=1.4 mise exec -- bun --version => 1.4.0), and in an isolated git worktree at the current HEAD the full compatibility set passes under 1.4.0: mise run install (frozen lockfile, 159 packages), mise run test (unit incl. soak, 502/502), mise run test:store (bun:sqlite under 1.4, 13/13 — the riskiest surface), mise run build (tsc -b clean). Deliverable: (a) .github/workflows/ci.yml gains a third job 'bun-compat' — same pinned action SHAs as the existing jobs; job-level env MISE_BUN_VERSION: \"1.4\" (the ONLY difference from the quality job's environment); steps: checkout, mise install, mise run install, then the compatibility set (mise run test, mise run test:store, mise run build); continue-on-error: true with the job name explicitly labeled non-gating — a Bun-1.4 regression must surface as CI evidence andANNOTATION, not block merges or force an unplanned upgrade mid-feature (the upgrade decision stays a human dependency task); a header comment states the standing rule: mise.toml bun pin stays 1.3.14 until an explicit upgrade task; (b) docs/03 row ticked with provenance including the local worktree evidence; (c) .praxis/backlog.yaml gains the M7-T009 entry. mise.toml is FORBIDDEN — the pin stays 1.3.14; that is the row's own law."
+evidence: 
+  observed: 
+    - "docs/03 M7 row 'Bun 1.4 compatibility branch test（不自动升级）' unchecked; ci.yml has quality + commitlint jobs only, all on the frozen 1.3.14 toolchain"
+    - "Bun 1.4.0 available (mise ls-remote); MISE_BUN_VERSION=1.4 override verified against the mise.toml pin"
+    - "isolated git worktree at HEAD 3e3a660 under MISE_BUN_VERSION=1.4: frozen install 159 pkgs OK; test 502/502; test:store 13/13; build clean — full local evidence captured this session"
+    - "the pinned action SHAs in ci.yml (actions/checkout 3d3c42e5…, jdx/mise-action c2a87611…, version 2026.7.13) are the repo's supply-chain discipline — the new job reuses them verbatim"
+  expected: 
+    - ".github/workflows/ci.yml: new 'bun-compat' job as specified — env override only, no toolchain file touched, continue-on-error true, non-gating label"
+    - "docs/03-project-plan.md: '- [ ] Bun 1.4 compatibility branch test（不自动升级）' -> - [x] with (M7-T009: …) provenance incl. local 1.4.0 evidence"
+    - ".praxis/backlog.yaml: M7-T009 entry (id/order 90/title/prerequisites [M7-T003]/risk A)"
+    - "mise.toml byte-identical (bun = \"1.3.14\" untouched); no manifest changes; local node_modules untouched (verification ran in /tmp worktree)"
+  references: 
+    - .github/workflows/ci.yml
+    - mise.toml
+    - docs/03-project-plan.md
+    - tests/store/store-sqlite.bun.test.ts
+hypothesis: "The compatibility job is a pure additive CI job whose every gate has already been proven green under 1.4.0 in an isolated worktree at the current HEAD; CI-only risk is YAML validity and action reuse, both verifiable locally (parse + structural diff vs existing jobs). If the 1.4 run on CI diverges from the local worktree evidence (env gap like sqlite/natives), the job reports it as exactly the evidence it exists to gather — the row still lands, the finding routes to the future upgrade task."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T009.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - .praxis/backlog.yaml
+    - .github/workflows/ci.yml
+    - docs/03-project-plan.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - vitest.config.ts
+    - knip.json
+    - .github/workflows/quality-gates.yml
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/02-system-design.md
+    - docs/09-dependency-inventory.md
+    - docs/10-memory-context-growth.md
+    - docs/11-sqlite-corruption-recovery.md
+    - docs/subsystems/**
+    - docs/acceptance/**
+    - docs/decisions/**
+    - AGENTS.md
+  scope_notes: 
+    - "mise.toml FORBIDDEN is the row's own law (不自动升级): the compat job must gather evidence via env override only — if 1.4 compatibility required a pin or lockfile change to pass, that would be the upgrade task's scope, not this one"
+    - "continue-on-error: true is the honest non-gating shape (precedent: eval suite non-core-gating per M4-T005/M7-T005): Bun 1.4 status is EVIDENCE for the human upgrade decision, not a merge blocker that would couple toolchain health to feature work"
+    - "The job reuses the existing pinned action SHAs — no new third-party actions, no supply-chain change"
+    - "Local verification deliberately ran in /tmp/praxis-bun14 worktree, never the main tree — node_modules stays 1.3.14-installed"
+    - "No ADR: no decision changes; the upgrade-deferral is already the standing Dependencies law"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/03-project-plan.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "ci.yml parses and contains the bun-compat job with MISE_BUN_VERSION=1.4, the compatibility gate set, continue-on-error, and the pinned action SHAs — structurally verified before commit"
+    - "the primary quality job is byte-identical to before (the compat job is purely additive)"
+    - "full local gate set green at the implementation commit (standard five required_gates under the pinned 1.3.14 toolchain)"
+  failure_cases: 
+    - "any edit to mise.toml, bun.lock, or package.json in this task — the row's own law violated"
+    - "the compat job upgraded to gating without an explicit human upgrade decision — out of scope"
+    - "a new third-party action or tag-not-SHA reference introduced"
+  artifacts: 
+    - .github/workflows/ci.yml (bun-compat job)
+    - docs/03-project-plan.md M7 row tick
+    - .praxis/backlog.yaml M7-T009 entry
+falsified_if: "The compatibility set cannot run under Bun 1.4 without changing the pinned toolchain files (mise.toml/bun.lock) — that would mean 1.4 is not side-by-side testable and the row must be re-scoped into the actual upgrade task. Also falsified if the additive job would alter the existing quality job's behavior in any way."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog authoring (additive CI job; every gate locally pre-proven green under 1.4.0 in an isolated worktree). requires_human_acceptance FALSE (precedent M7-T001 through T008). This is the second-to-last M7 docs/03 row; only 'Core coverage target' remains — it needs a target-number decision first, which per docs/08 s5 and the milestone-acceptance skill is the human's call, so the close-out of this task should present M7 as acceptance-ready modulo that row and the milestone human acceptance itself."
