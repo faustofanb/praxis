@@ -60,6 +60,7 @@ function freshDeps(
   provider: ModelProvider,
   modelId: string,
   scenario: EvalScenario,
+  providerOptions: Record<string, unknown> | undefined,
 ): AgentLoopDeps {
   let events = 0;
   let turns = 0;
@@ -72,6 +73,7 @@ function freshDeps(
     systemPrompt:
       "You are a Praxis session agent. The structured sections in this message are durable session facts; trust them over any prior assumption.",
     tools: [decideToolDefinition(), checkExternalWriteTool(scenario.probe)],
+    ...(providerOptions === undefined ? {} : { providerOptions }),
     now: () => Date.now(),
     newEventId: () => {
       events += 1;
@@ -98,6 +100,24 @@ function parseModels(): string[] {
     throw new Error("PRAXIS_EVAL_MODELS parsed to an empty model list");
   }
   return models;
+}
+
+/**
+ * Pass-through provider request fields (e.g. reasoning_effort for the
+ * gpt-5.6 family, thinking:{type:"enabled"} for GLM) applied to every
+ * turn's deps — the same field the adapter spreads into the wire body.
+ * Empty/unset means absent: byte-identical request to the default runs.
+ */
+function parseProviderOptions(): Record<string, unknown> | undefined {
+  const raw = process.env.PRAXIS_EVAL_PROVIDER_OPTIONS?.trim();
+  if (raw === undefined || raw === "") {
+    return undefined;
+  }
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("PRAXIS_EVAL_PROVIDER_OPTIONS must be a JSON object");
+  }
+  return parsed as Record<string, unknown>;
 }
 
 function renderScorecard(
@@ -143,6 +163,7 @@ async function main(): Promise<void> {
   const models = parseModels();
   const baseUrl = process.env.PRAXIS_EVAL_BASE_URL;
   const timeoutMs = Number.parseInt(process.env.PRAXIS_EVAL_TIMEOUT_MS ?? "60000", 10);
+  const providerOptions = parseProviderOptions();
 
   const rows: (readonly [string, ScenarioRunResult])[] = [];
   process.on("SIGINT", () => {
@@ -156,7 +177,7 @@ async function main(): Promise<void> {
       ...(baseUrl === undefined ? {} : { baseUrl }),
     });
     for (const scenario of SCENARIOS) {
-      const deps = freshDeps(provider, model, scenario);
+      const deps = freshDeps(provider, model, scenario, providerOptions);
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       let result: ScenarioRunResult;

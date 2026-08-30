@@ -26,6 +26,7 @@ OPENAI_API_KEY=... bun evals/development-models/run-eval.ts
 | `PRAXIS_EVAL_MODELS` | `gpt-4o-mini` | 逗号分隔模型列表（对比就是多模型同题） |
 | `PRAXIS_EVAL_BASE_URL` | — | 任意 OpenAI 兼容端点（vLLM/Ollama/OpenRouter/DeepSeek…） |
 | `PRAXIS_EVAL_TIMEOUT_MS` | `60000` | 单场景超时（abort 后该场景按 fail 记录） |
+| `PRAXIS_EVAL_PROVIDER_OPTIONS` | — | JSON 对象，透传进每个请求体（providerOptions）——如 `{"reasoning_effort":"high"}`（gpt-5.6 系）或 `{"thinking":{"type":"enabled"}}`（GLM）；未设置 = 不发该字段 |
 
 输出：逐行 PASS/FAIL + `evals/development-models/results/eval-<timestamp>.md`
 记分卡（场景 × 模型，含模型给出的 rationale）。n=1/场景/模型——证据不是基准。

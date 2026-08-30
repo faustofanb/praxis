@@ -63,6 +63,14 @@ export type AgentLoopDeps = {
   readonly newToolExecutionId: () => ToolExecutionId;
   readonly actor?: EventActor;
   /**
+   * Pass-through provider request fields (e.g. reasoning effort, thinking
+   * toggles), spread into the wire body by the adapter. Request
+   * personalization ONLY: runtime rules (capabilities, state transitions,
+   * completion requirements) never depend on it. Absent means a
+   * byte-identical request.
+   */
+  readonly providerOptions?: Record<string, unknown>;
+  /**
    * Extension host (docs/02 section 19, ADR-0013). Absent or empty means
    * byte-identical behavior to an extension-free loop (zero-extension
    * identity). The host instance is caller-owned; Core keeps no module
@@ -251,6 +259,7 @@ export async function runTurn(
       messages: [...messages],
       ...(tools.length === 0 ? {} : { tools: [...tools] }),
       correlationId: wired.sessionId,
+      ...(wired.providerOptions === undefined ? {} : { providerOptions: wired.providerOptions }),
     };
 
     state = await appendEvent(wired, {
