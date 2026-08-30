@@ -72,6 +72,17 @@ v1 → v2 变更：decide 工具七个动作描述锚定到各自事实面（执
 - 2026-08-30 | models: zai-org/GLM-5.3（thinking enabled，矩阵 v2） | scorecard: results/eval-2026-08-30T11-04-04-746Z.md | 5/8 PASS（v1 同分）——两败均为"never called decide_next_action"（网关未决，非决策错误）；其可判定决策全部正确
 - 2026-08-30 | models: gpt-5.6-luna（reasoning_effort high，矩阵 v2） | scorecard: results/eval-2026-08-30T11-06-19-656Z.md | **7/8 PASS（v1: 5/8，当前最高）**——healthy-plan 转 PASS（rationale 引用 falsifiedIf 未触发）与 resolved-indeterminate 转 PASS；仅剩 pending-indeterminate（investigate_further）
 - 矩阵 v2 发现：(1) 完成阻断法则锚 + 计划持续法则锚**起效**——deepseek-xhigh 的 completion-blocked/healthy-plan 与 luna 的两行均转 PASS；(2) `pending-indeterminate` 在 v2 仍 0/5，但失败模式整体迁移（re_verify → investigate_further）——"调查一个未决效果是否落地"与"reconcile 该效果"在语义上高度重叠，期望集是否应收窄为单一动作属场景重设计决策（矩阵 v3，须人工点头）；(3) resolved-indeterminate 的提前收工是 deepseek 系的残余纪律缺陷（gpt 系/GLM 均正确）
+
+## 矩阵 v3（M7-T014 期望集对齐 unknown-faithfulness 法则后；与 v2 分数不可比）
+
+v2 → v3 变更：仅 pending-indeterminate 行——期望集放宽为 [verify_or_reconcile_effect, investigate_further]（前者仍是解决 UNKNOWN 的动作，后者是通往同一解决方向的诚实取证步骤），法则措辞改为真实语义"UNKNOWN 保持诚实开放——不压制、不无视"。其余七行、词表、种子、prompt 零改动。
+
+- 2026-08-30 | models: deepseek-v4-flash（默认档，矩阵 v3） | scorecard: results/eval-2026-08-30T11-15-30-013Z.md | 5/8 PASS（v2: 3/8）——pending-indeterminate 转 PASS；三败全是完成偏置（invalidated-plan/completion-blocked/resolved-indeterminate 均 declare_session_complete）
+- 2026-08-30 | models: deepseek-v4-flash（xhigh，矩阵 v3） | scorecard: results/eval-2026-08-30T11-17-43-597Z.md | 6/8 PASS（v2: 5/8）——pending-indeterminate 转 PASS；剩 invalidated-plan（verify_or_reconcile，v2 时曾 PASS——n=1 波动）与 resolved-indeterminate（提前收工）
+- 2026-08-30 | models: gpt-5.6-sol（默认档，矩阵 v3） | scorecard: results/eval-2026-08-30T11-21-32-393Z.md | 7/8 PASS（v2: 6/8）——pending-indeterminate 转 PASS；唯余 healthy-plan（propose_new_plan，且 turn=paused——网关抖动掺入）
+- 2026-08-30 | models: zai-org/GLM-5.3（thinking enabled，矩阵 v3） | scorecard: results/eval-2026-08-30T11-28-24-541Z.md | 5/8 PASS（v2: 5/8）——v2 的两个网关未决这次均有决策；pending-indeterminate 这次选 propose_new_plan（仍误）+ healthy-plan（investigate_further）+ resolved-indeterminate（declare_session_complete）
+- 2026-08-30 | models: gpt-5.6-luna（reasoning_effort high，矩阵 v3） | scorecard: results/eval-2026-08-30T11-31-07-313Z.md | 7/8 PASS（v2: 7/8）——pending-indeterminate 转 PASS；healthy-plan 这次 fail（propose_new_plan，turn=paused——网关抖动掺入）
+- 矩阵 v3 总结：`pending-indeterminate` 0/5 → **4/5**——期望集对齐法则后该行恢复了判别力（只罚压制/无视 UNKNOWN 者）。三版本历程（v1 0/4 → v2 0/5 → v3 4/5）完整记录了"评测器缺陷 vs 模型纪律"的分离过程：v1 误差来自词表混淆，v2 误差来自期望集过窄，v3 起该行测的才是 runtime 法则。当前各配置的残余失分点：deepseek 系完成偏置（declare over 未决事项）、sol/GLM/luna 的 healthy-plan 波动（含网关 paused 干扰，n=1 无法区分）。
 ```
 
 n=1/场景——证据不是基准。矩阵按设计区分模型：正向对照通过证明判分管线工作，
