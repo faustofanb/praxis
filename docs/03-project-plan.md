@@ -358,8 +358,8 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 
 - [ ] Core branch/statement coverage target；
 - [x] fast-check state machine suite（M7-T001：`tests/property/state-machine.property.test.ts` + 独立影子模型 `tests/helpers/full-vocabulary-machine.ts`——全词汇表模型一致性/前缀结构不变量/任意切分点恢复恒等/前置条件违例拒绝/终态吸收）；
-- [ ] fault injection suite；
-- [ ] security bypass suite；
+- [x] fault injection suite（M7-T002：`tests/fault/provider-adapter.fault.test.ts` 补齐 provider 故障边界——中途断连**逃逸后**禁重试（修复 P0：重试重放流致 durable text 翻倍与幽灵 tool call）、退避中 abort、retryable→非 retryable 降级、真实 runTurn 端到端诚实失败；既有 §17 崩溃矩阵/agent-loop/tool-runtime/extension 故障套件见各 owning docs）；
+- [x] security bypass suite（M7-T002：`tests/security/secret-confinement.security.test.ts` 钉死 §18 密钥禁锢——Authorization 头唯一在途位置，wire body/durable 事件/模型消息全图深搜零泄漏；既有 capability/extension/bash 对抗套件见各 owning docs）；
 - [ ] soak 10k+ synthetic turns；
 - [ ] Knip zero unexpected findings；
 - [ ] memory/context growth report；

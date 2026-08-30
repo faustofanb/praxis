@@ -102,6 +102,10 @@ export class OpenAIChatProvider implements ModelProvider {
    * Drive one attempt at a time so a retryable failure can discard the
    * attempt (releasing its response body) and start over; events of a
    * successful attempt are forwarded as they arrive, never buffered.
+   * Discarding is only honest while nothing has escaped to the consumer:
+   * once any event is delivered, the stream can never be replayed without
+   * the consumer assembling events of two attempts, so the failure is
+   * surfaced instead of retried.
    */
   private async *streamWithRetry(
     request: ModelRequest,
@@ -110,6 +114,7 @@ export class OpenAIChatProvider implements ModelProvider {
     for (let attempt = 0; ; attempt += 1) {
       const iterator = this.attemptOnce(request, signal);
       let mustRetry = false;
+      let escaped = false;
       for (;;) {
         const result = await iterator.next();
         if (result.done) {
@@ -119,6 +124,7 @@ export class OpenAIChatProvider implements ModelProvider {
         if (
           event.type === "providerError" &&
           event.error.retryable &&
+          !escaped &&
           attempt < this.maxRetries &&
           !signal.aborted
         ) {
@@ -126,6 +132,7 @@ export class OpenAIChatProvider implements ModelProvider {
           break;
         }
         yield event;
+        escaped = true;
         if (event.type === "providerError" || event.type === "completed") {
           return;
         }

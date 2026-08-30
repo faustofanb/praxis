@@ -44,6 +44,7 @@ Responses adapter 未来可在同一 Port 后新增（ADR-0010 revisit trigger �
 | 坏 JSON / wire schema 不符 / 缺 finish_reason | unknown | 否 |
 
 - retryable 失败由 adapter 重试（默认 `maxRetries: 2`，退避 `initialRetryDelayMs * 2^attempt`，默认 500ms 起），重试期间**调用方 abort 优先**（静默结束）；
+- **逃逸法则（M7-T002，docs/02 §10）**：retry 只发生在本次尝试尚未向消费者转发任何事件之前；一旦有任何事件（textDelta/toolCallStart/…）逃逸，retryable 失败也如实上抛为一次终态 `providerError`——重放流会让消费者把两次尝试的事件拼进同一逻辑响应（durable text 翻倍、半构建 tool call 泄漏为幽灵调用，均为 P0 状态失真；`tests/fault/provider-adapter.fault.test.ts` 钉死）；
 - 非 retryable 直接上抛为一次终态 `providerError` 事件，消费者永远不会被 throw；
 - `fetch`/`sleep` 可注入（`FetchLike`），全部测试确定性离线。
 
@@ -63,4 +64,6 @@ Responses adapter 未来可在同一 Port 后新增（ADR-0010 revisit trigger �
 ## 测试与门
 
 - 单元（vitest/Node）：`tests/provider-openai/chat-provider.test.ts`，16 用例——请求体映射、事件顺序、双工具并行、finish_reason 三值+越界、HTTP 状态分类、429 重试一次、5xx 退避耗尽、network 重试、超时、预取消/中流取消静默、malformed SSE、缺 finish_reason、构造参数校验。入 `test:unit` 门。
+- 故障（vitest/Node）：`tests/fault/provider-adapter.fault.test.ts`（M7-T002：中途断连**逃逸后**不再重试——已交付 textDelta / 半构建 tool call 后的 mid-body reset 只上抛一次终态 providerError、fetch 恰一次；退避睡眠中 abort 静默收口且无下一次尝试；429→401 降级即停；真实 runTurn 端到端——每请求恰一次 fetch、三次后 core 连败守卫暂停 turn、零 `ModelResponseCompleted`、partial 文本从不进入任何 durable payload）。入 `test:fault` 门。
+- 安全（vitest/Node）：`tests/security/secret-confinement.security.test.ts`（M7-T002：§18 密钥禁锢——key 只出现在 Authorization 头（对照断言证明 key 真实在途），wire body、整段 durable 事件流、模型消息（模型上下文的 wire 投影）全图深搜零命中）。入 `test:security` 门。
 - CLI 端到端（Bun）：`tests/cli/cli.bun.test.ts` 新增 3 例——`--model`+`--script` 互斥、缺 key 拒绝、本地 `Bun.serve` 假端点跑通 read_file 竖切（含 Bearer 校验与两次模型请求断言）。入 `test:cli` 门。

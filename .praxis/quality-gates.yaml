@@ -132,6 +132,8 @@ rules:
   require:
   - unit
   - integration
+  - fault
+  - security
 - id: dependencies
   match:
   - package.json

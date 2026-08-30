@@ -708,7 +708,7 @@ type ModelProvider = {
 原则：
 
 - Core 不解析 provider-specific raw response；
-- adapter 负责 provider retry，Core 只处理规范化失败；
+- adapter 负责 provider retry，Core 只处理规范化失败；retry 只允许在本次尝试尚未向消费者转发任何事件之前——一旦有事件逃逸，失败如实上抛为终态 providerError，绝不重放流（消费者会拼装两次尝试的事件）；
 - Provider API error 不自动等于 Session failure；根据错误种类决定 retry/暂停。
 
 ---
