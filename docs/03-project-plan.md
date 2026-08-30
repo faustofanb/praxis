@@ -382,11 +382,11 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [x] subsystem docs（M8-T001：九个子系统文档全部落地且随任务维护；`docs/subsystems/README.md` 索引终化——清除过时的"进行中 M2/M6"标注，改为每包一句话并链接 docs/12 全景）；
 - [x] API docs（M8-T001：docs/12 §3 公共 API 面逐包成文——自各包 `src/index.ts` 读出并核对（contracts/core/provider-openai/store-sqlite/tools-local/testkit/extensions/cli），描述性记录附阅读日期，机械 drift guard 留作后续可选）；
 - [x] sample session/replay（M8-T002：quickstart 内嵌完整示例会话——`--script` 确定性会话含逐条 durable 事件流（即重放面），`--session` 续跑即崩溃恢复重放（kill→resume→finish 路径，§17 编排自动处理悬挂执行），`sessions` 会话检视；形式化场景验收（clean install→read→write→approval→resume）归 M8-T003）；
-- [ ] threat/limitation document；
-- [ ] release checklist；
-- [ ] v1 non-goals locked；
+- [x] threat/limitation document（M8-T005：`docs/15-threats-and-limitations.md`——六威胁×缓解证据（全部链接测试/法则）+ 十条限制如实陈述（bash 无 OS 沙箱、n=1 eval、deepseek 完成偏置等）；矛盾即漂移以证据为准）；
+- [x] release checklist（M8-T005：`docs/14-release-checklist.md`——机器门/场景故障验收/发布基线/维护合规/非目标冻结逐项 @ HEAD 勾选 + release-day 人工项保持未勾）；
+- [x] v1 non-goals locked（M8-T005：docs/02 §1.1 九项非目标 **LOCKED for v1**——`docs/14` §5 冻结声明链接权威，违反即 ADR）；
 - [x] benchmark/eval baseline（M8-T004：冻结矩阵 v3 于 RC HEAD 重跑五配置——gpt-5.6-sol/luna 7/8 稳定并列第一、GLM 5/8、deepseek 默认/xhigh 各 4/8（完成偏置跨时间点复现，不宜无人监督自主）；与 M7 矩阵 v3 段构成两时间点方差对照，10 份 scorecard 存档；`BASELINE.md` "v1 release baseline" 节 + `docs/acceptance/M8.md`）；
-- [ ] changelog。
+- [x] changelog（M8-T005：`CHANGELOG.md` 里程碑级 M0→M8 汇总，任务证据链在 handoffs）。
 
 ### v1 RC Acceptance
 
