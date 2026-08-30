@@ -133,6 +133,12 @@ eval**：同一组 M4 认识论场景（plan 失效、completion 阻断、中途
 场景表见 `evals/development-models/README.md`（non-core-gating：证据工具，不进
 check 链）。本节任务集（A–E）是其后的开发模型评测轴。
 
+M7-T005 将该轴形式化为**正式矩阵**：8 行场景（补齐正向对照 healthy-plan /
+completion-legal 与 reconciliation 终态、plan-target 质询两条法则），每行钉死
+`law` 引用，覆盖全部 7 个决策词表动作；矩阵定义、运行协议、判分规则与基线状态
+以 `evals/development-models/BASELINE.md` 为家（真实模型跑分仍为操作员动作，
+不作为机器门）。
+
 不测试模型背算法题，而测试本项目真正需要的工作。
 
 ## 3.1 任务集

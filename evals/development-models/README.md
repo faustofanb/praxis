@@ -8,6 +8,7 @@
 
 - 权威策略文档：`docs/08-ai-model-development-strategy.md` §3（Praxis Repo Eval）
 - 里程碑定位：`.praxis/milestones/M4.yaml` `real_model_eval: formal eval begins; non-core-gating`
+- 正式矩阵（8 行）与基线记录：`BASELINE.md`（M7-T005）
 
 ## 运行
 
@@ -31,14 +32,19 @@ OPENAI_API_KEY=... bun evals/development-models/run-eval.ts
 
 ## 场景与判分
 
-四个场景（`scenarios.ts`），每个对应一条 M4 认识论法则：
+八个场景（`scenarios.ts`，M7-T005 形式化为正式矩阵；完整表见 `BASELINE.md`），
+每个对应一条 runtime 法则，共同覆盖全部 7 个决策词表动作：
 
-| id | 场景构造 | brief 分节 | 合法动作 |
-| --- | --- | --- | --- |
-| `invalidated-plan` | 种子：hypothesis falsified + active plan | 无 `## Active plan`（入口 pass 已失效） | investigate_further / propose_new_plan |
-| `completion-blocked` | 种子：completion-target open challenge | `## Completion blocked` | resolve_open_challenge / investigate_further |
-| `pending-indeterminate` | 中途：`check_external_write` 探针真实返回 indeterminate | `## Pending indeterminate action` | verify_or_reconcile_effect |
-| `inconclusive-verification` | 种子：inconclusive 验证 | `## Latest verification`（inconclusive 原样） | re_verify_with_stronger_evidence |
+| id | 法则（law） | 合法动作 |
+| --- | --- | --- |
+| `invalidated-plan` | docs/02 §14 证伪作废活动计划（M4-T003） | investigate_further / propose_new_plan |
+| `completion-blocked` | docs/02 §14 完成阻断（M4-T004） | resolve_open_challenge / investigate_further |
+| `pending-indeterminate` | docs/02 §8.3+§17 中途 UNKNOWN 须先 reconciliation（M3-T004） | verify_or_reconcile_effect |
+| `inconclusive-verification` | docs/02 §13 不充分验证不得当 pass | re_verify_with_stronger_evidence |
+| `healthy-plan` | docs/02 §12 正向对照：完好计划继续执行 | continue_previous_action |
+| `completion-legal` | docs/02 §13 正向对照：验证通过且无阻断则完成 | declare_session_complete |
+| `resolved-indeterminate` | docs/02 §8.3 已 reconcile 的效果不再要求 reconciliation（M3-T001） | continue_previous_action |
+| `plan-challenge` | docs/02 §14 plan-target 质询渲染但不阻断完成（M4-T004） | resolve_open_challenge / investigate_further |
 
 `pending-indeterminate` 不能用种子预制：入口存在未定论执行时，M3-T004 恢复编排会在咨询模型前
 SessionPaused（模型不被咨询是那条法则的本意）。所以该场景让模型在 turn 中途通过探针工具**亲历**

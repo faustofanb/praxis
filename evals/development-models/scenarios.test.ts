@@ -17,7 +17,7 @@ import {
  */
 
 describe("epistemic eval scenario integrity", () => {
-  test("scenarios are unique and cover the four M4 laws", () => {
+  test("scenarios are unique and form the 8-row formal matrix (M7-T005)", () => {
     const ids = SCENARIOS.map((scenario) => scenario.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([
@@ -25,6 +25,10 @@ describe("epistemic eval scenario integrity", () => {
       "completion-blocked",
       "pending-indeterminate",
       "inconclusive-verification",
+      "healthy-plan",
+      "completion-legal",
+      "resolved-indeterminate",
+      "plan-challenge",
     ]);
   });
 
@@ -39,6 +43,24 @@ describe("epistemic eval scenario integrity", () => {
       expect(scenario.prompt).toContain("decide_next_action");
     });
   }
+
+  test("every row cites the runtime law it evaluates (owning docs/02 section)", () => {
+    for (const scenario of SCENARIOS) {
+      expect(scenario.law.length).toBeGreaterThan(0);
+      expect(scenario.law).toContain("docs/02");
+    }
+  });
+
+  test("the matrix grades every word of the decision vocabulary", () => {
+    // Both directions: each graded action is in the vocabulary (asserted
+    // per scenario above), and each vocabulary word is the CORRECT answer
+    // somewhere — otherwise the matrix has a blind spot a cautious or
+    // complacent model could exploit without ever being caught.
+    const graded = SCENARIOS.flatMap((scenario) => scenario.expectedActions);
+    for (const action of DECIDE_ACTIONS) {
+      expect(graded, `no row grades "${action}" as correct`).toContain(action);
+    }
+  });
 
   test("tool definitions pass registration validation", () => {
     // The probe's two behaviors share one name — a real deps registers
