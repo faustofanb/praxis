@@ -1,0 +1,84 @@
+schema_version: 1
+id: M7-T014
+title: align the pending-indeterminate expected set with the unknown-faithfulness law
+milestone: M7
+status: planned
+risk_class: A
+objective: "Operator-approved matrix v3 (2026-08-30 '继续' on the v2 finding). The pending-indeterminate row has failed every model on both vocabulary versions — but the FAILURE MODE MIGRATED when the vocabulary was sharpened (v1: re_verify_with_stronger_evidence x4; v2: investigate_further x4), which isolates the defect to the row's expected set, not the models: models that see an unknown-effect execution choose to gather evidence about it, and 'investigating whether the external write landed' is semantically the FIRST STEP OF RECONCILIATION itself — the runtime law being graded (docs/02 s8.3 + s17) is 'the UNKNOWN stays open and honest — never coerced, never ignored', not 'the model must utter one specific verb'. A single-action expected set graded vocabulary-mapping skill instead of law adherence. Deliverable (eval-only, matrix v3): (a) evals/development-models/scenarios.ts — pending-indeterminate row: expectedActions widened to [verify_or_reconcile_effect, investigate_further] (verify_or_reconcile stays FIRST: it is the action that actually resolves the UNKNOWN; investigate_further is admitted as the honest evidence-gathering step toward the same resolution), and the row's law field reworded to the true graded law: 'an honest UNKNOWN must stay open until resolved through reconciliation — never coerced to success/failure, never ignored (M3-T004)'; what remains GRADED-FAILING on this row is exactly the failure the runtime guards against: declaring completion over an unresolved effect, or continuing as if it did not exist (the completion-bias models still fail here — deepseek default declared on nearby rows). (b) evals/development-models/README.md — the scenario table row's legal actions updated to match. (c) scenarios.test.ts needs NO change (integrity loop covers membership; the pinned id-order test does not pin expected sets). Seeds, prompts, brief markers, decide vocabulary, and all other rows unchanged. After acceptance: matrix v3 re-baseline of all five configurations registered in BASELINE.md with the comparability break; docs/acceptance/M7.md updated. This closes the last open eval-design finding — both 0/5 rows of v1 now grade the actual runtime laws."
+evidence: 
+  observed: 
+    - "v1 (4 configs): pending-indeterminate failed as re_verify_with_stronger_evidence x4; v2 (5 configs): failed as investigate_further x4 + 1 gateway no-decision — same row, migrating wrong-answer, models converging on 'investigate the unresolved effect' once the vocabulary stopped conflating it with re-verification"
+    - "the row's single-action expected set [verify_or_reconcile_effect] grades verb-matching; the runtime law it is supposed to grade is unknown-faithfulness (s8.3: never coerce; s17: reconcile or escalate, never guess)"
+    - "the model already LIVED one failed check mid-turn (the probe returned indeterminate) — 'verify_or_reconcile' from the model seat means triggering the structured reconciliation path, while 'investigate further' means gathering evidence toward the same resolution; both keep the UNKNOWN open"
+    - "operator authorization: '继续' on the v2 report whose closing finding read '期望集是否应收窄为单一动作属场景重设计决策（矩阵 v3，须人工点头）'"
+  expected: 
+    - "scenarios.ts: pending-indeterminate expectedActions = [verify_or_reconcile_effect, investigate_further]; law field reworded to unknown-faithfulness; every other row byte-unchanged"
+    - "README.md scenario table row updated"
+    - "unit gate green (grader/harness suites unaffected — harness tests use expectedActions[0] which stays verify_or_reconcile_effect)"
+    - "after acceptance: five v3 re-run registrations in BASELINE.md (comparability break recorded); M7.md real-model section updated"
+  references: 
+    - evals/development-models/scenarios.ts
+    - evals/development-models/README.md
+    - evals/development-models/BASELINE.md
+    - docs/02-system-design.md
+    - docs/acceptance/M7.md
+hypothesis: "The row's uniform failures were an expected-set artifact: once the graded law is 'keep the UNKNOWN open and honest', the models' stable investigate_further answer is law-adherent and the row discriminates against exactly what the runtime guards (coercion/ignoring). If models STILL fail v3 by declaring completion over the pending unknown, that is a genuine completion-bias signal and the row earns its keep as a discriminator."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T014.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - .praxis/backlog.yaml
+    - evals/development-models/scenarios.ts
+    - evals/development-models/README.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - tests/**
+    - scripts/**
+    - evals/development-models/run-eval.ts
+    - evals/development-models/grader.ts
+    - evals/development-models/run-eval-harness.test.ts
+    - evals/development-models/scenarios.test.ts
+    - evals/development-models/BASELINE.md
+    - evals/development-models/results/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - vitest.config.ts
+    - knip.json
+    - .github/**
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/**
+    - AGENTS.md
+  scope_notes: 
+    - "BASELINE.md/M7.md forbidden HERE: v3 re-run registrations are operator evidence commits after acceptance (established precedent)"
+    - "expectedActions[0] stays verify_or_reconcile_effect so the ScriptedModel harness tests and their 'correct decision' scripts are untouched"
+    - "No decide-vocabulary change: v2's anchored descriptions already state the execution/verification distinction correctly; only the row's graded law catches up to the runtime's actual semantics"
+    - "No core change anywhere — the runtime law is what it is; the row now grades it faithfully"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "pending-indeterminate expectedActions exactly [verify_or_reconcile_effect, investigate_further] with the reworded law; all seven other rows byte-identical"
+    - "unit gate green; grader unaffected"
+    - "after acceptance: five v3 registrations appended in BASELINE.md with the v3 comparability note"
+  failure_cases: 
+    - "widening any OTHER row's expected set (only pending-indeterminate's evidence justifies it)"
+    - "touching the decide vocabulary again (v2 anchors stand)"
+    - "a core change"
+  artifacts: 
+    - evals/development-models/scenarios.ts (pending-indeterminate row)
+    - evals/development-models/README.md (table row)
+falsified_if: "The widening cannot be justified by the runtime law — i.e. the law really does forbid investigation while an effect is unresolved (it does not: read-only investigation is legal at the runtime level; only coercion and ignoring are violations). Also falsified if the harness tests break (expectedActions[0] unchanged, so they must not)."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk A per backlog authoring (one row's expected set + one law string + one README row; zero production code). Operator authorization: '继续' on the v2 finding that explicitly asked for the nod. Matrix v3: the last open eval-design finding is closed — both former 0/5 rows now grade runtime laws (v2 anchored descriptions for healthy-plan; v3 unknown-faithfulness here)."

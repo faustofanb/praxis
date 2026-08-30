@@ -246,6 +246,11 @@ milestones:
       title: sharpen the decide vocabulary and re-baseline the matrix
       prerequisites: [M7-T005]
       risk_class: A
+    - id: M7-T014
+      order: 140
+      title: align the pending-indeterminate expected set with the unknown-faithfulness law
+      prerequisites: [M7-T013]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
