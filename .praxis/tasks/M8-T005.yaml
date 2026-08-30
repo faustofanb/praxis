@@ -2,7 +2,7 @@ schema_version: 1
 id: M8-T005
 title: freeze v1 non-goals changelog and release checklist
 milestone: M8
-status: planned
+status: accepted
 risk_class: A
 objective: "Close the last four docs/03 M8 deliverable rows — 'threat/limitation document', 'release checklist', 'v1 non-goals locked', 'changelog' — completing the M8 backlog (M8-T005, risk A, prerequisites [M8-T003, M8-T004] both accepted). Deliverables, all documentation over pinned facts, each linking to its authority (one fact, one home): (a) docs/14-release-checklist.md (new) — the v1 RC release checklist: machine gates (mise check:all green, knip zero, coverage floor live) with status @ HEAD; clean-clone scenario acceptance (M8-T003 evidence); release eval baseline (M8-T004); dependency inventory + drift guard (M7-T004); Bun 1.4 compat evidence (M7-T009); non-goals freeze statement (linking docs/02 section 1.1 as the authority and declaring them LOCKED for v1); documentation set complete (docs/12 as-built, docs/13 quickstart); release-day items left explicitly open for the human (tag, publish, push). (b) docs/15-threats-and-limitations.md (new) — the honest threat/limitation record, every line linking its mitigation evidence or owning doc: threats (model manipulation of context cannot rewrite durable facts — brief is a projection; capability gates fail closed with workspace scope; secrets confined to the Authorization header — M7-T002 suite; runaway loops bounded by 16-step/failure-3 guards); limitations (no OS-level sandbox for bash — capability gate + cwd + timeout only per docs/02 s9.3; single writer per session; SQLite local single-file, corruption -> restore from backup per docs/11; provider retry only pre-escape — post-escape honest failure per s10; context bounded 1+64/32k — long dependencies ride durable facts, not context; eval baselines are n=1 evidence; deepseek-family completion bias documented across time points; ScriptFileModelProvider replays from start each process). (c) CHANGELOG.md (repo root) — milestone-level changelog M0->M8 summarizing what each milestone delivered with key artifacts. (d) docs/03-project-plan.md — tick the four rows. No code changes; the checklist's release-day items remain open for the human."
 evidence: 
@@ -12,10 +12,10 @@ evidence:
     - "v1 RC acceptance criteria exist: docs/03 'v1 RC Acceptance' six demonstrable scenarios — covered by the M8-T003 recorded evidence + M5 recovery suites"
     - "all hardening evidence exists from M7/M8: coverage floor, knip zero, dependency inventory, Bun 1.4 compat, clean-clone acceptance, release eval baseline"
   expected: 
-    - "docs/14-release-checklist.md with status @ HEAD and open release-day items"
-    - "docs/15-threats-and-limitations.md with linked mitigations"
-    - "CHANGELOG.md milestone summary"
-    - "docs/03 four rows ticked; M8 backlog complete -> milestone acceptance-ready"
+    - docs/14-release-checklist.md with status @ HEAD and open release-day items
+    - docs/15-threats-and-limitations.md with linked mitigations
+    - CHANGELOG.md milestone summary
+    - docs/03 four rows ticked; M8 backlog complete -> milestone acceptance-ready
   references: 
     - docs/02-system-design.md
     - docs/03-project-plan.md
@@ -73,14 +73,14 @@ required_gates:
   - build
 acceptance: 
   scenarios: 
-    - "docs/14 checklist items carry status @ HEAD with evidence links; release-day items explicitly open"
-    - "docs/15 states each threat/limitation with its mitigation evidence or owning doc; nothing asserted without backing"
-    - "CHANGELOG.md summarizes M0-M8 at milestone granularity"
-    - "docs/03 four rows ticked; M8 backlog complete"
+    - docs/14 checklist items carry status @ HEAD with evidence links; release-day items explicitly open
+    - docs/15 states each threat/limitation with its mitigation evidence or owning doc; nothing asserted without backing
+    - CHANGELOG.md summarizes M0-M8 at milestone granularity
+    - docs/03 four rows ticked; M8 backlog complete
   failure_cases: 
     - "copying the non-goals text into docs/14 instead of linking (one fact, one home)"
-    - "a limitation claimed as mitigated without its evidence"
-    - "checking a release-day item that only the human can perform"
+    - a limitation claimed as mitigated without its evidence
+    - checking a release-day item that only the human can perform
   artifacts: 
     - docs/14-release-checklist.md
     - docs/15-threats-and-limitations.md
