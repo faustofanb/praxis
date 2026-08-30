@@ -1,0 +1,116 @@
+schema_version: 1
+id: M7-T002
+title: complete fault injection and security bypass suites
+milestone: M7
+status: plan_ready
+risk_class: D
+objective: "Close .praxis/backlog.yaml M7-T002 (risk D, prerequisites [M6] — accepted 2026-08-30) and the two docs/03 M7 quality-gate rows 'fault injection suite' and 'security bypass suite'. Observed state: the §17 crash matrix is fully embodied (tests/fault/crash-matrix.fault.test.ts, M5-T004) and agent-loop/tool-runtime/extension faults plus the capability/extension/bash security adversarial suites exist — but two DOCUMENTED boundaries have no fault/security-gate coverage. (1) Provider fault boundary (docs/02 §10 'adapter 负责 provider retry，Core 只处理规范化失败'; docs/subsystems/provider-openai.md retry table): covered only by UNIT-gate tests (tests/provider-openai/chat-provider.test.ts) whose injected failures all occur BEFORE any model event escapes (fetch throw, HTTP status, hanging fetch). GAP ANALYSIS FOUND A REPRODUCED P0: packages/provider-openai/src/chat-provider.ts streamWithRetry retries a retryable failure even when the failed attempt has already yielded events to the consumer — a mid-body connection reset after delivered deltas (pull-based ReadableStream erroring on a later read, repro at bun /tmp/praxis-repro/duplicate-deltas.ts) produces consumer sequence [textDelta 'hel', textDelta 'lo', textDelta 'hello', textDelta ' world', completed], so core consumeModelStream (packages/core/src/agent-loop/run-turn.ts:464 accumulates text += chunk.text across the WHOLE stream) assembles ModelResponseCompleted.text = 'hellohello world' — a corrupted durable fact (docs/03 §13 P0 状态失真); the tool-call variant is worse: a half-built call leaked across a retry under a fresh provider id enters the completed result as a PHANTOM write_file call with truncated argumentsJson '{\"path\":\"a' (potential duplicate/corrupt side effect). Also untested compositions: abort during the backoff sleep (must not fire a further fetch and must end silently), retryable-then-non-retryable downgrade (429 then 401 on retry: stop, surface auth, no third attempt), malformed stream after partial tool-call fragments (must never complete the half-built call). (2) Secrets law (docs/02 §18 'API key 不写入 config/event/model context；telemetry 必须 redaction'; provider-openai.md 'key 只进请求头'): no test PINS confinement — nothing asserts the key is absent from the wire body, from durable events of a real runTurn, or from model context. Deliverable: (a) MINIMAL adapter fix in packages/provider-openai/src/chat-provider.ts: retry only while NO event of the current attempt has escaped to the consumer (track yielded events per attempt; on a retryable providerError after an escape, yield the providerError as terminal instead of restarting — once anything is delivered the stream can never be replayed honestly); (b) tests/fault/provider-adapter.fault.test.ts: adapter-level matrix — mid-stream reset after text deltas escaped → exactly one fetch, terminal providerError(network, retryable), no duplicated deltas; half-built tool call then reset → no retry, no completed, no second toolCallStart; abort during backoff → silent end, no further fetch; 429-then-401 downgrade → stops retrying, surfaces auth non-retryable — plus one end-to-end runTurn case (real OpenAIChatProvider via injectable fetch in the tests/fault/agent-loop.fault.test.ts faultDeps pattern): mid-stream reset after deltas → durable stream ends in honest ModelRequestFailed, ZERO ModelResponseCompleted, appended facts never contain doubled text or a phantom call; (c) tests/security/secret-confinement.security.test.ts: §18 confinement with a deep-search over serialized JSON — wire body of the real adapter request contains the key nowhere (control: it IS in the Authorization header), every durable event of a full real-adapter turn is key-free, model request messages are key-free; (d) owning docs in the same change: docs/02 §10 principle sentence (the escape law: adapter may discard an attempt only before any of its events reached the consumer), docs/subsystems/provider-openai.md retry section + test entries, docs/03 M7 row ticks with provenance, .praxis/quality-gates.yaml provider rule gains fault+security gates."
+evidence: 
+  observed: 
+    - ".praxis/backlog.yaml M7-T002 (risk D, prerequisites [M6]) is the active M7 task after M7-T001 (accepted 2026-08-30); docs/03-project-plan.md M7 rows 'fault injection suite' and 'security bypass suite' are unchecked; M7.yaml machine_gates include fault and security"
+    - "REPRODUCED P0 (bun /tmp/praxis-repro/duplicate-deltas.ts, pull-based ReadableStream delivering two text deltas then erroring): OpenAIChatProvider consumer receives [hel, lo] from the failed attempt plus the full retried stream [hello, ' world'] — packages/core/src/agent-loop/run-turn.ts consumeModelStream accumulates across attempts and would persist ModelResponseCompleted.text = 'hellohello world'; tool-call variant leaks a phantom call with truncated argumentsJson '{\"path\":\"a' into the completed result under a fresh retry id"
+    - packages/provider-openai/src/chat-provider.ts:106-142 streamWithRetry breaks on a retryable providerError without tracking whether the attempt already yielded events (line 128 yields them; the discard at 133 cannot un-yield); streamChatChunks:315-322 catches mid-body read errors and yields them as retryable providerError AFTER forwarding earlier deltas — the composition is reachable and untested
+    - "tests/provider-openai/chat-provider.test.ts: all injected failures occur before any event escapes (fetch throw at 376, HTTP statuses at 331/346/358, hanging fetch at 390); abort tests cover already-aborted and mid-stream abort but not abort DURING the backoff sleep; no case mixes retryable failure with delivered deltas, and none covers retryable→non-retryable downgrade; the whole suite is in the UNIT gate only (.praxis/quality-gates.yaml provider rule: unit+integration)"
+    - "docs/02 §18 law and provider-openai.md:25 'key 只进请求头，不进事件/日志/上下文' have no pinning test: no suite deep-searches the wire body, durable events, or model context for the apiKey"
+  expected: 
+    - "packages/provider-openai/src/chat-provider.ts: per-attempt escape tracking; a retryable providerError after any escaped event is yielded as terminal (no restart, no duplicated deltas); pre-escape retryable failures keep the existing discard+backoff+restart behavior (unit suite stays green UNMODIFIED)"
+    - "tests/fault/provider-adapter.fault.test.ts (new, fault gate): 4 adapter-level matrix cases (escape-after-text-deltas, escape-after-tool-call-fragments, abort-during-backoff, retryable→non-retryable downgrade) + 1 end-to-end runTurn case (honest ModelRequestFailed, zero ModelResponseCompleted, no doubled text / phantom call in durable facts)"
+    - "tests/security/secret-confinement.security.test.ts (new, security gate): key absent from wire body JSON (present in Authorization header as control), key absent from every durable event of a full real-adapter turn, key absent from model request messages"
+    - "docs/02-system-design.md §10: one principle sentence — retry may discard an attempt only before any of its events reached the consumer; once delivered, the failure is surfaced honestly, the stream is never replayed"
+    - "docs/subsystems/provider-openai.md: retry section gains the escape law; test entries for both new suites"
+    - "docs/03-project-plan.md: '- [ ] fault injection suite' and '- [ ] security bypass suite' ticked with (M7-T002: …) provenance"
+    - ".praxis/quality-gates.yaml: provider rule requires fault and security in addition to unit+integration"
+  references: 
+    - docs/02-system-design.md
+    - .praxis/milestones/M7.yaml
+    - packages/provider-openai/src/chat-provider.ts
+    - packages/core/src/agent-loop/run-turn.ts
+    - tests/provider-openai/chat-provider.test.ts
+    - tests/fault/agent-loop.fault.test.ts
+    - tests/security/capability-policy.security.test.ts
+hypothesis: "The provider adapter can honor at-most-once event delivery under its own retry: a retryable failure discards the attempt ONLY while nothing has escaped to the consumer; after any escape the failure is surfaced as one terminal providerError and core's existing failure path (honest ModelRequestFailed durable fact, §17 recovery) handles the rest. If pinning this law reveals a CORE inability to land mid-stream failures honestly (no ModelRequestFailed, or a completed fact emitted anyway), that is a Core correctness defect — evidence and a new contract, never an in-scope core patch. The §18 confinement law is expected to hold as-is (key is constructor-held, header-only) — the suite pins it against future regressions."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T002.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/provider-openai/src/chat-provider.ts
+    - tests/fault/provider-adapter.fault.test.ts
+    - tests/security/secret-confinement.security.test.ts
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/subsystems/provider-openai.md
+    - .praxis/quality-gates.yaml
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/**
+    - packages/store-sqlite/**
+    - packages/testkit/**
+    - packages/tools-local/**
+    - packages/extension-telemetry/**
+    - packages/extension-standing-orders/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - mise.toml
+    - docs/acceptance/**
+    - docs/decisions/**
+    - tests/provider-openai/**
+    - tests/fault/agent-loop.fault.test.ts
+    - tests/fault/crash-matrix.fault.test.ts
+    - tests/fault/tool-runtime.fault.test.ts
+    - tests/fault/extension-isolation.fault.test.ts
+    - tests/fault/extension-failure.fault.test.ts
+    - tests/security/**
+    - tests/helpers/**
+    - tests/reducer*.test.ts
+    - tests/property/**
+    - tests/integration/**
+    - tests/replay/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/extensions/**
+  scope_notes: 
+    - "NOT a test-only task: the gap analysis reproduced a P0 (durable-fact corruption via duplicated deltas / phantom tool call across an adapter retry). docs/03 §13 puts P0 fixes first; shipping the fault suite with a known-corrupt behavior unpinned (or pinned as 'expected') would be dishonest. The adapter fix is therefore IN scope, minimal, and confined to the retry loop's escape tracking — scope expansion from test-only to fix+tests is recorded here per AGENTS.md ('explain why before expanding')"
+    - "packages/provider-openai/src/chat-provider.ts is the ONLY production file allowed; tests/security/** and tests/fault/* existing files are forbidden (the two new suite files are additions, not edits) — existing suites are never weakened; tests/provider-openai/chat-provider.test.ts stays byte-identical (the fix must keep its pre-escape retry cases green)"
+    - "docs/02-system-design.md §10 gains ONE principle sentence (the law's home); provider-openai.md carries the concrete retry behavior + new test entries; docs/03 ticks two M7 rows — one fact, one home"
+    - .praxis/quality-gates.yaml provider rule gains fault+security (the provider now participates in those gates by this task)
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - fault
+  - security
+  - build
+acceptance: 
+  scenarios: 
+    - "mid-body connection reset AFTER delivered deltas: consumer sees the escaped deltas then exactly ONE terminal providerError(network, retryable); fetch called exactly once; core runTurn lands honest ModelRequestFailed with zero ModelResponseCompleted; no durable fact contains doubled text or a phantom tool call"
+    - "half-built tool call then mid-stream reset: no retry, no completed, no second toolCallStart — the half-built call is never completed"
+    - "abort during the backoff sleep (pre-escape retryable failure): stream ends silently, no further fetch attempt"
+    - "retryable then non-retryable downgrade (429 → 401): retrying stops at the downgrade, one terminal providerError(auth, non-retryable), no third fetch"
+    - "secret confinement: apiKey absent from the serialized wire body (and present in the Authorization header — control), from every durable event of a full real-adapter runTurn, and from model request messages"
+  failure_cases: 
+    - "the consumer receiving events from TWO attempts of one logical request (duplicated deltas / phantom half-built call) — the pre-fix P0, must fail the suite before the fix and pass after"
+    - "a mid-escape providerError being swallowed silently (no terminal event, stream just ends — core would read endedSilently)"
+    - an existing tests/provider-openai unit case failing after the fix (pre-escape retry semantics regressed)
+    - "the apiKey discoverable anywhere in wire body, durable events, or model context"
+    - "the fault/security suites weakening, duplicating, or restating existing suites instead of adding the two documented boundaries"
+  artifacts: 
+    - packages/provider-openai/src/chat-provider.ts escape-tracked retry
+    - tests/fault/provider-adapter.fault.test.ts
+    - tests/security/secret-confinement.security.test.ts
+    - docs/02-system-design.md §10 escape-law sentence
+    - docs/subsystems/provider-openai.md retry law + test entries
+    - docs/03-project-plan.md two M7 row ticks
+    - .praxis/quality-gates.yaml provider rule fault+security
+falsified_if: "Pinning the escape law requires weakening or editing any existing test (esp. tests/provider-openai/chat-provider.test.ts pre-escape retry cases) — the law and the unit suite must coexist, a conflict stops the task for re-planning. A runTurn-level inability to land a mid-stream providerError honestly (no ModelRequestFailed durable fact, or a completed fact emitted from partial deltas) is a CORE defect outside this contract's allowed paths — stop, record evidence, open a new contract. The fix touching anything beyond the retry loop's escape decision (wire mapping, classification, timeout, abort semantics) also falsifies the minimal-fix claim."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk D per backlog (security-adjacent behavior fix + adversarial suites): requires_human_acceptance TRUE — accept() must land ACCEPTANCE_READY and the implementing AI stops for human sign-off. No ADR: ADR-0010 already decides the adapter owns provider retry; this fix tightens that decision's safety law (documented in docs/02 §10, the owning doc) without changing the port, dependency direction, or decision structure. The repro script lives outside the repo (/tmp/praxis-repro) — the fault suite itself is the durable evidence. Existing 5 fault suites and all security suites stay untouched (one fact, one home); M7-T003 soak builds on this hardened boundary."
