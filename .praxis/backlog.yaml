@@ -211,6 +211,11 @@ milestones:
       title: reach knip zero unexpected findings
       prerequisites: [M7-T001]
       risk_class: A
+    - id: M7-T007
+      order: 70
+      title: author the memory and context growth report
+      prerequisites: [M7-T003]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
