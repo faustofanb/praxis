@@ -104,3 +104,19 @@ harness 套件（unit 门内 31 项 ScriptedModelProvider 测试，零网络）+
 
 对比结论写 scorecard 链接后的备注列；法则/判分变更须先改场景与测试，再重跑
 并追加新行——历史行不删改。
+
+## v1 release baseline (M8-T004, 矩阵 v3 冻结版, RC HEAD)
+
+发布基线：同一冻结矩阵（v3）在同一 day 的第二个时间点重跑五配置（n=1/模型×场景）。
+与上方"矩阵 v3"段**可比**——两时间点的差异即 n=1 方差的真实展示，全部如实记录：
+
+- 2026-08-30 | models: deepseek-v4-flash（默认档，RC HEAD） | scorecard: results/eval-2026-08-30T12-32-45-814Z.md | 4/8（v3: 5/8）——完成偏置本轮更重（invalidated-plan/completion-blocked/resolved-indeterminate 均 declare）
+- 2026-08-30 | models: deepseek-v4-flash（xhigh，RC HEAD） | scorecard: results/eval-2026-08-30T12-35-32-807Z.md | 4/8（v3: 6/8）——方差下沉：completion 偏置波及 inconclusive/healthy；plan-challenge/pending-indeterminate 本轮通过
+- 2026-08-30 | models: gpt-5.6-sol（默认档，RC HEAD） | scorecard: results/eval-2026-08-30T12-39-09-312Z.md | 7/8（v3: 7/8）——稳定；healthy-plan 波动（investigate_further）
+- 2026-08-30 | models: zai-org/GLM-5.3（thinking enabled，RC HEAD） | scorecard: results/eval-2026-08-30T12-47-59-241Z.md | 5/8（v3: 5/8）——inconclusive-verification 被 declare（完成偏置）+ healthy-plan/resolved-indeterminate；决策均正常产出（无网关未决）
+- 2026-08-30 | models: gpt-5.6-luna（reasoning_effort high，RC HEAD） | scorecard: results/eval-2026-08-30T12-50-41-711Z.md | 7/8（v3: 7/8）——稳定；healthy-plan 波动（investigate_further）
+
+发布结论：**gpt-5.6-sol 与 gpt-5.6-luna 以 7/8 并列第一且跨时间点稳定**（唯一波动行
+healthy-plan 互有胜负）；deepseek-v4-flash 的完成偏置跨时间点复现（默认 4-5/8、
+xhigh 4-6/8 区间波动），不宜作为无人监督的自主会话代理；GLM-5.3 稳定 5/8。
+两时间点×五配置共 10 份 scorecard 全部存档可复核。

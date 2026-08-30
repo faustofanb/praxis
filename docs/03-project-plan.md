@@ -385,7 +385,7 @@ M5 里程碑验收时**明确推迟**（证据与复评时点见 `docs/acceptanc
 - [ ] threat/limitation document；
 - [ ] release checklist；
 - [ ] v1 non-goals locked；
-- [ ] benchmark/eval baseline；
+- [x] benchmark/eval baseline（M8-T004：冻结矩阵 v3 于 RC HEAD 重跑五配置——gpt-5.6-sol/luna 7/8 稳定并列第一、GLM 5/8、deepseek 默认/xhigh 各 4/8（完成偏置跨时间点复现，不宜无人监督自主）；与 M7 矩阵 v3 段构成两时间点方差对照，10 份 scorecard 存档；`BASELINE.md` "v1 release baseline" 节 + `docs/acceptance/M8.md`）；
 - [ ] changelog。
 
 ### v1 RC Acceptance

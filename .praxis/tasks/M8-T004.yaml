@@ -2,18 +2,18 @@ schema_version: 1
 id: M8-T004
 title: run release real-model eval and produce the v1 baseline
 milestone: M8
-status: planned
+status: accepted
 risk_class: B
 objective: "Close the docs/03 M8 deliverable row 'benchmark/eval baseline' and the M8.yaml real_model_eval 'release eval required' (M8-T004, risk B, prerequisites [M8-T003] accepted). The eval matrix is final (v3: 8 rows, anchored vocabulary, unknown-faithfulness grading — M7-T013/T014) and five model configurations were baselined on 2026-08-30; but those runs predate the M8 RC-state commits (T001 docs, T002 CLI approval wiring). The release record must pin the RC HEAD. Deliverable: (a) re-run ALL FIVE configurations (deepseek-v4-flash default + xhigh via the operator gateway, gpt-5.6-sol default, zai-org/GLM-5.3 thinking-enabled, gpt-5.6-luna reasoning-effort-high via the second gateway; PRAXIS_EVAL_PROVIDER_OPTIONS via the M7-T011 passthrough; n=1 per model x scenario, timeout 120-150s) at the current HEAD and register the five scorecards in evals/development-models/BASELINE.md under a new '## v1 release baseline (M8)' section — matrix/protocol unchanged from v3, so scores ARE comparable to the v3 section and variance between the two runs is itself recorded information (n=1 evidence, not a benchmark); (b) docs/acceptance/M8.md 'Real-model Eval' section filled with the release summary + scorecard links and the Evidence Artifacts 'Real-model eval summary where required' tick; (c) docs/03 'benchmark/eval baseline' row ticked. Security law: gateway URLs redacted from committed scorecards, credentials never written to any file (grep-verified before each commit). No production code changes; the release eval is a measurement + registration task."
 evidence: 
   observed: 
     - "matrix v3 (M7-T014) is the final grading design; five configs baselined at pre-RC commits, registered in BASELINE.md matrix-v3 section"
     - "M8 RC-state commits since (T001 docs-only, T002 CLI wiring + docs, T003 acceptance record) do not touch contracts/core/provider — eval-relevant behavior unchanged, but the release record should pin the RC HEAD honestly rather than reference stale commits"
-    - "operator gateways and keys from this session; results/ scorecards land locally and need URL redaction before commit"
+    - operator gateways and keys from this session; results/ scorecards land locally and need URL redaction before commit
   expected: 
     - "five scorecards at RC HEAD registered under '## v1 release baseline (M8)' in BASELINE.md with a variance note vs the v3 section"
-    - "docs/acceptance/M8.md Real-model Eval filled; Evidence Artifacts real-model tick; docs/03 row ticked"
-    - "zero production changes; secret-free commits (verified by grep)"
+    - docs/acceptance/M8.md Real-model Eval filled; Evidence Artifacts real-model tick; docs/03 row ticked
+    - zero production changes; secret-free commits (verified by grep)
   references: 
     - evals/development-models/BASELINE.md
     - evals/development-models/scenarios.ts
@@ -70,13 +70,13 @@ required_gates:
   - build
 acceptance: 
   scenarios: 
-    - "five configs re-run at RC HEAD; scorecards registered in BASELINE.md under the release-baseline section with variance notes vs v3"
-    - "M8.md Real-model Eval section filled with scorecard links; docs/03 row ticked"
-    - "full required_gates green (unchanged code)"
+    - five configs re-run at RC HEAD; scorecards registered in BASELINE.md under the release-baseline section with variance notes vs v3
+    - M8.md Real-model Eval section filled with scorecard links; docs/03 row ticked
+    - full required_gates green (unchanged code)
   failure_cases: 
-    - "a matrix/instrument change smuggled into the release run (frozen instrument)"
-    - "any credential or unredacted gateway URL entering a committed file"
-    - "fabricated numbers (every scorecard must exist under results/ and be linked)"
+    - a matrix/instrument change smuggled into the release run (frozen instrument)
+    - any credential or unredacted gateway URL entering a committed file
+    - fabricated numbers (every scorecard must exist under results/ and be linked)
   artifacts: 
     - evals/development-models/BASELINE.md (v1 release baseline section)
     - docs/acceptance/M8.md real-model section
