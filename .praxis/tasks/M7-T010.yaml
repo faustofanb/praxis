@@ -2,7 +2,7 @@ schema_version: 1
 id: M7-T010
 title: set and enforce the core coverage target
 milestone: M7
-status: planned
+status: accepted
 risk_class: A
 objective: "Close the docs/03 M7 quality-gate row 'Core branch/statement coverage target' (M7-T010, risk A, backlog entry added with this contract) — the last untasked M7 row. Observed state: coverage infrastructure already exists (vitest 4.1.11 + @vitest/coverage-v8 4.1.11; vitest.config.ts reporter text/json-summary/html; mise test:coverage in the check:all chain so CI runs it) but NO thresholds are configured — coverage is measured, never enforced, and the M7 row's deliverable (a decided target) has no home. Measured baseline (this session, mise run test:coverage, v8 provider): packages/core aggregate statements 97.58% (847/868), branches 94.31% (497/527) — per-file weak spots are tool-runtime.ts (93.65/87.17) and run-turn.ts (94.11/90.32); the workspace-wide total (84.12/81.93) is dragged down by store-sqlite (vitest-collected ~7% is MEANINGLESS — its 13 tests are bun-only *.bun.test.ts excluded from vitest collection by design; the real store evidence is mise run test:store) — which is why the target is scoped to packages/core, matching the row's own 'Core' wording. Target decision (the row's deliverable): statements >= 95, branches >= 90 for packages/core/src/** — calibrated ~2.6pt/~4.3pt below the measured baseline so natural variance from active development stays legal while real erosion fails CI loudly; this supersedes the pre-measurement 85/75 floated in the previous close-out (85/75 against a 97.6/94.3 baseline would be a no-op floor). Enforcement verified experimentally BEFORE this contract: vitest 4.1.11 coverage.thresholds supports glob-scoped threshold sets under the v8 provider; wired at 95/90 test:coverage exits 0; bumping branches to an impossible 100 with all 59 files/502 tests passing yields exit 1 with exactly 'ERROR: Coverage for branches (94.3%) does not meet \"packages/core/src/**\" threshold (100%)' — the exit code is the enforcement payload (check:all -> test:coverage -> CI quality job). Deliverable: (a) vitest.config.ts — the thresholds block (glob 'packages/core/src/**', statements 95, branches 90) with a comment stating the measured baseline and the enforcement path; (b) docs/03 row ticked with provenance incl. baseline numbers and the honest store-sqlite measurement caveat; (c) .praxis/backlog.yaml M7-T010 entry. No production code, no test additions: the floor is enforced by existing gates on every CI run."
 evidence: 
@@ -15,7 +15,7 @@ evidence:
     - "vitest.config.ts: thresholds block as specified (12 added lines, nothing else)"
     - "docs/03-project-plan.md: '- [ ] Core branch/statement coverage target' -> - [x] with (M7-T010: …) provenance — baseline numbers, target rationale, store-sqlite caveat"
     - ".praxis/backlog.yaml: M7-T010 entry (id/order 100/title/prerequisites [M7-T003]/risk A)"
-    - "mise run test:coverage exit 0 at the implementation commit; every future erosion below 95/90 fails check:all and CI"
+    - mise run test:coverage exit 0 at the implementation commit; every future erosion below 95/90 fails check:all and CI
   references: 
     - vitest.config.ts
     - mise.toml
@@ -70,11 +70,11 @@ required_gates:
   - build
 acceptance: 
   scenarios: 
-    - "mise run test:coverage exits 0 at the implementation commit with the thresholds block in place (baseline above floor)"
+    - mise run test:coverage exits 0 at the implementation commit with the thresholds block in place (baseline above floor)
     - "the enforcement bites: documented experiment shows exit 1 with the exact threshold ERROR when branches floor is raised to an impossible value while all tests pass"
-    - "full required_gates green; check:all (CI) now carries the floor"
+    - full required_gates green; check:all (CI) now carries the floor
   failure_cases: 
-    - "a threshold that fails at the current baseline (self-inflicted red CI) — must not happen; verified experimentally"
+    - a threshold that fails at the current baseline (self-inflicted red CI) — must not happen; verified experimentally
     - "a global (workspace-wide) threshold that store-sqlite's bun-only measurement gap would break"
     - "wiring thresholds without the bite test — an unverified gate is a wish, not a gate"
   artifacts: 
