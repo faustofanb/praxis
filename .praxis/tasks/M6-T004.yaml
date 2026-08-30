@@ -1,0 +1,89 @@
+schema_version: 1
+id: M6-T004
+title: verify extension unload and failure isolation
+milestone: M6
+status: plan_ready
+risk_class: C
+objective: "Close the last M6 task row (.praxis/backlog.yaml M6-T004; prerequisites M6-T002+M6-T003 both accepted) and the M6.yaml scenario 'extension unload does not corrupt state' by adversarially AUDITING the shipped extensions through the real loop — zero production-code change expected (the preferred outcome, exactly like M5-T004). Observed state: unload and failure isolation are pinned only at the unit/host level or at TURN BOUNDARIES: tests/extensions/host.test.ts pins unload-stops-invocation between host calls; telemetry/standing-orders suites pin unload BETWEEN turns and single-extension failure policies; tests/fault/extension-failure.fault.test.ts pins a fail_closed crash riding section 17 with a TEST-FILE extension. Nothing pins (1) unload DURING a turn — the host snapshots its extension list per hook invocation (packages/core/src/extensions/host.ts registeredNow()), so an unload landing between hook boundaries or INSIDE one hook's iteration has untested semantics; (2) failure isolation ACROSS the shipped extensions composed in one host (an isolate telemetry observer with a dead sink must not degrade a fail_closed standing-orders policy in the same turn); (3) observer-state coherence when a fail_closed sibling crashes mid-turn (what the telemetry snapshot counts vs what the durable prefix recorded). Deliverable: tests/fault/extension-isolation.fault.test.ts — an audit matrix over @praxis/extension-telemetry + @praxis/extension-standing-orders + minimal fixtures: (a) mid-turn unload between hook boundaries: a fixture's onTurnStart unloads standing-orders before contributeContext fires — no section renders this turn, a would-be denied tool EXECUTES (SUCCEEDED) because beforeTool never consults the unloaded policy, the stream folds legally, telemetry counts the full turn; (b) unload inside one hook's iteration: a first contributor's contributeContext unloads a later-registered sibling mid-iteration — the already-snapshotted sibling still contributes THIS hook (boundary semantics: unload lands at the next hook), no throw, and the next turn carries no section; (c) cross-extension failure isolation by stream identity: telemetry with a throwing sink composed with fully-configured standing-orders produces a byte-identical stream and requests to standing-orders alone — the deny still lands (ToolRejected citing the extension), the section still renders, telemetry's snapshot still counts the deny REJECTED; (d) fail_closed crash (fixture afterModel) alongside a healthy telemetry observer: runTurn rejects with the wrapped ExtensionHookError, the persisted prefix folds legally, the observer's snapshot stays readable and coherent with the prefix (counts exactly the events/requests that preceded the crash), and a resumed process completes the turn; (e) every probe asserts foldSessionEvents succeeds on the resulting stream (M6.yaml 'unload does not corrupt state')."
+evidence: 
+  observed: 
+    - ".praxis/backlog.yaml M6-T004 (risk C, prerequisites M6-T002+M6-T003) is the last unticked M6 task; M6.yaml scenario_acceptance includes 'extension unload does not corrupt state' and failure_acceptance 'extension cannot bypass core capability checks' (the bypass half is pinned by tests/security/extension-bypass.security.test.ts from M6-T001)"
+    - packages/core/src/extensions/host.ts registeredNow() snapshots the registered list at each hook invocation — unload semantics mid-turn (between boundaries vs inside an iteration) are implemented but pinned nowhere; no test unloads an extension during a turn
+    - "the shipped extensions' own suites (tests/extensions/telemetry.test.ts, standing-orders.test.ts) pin unload only BETWEEN turns and each extension's failure policy in isolation; no test composes an isolate failure with a fail_closed policy in one host through the real loop"
+    - tests/fault/extension-failure.fault.test.ts (M6-T001) pins fail_closed crash recovery with test-file extensions only — observer-state coherence across a sibling crash (snapshot vs durable prefix) is unpinned
+  expected: 
+    - "tests/fault/extension-isolation.fault.test.ts (new, ~5 tests, all over the real runTurn loop with ScriptedModelProvider + read_file): the audit matrix (a)-(e) above, asserting exact event-type sequences, request section presence/absence, telemetry snapshot fields, foldSessionEvents legality, and stream identity fingerprints"
+    - docs/subsystems/core.md gains one test-entry line for the isolation audit suite (the host owns the laws under audit)
+    - "NO changes under packages/**, apps/**, package.json, bun.lock, tsconfig.json, mise.toml — a zero-production-code audit; any probe finding a violation STOPS the task per falsified_if (the fix would need its own contract and, if it touches seams, an ADR amendment)"
+  references: 
+    - docs/02-system-design.md
+    - .praxis/milestones/M6.yaml
+    - packages/core/src/extensions/host.ts
+    - tests/extensions/telemetry.test.ts
+    - tests/extensions/standing-orders.test.ts
+    - tests/fault/extension-failure.fault.test.ts
+    - docs/decisions/ADR-0013-extension-seams-v1.md
+hypothesis: "The v1 laws hold under adversarial composition: unload is deterministic at hook boundaries (snapshot-per-invocation), isolate failures are invisible in the durable stream regardless of what else shares the host, fail_closed crashes leave both the durable prefix and any isolate sibling's in-memory state coherent, and none of it can corrupt a session. If any probe falsifies this, the correct response is evidence + a new task, never an in-scope Core patch."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M6-T004.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - tests/fault/extension-isolation.fault.test.ts
+    - docs/subsystems/core.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - mise.toml
+    - docs/acceptance/**
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - docs/decisions/**
+    - tests/extensions/**
+    - tests/integration/**
+    - tests/security/**
+    - tests/replay/**
+    - tests/property/**
+    - tests/fixtures/**
+    - tests/helpers/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/praxis-dev.test.ts
+  scope_notes: 
+    - "Zero-production-code task by design (like M5-T004): packages/** entirely forbidden; a discovered violation converts this task into evidence for a NEW contract, never an in-scope fix"
+    - "Fixtures (the unloader and the fail_closed crasher) live inside the test file — they are audit instruments, not product"
+    - M6-T002/T003 pinned consumer-level behavior; this task pins the HOST laws under adversarial composition of exactly those consumers
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+  - docs/decisions/ADR-0013-extension-seams-v1.md
+required_gates: 
+  - unit
+  - integration
+  - replay
+  - fault
+  - security
+  - build
+acceptance: 
+  scenarios: 
+    - "mid-turn unload between hook boundaries: the unloaded policy stops contributing for the REST of the turn (no section, no veto), the stream folds, observers stay accurate"
+    - "unload inside a hook iteration: the already-snapshotted sibling contributes for THAT hook only; the next turn is clean; no throw"
+    - "an isolate telemetry failure (dead sink) composed with a fail_closed standing-orders policy: byte-identical stream and requests to the policy running alone"
+    - "a fail_closed sibling crash: honest wrapped rejection, legal prefix, coherent observer state, successful resume"
+  failure_cases: 
+    - "any unload probe throwing, corrupting the event stream, or leaving half-applied policy (section without veto, veto without reason) — falsifies the audit"
+    - "an isolate failure in one shipped extension altering the durable stream, the other extension's contributions, or the turn outcome in any way"
+    - observer state diverging from the durable prefix at crash time (counts must equal the pre-crash facts)
+    - weakening or duplicating existing suites instead of adding the audit
+  artifacts: 
+    - tests/fault/extension-isolation.fault.test.ts
+    - docs/subsystems/core.md test entry
+falsified_if: "Any probe shows unload mid-turn throwing, racing, or corrupting the stream; or an isolate failure in one shipped extension leaking into the other's contributions or the durable facts; or a fail_closed crash leaving the isolate sibling's state incoherent with the persisted prefix or blocking resume; or the boundary semantics (snapshot per hook invocation) proving observably different from documented — any of these stops the task for evidence rather than an in-scope Core patch."
+requires_adr: false
+requires_human_acceptance: true
+notes: "Risk C per backlog (audit over settled Core behavior; prerequisites both accepted). Zero-production-code preferred outcome. requires_human_acceptance TRUE (precedent M5-T004): this audit's green matrix is the direct input to M6 milestone acceptance (human_demo_required), so a human eyeballs it before promotion — the task reaches ACCEPTANCE_READY and waits. After this: M6 milestone acceptance per docs/acceptance/M6.md."
