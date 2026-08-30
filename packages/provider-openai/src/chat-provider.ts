@@ -204,15 +204,39 @@ export class OpenAIChatProvider implements ModelProvider {
 }
 
 function toChatMessages(request: ModelRequest): ChatMessage[] {
-  return request.messages.map((message): ChatMessage => {
+  const messages: ChatMessage[] = [];
+  for (const message of request.messages) {
     if (message.role === "system") {
-      return { role: "system", content: message.text };
+      messages.push({ role: "system", content: message.text });
+      continue;
     }
     if (message.role === "user") {
-      return { role: "user", content: message.text };
+      messages.push({ role: "user", content: message.text });
+      continue;
     }
     if (message.role === "tool") {
-      return { role: "tool", tool_call_id: message.toolCallId, content: message.text };
+      // OpenAI wire law: each tool_call_id is answered exactly once,
+      // immediately after the assistant message that made the call. Durable
+      // facts may carry SEVERAL verdicts for one execution (the honest
+      // indeterminate, then the later reconciliation — core emits both, in
+      // order, never instead of each other), so consecutive same-id tool
+      // messages merge into one response whose content is the verbatim fact
+      // bodies in event order. Different ids (parallel calls) stay separate.
+      const previous = messages.at(-1);
+      if (
+        previous !== undefined &&
+        previous.role === "tool" &&
+        previous.tool_call_id === message.toolCallId
+      ) {
+        const merged: ChatMessage = {
+          ...previous,
+          content: appendToolFact(previous.content, message.text),
+        };
+        messages[messages.length - 1] = merged;
+        continue;
+      }
+      messages.push({ role: "tool", tool_call_id: message.toolCallId, content: message.text });
+      continue;
     }
     const toolCalls = message.toolCalls?.map(
       (call): ChatToolCall => ({
@@ -221,12 +245,39 @@ function toChatMessages(request: ModelRequest): ChatMessage[] {
         function: { name: call.name, arguments: call.argumentsJson },
       }),
     );
-    return {
+    messages.push({
       role: "assistant",
       ...(message.text === undefined ? {} : { content: message.text }),
       ...(toolCalls === undefined ? {} : { tool_calls: toolCalls }),
-    };
-  });
+    });
+  }
+  return messages;
+}
+
+/** The first fact for an id keeps the bare body; later facts turn the
+ *  content into a JSON array of bodies (event order preserved). */
+function appendToolFact(existing: string, next: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(existing) as unknown;
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed)) {
+    return JSON.stringify([...parsed, safeParse(next)]);
+  }
+  if (parsed === undefined) {
+    return JSON.stringify([existing, next]);
+  }
+  return JSON.stringify([parsed, safeParse(next)]);
+}
+
+function safeParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
 }
 
 function toChatTools(tools: readonly ModelToolDefinition[]): unknown {

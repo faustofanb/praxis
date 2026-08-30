@@ -201,6 +201,128 @@ describe("OpenAIChatProvider request mapping", () => {
     expect(() => new OpenAIChatProvider({ apiKey: "  " })).toThrow("non-empty apiKey");
     expect(() => new OpenAIChatProvider({ apiKey: "k", maxRetries: -1 })).toThrow("maxRetries");
   });
+
+  test("merges consecutive same-id tool facts into one wire response (M7-T012)", async () => {
+    const { provider, calls } = makeProvider([sseResponse(finishChunk("stop"))]);
+    await collect(provider, {
+      ...REQUEST,
+      tools: undefined,
+      messages: [
+        { role: "user", text: "dispatch the write" },
+        {
+          role: "assistant",
+          toolCalls: [{ id: "call-1", name: "write_ledger", argumentsJson: "{}" }],
+        },
+        { role: "tool", toolCallId: "call-1", text: '{"status":"indeterminate","reason":"lost"}' },
+        {
+          role: "tool",
+          toolCallId: "call-1",
+          text: '{"status":"succeeded","reconciled":true}',
+        },
+        { role: "user", text: "continue" },
+      ],
+    });
+
+    const call = calls[0];
+    if (call === undefined) {
+      throw new Error("expected one fetch call");
+    }
+    const body = call.body as { messages: unknown };
+    expect(body.messages).toEqual([
+      { role: "user", content: "dispatch the write" },
+      {
+        role: "assistant",
+        tool_calls: [
+          { id: "call-1", type: "function", function: { name: "write_ledger", arguments: "{}" } },
+        ],
+      },
+      {
+        role: "tool",
+        tool_call_id: "call-1",
+        content:
+          '[{"status":"indeterminate","reason":"lost"},{"status":"succeeded","reconciled":true}]',
+      },
+      { role: "user", content: "continue" },
+    ]);
+  });
+
+  test("keeps distinct tool_call_id responses separate (parallel calls)", async () => {
+    const { provider, calls } = makeProvider([sseResponse(finishChunk("stop"))]);
+    await collect(provider, {
+      ...REQUEST,
+      tools: undefined,
+      messages: [
+        { role: "user", text: "do both" },
+        {
+          role: "assistant",
+          toolCalls: [
+            { id: "call-1", name: "read_file", argumentsJson: "{}" },
+            { id: "call-2", name: "read_file", argumentsJson: "{}" },
+          ],
+        },
+        { role: "tool", toolCallId: "call-1", text: '{"status":"succeeded"}' },
+        { role: "tool", toolCallId: "call-2", text: '{"status":"succeeded"}' },
+        { role: "user", text: "continue" },
+      ],
+    });
+
+    const call = calls[0];
+    if (call === undefined) {
+      throw new Error("expected one fetch call");
+    }
+    const body = call.body as { messages: unknown };
+    expect(body.messages).toEqual([
+      { role: "user", content: "do both" },
+      {
+        role: "assistant",
+        tool_calls: [
+          { id: "call-1", type: "function", function: { name: "read_file", arguments: "{}" } },
+          { id: "call-2", type: "function", function: { name: "read_file", arguments: "{}" } },
+        ],
+      },
+      { role: "tool", tool_call_id: "call-1", content: '{"status":"succeeded"}' },
+      { role: "tool", tool_call_id: "call-2", content: '{"status":"succeeded"}' },
+      { role: "user", content: "continue" },
+    ]);
+  });
+
+  test("leaves a single tool fact as the bare body (zero-change identity)", async () => {
+    const { provider, calls } = makeProvider([sseResponse(finishChunk("stop"))]);
+    await collect(provider, {
+      ...REQUEST,
+      tools: undefined,
+      messages: [
+        { role: "user", text: "check" },
+        {
+          role: "assistant",
+          toolCalls: [{ id: "call-1", name: "probe", argumentsJson: "{}" }],
+        },
+        { role: "tool", toolCallId: "call-1", text: '{"status":"indeterminate","reason":"lost"}' },
+        { role: "user", text: "continue" },
+      ],
+    });
+
+    const call = calls[0];
+    if (call === undefined) {
+      throw new Error("expected one fetch call");
+    }
+    const body = call.body as { messages: unknown };
+    expect(body.messages).toEqual([
+      { role: "user", content: "check" },
+      {
+        role: "assistant",
+        tool_calls: [
+          { id: "call-1", type: "function", function: { name: "probe", arguments: "{}" } },
+        ],
+      },
+      {
+        role: "tool",
+        tool_call_id: "call-1",
+        content: '{"status":"indeterminate","reason":"lost"}',
+      },
+      { role: "user", content: "continue" },
+    ]);
+  });
 });
 
 describe("OpenAIChatProvider stream mapping", () => {
