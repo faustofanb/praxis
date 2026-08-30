@@ -231,6 +231,11 @@ milestones:
       title: set and enforce the core coverage target
       prerequisites: [M7-T003]
       risk_class: A
+    - id: M7-T011
+      order: 110
+      title: add providerOptions passthrough for reasoning control
+      prerequisites: [M7-T005]
+      risk_class: A
   M8:
     - id: M8-T001
       order: 10
