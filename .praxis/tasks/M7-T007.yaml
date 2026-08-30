@@ -2,7 +2,7 @@ schema_version: 1
 id: M7-T007
 title: author the memory and context growth report
 milestone: M7
-status: planned
+status: accepted
 risk_class: A
 objective: "Close the docs/03 M7 quality-gate row 'memory/context growth report' with a dedicated report document (M7-T007, risk A, no backlog entry existed — one added to .praxis/backlog.yaml as part of this contract). Observed state: ALL measured facts already exist and are machine-pinned — tests/soak/turn-soak.test.ts (M7-T003) proves at every checkpoint of a 10,000-turn synthetic session (59,227 events): context is exactly 1+64 messages (DEFAULT_CONTEXT_BUDGET.maxRecentMessages=64), estimated tokens <=32k, dropped+retained equals history length exactly, derived-state registries (toolExecutions 3600, observations 1428, hypotheses 909, plans 769, challenges 588, verifications 434) equal closed-form count formulas (exactly linear growth with emitted facts), and per-event fold cost stays under the 10x tripwire (measured ~4.4x from 2k to 10k turns, caused by upsertToolExecution's immutable Map copy per tool event — recorded in docs/subsystems/core.md as a known scaling characteristic with a candidate optimization deferred); docs/02 section 12.3 owns the budget law (hard caps, deterministic compaction recap, event history never deleted by compaction); docs/subsystems/core.md owns the soak test entry. What is MISSING is the row's deliverable itself: one coherent report that answers 'what grows, what does not, and at what rate' for a long-running session — currently the facts are scattered across a test file, a subsystem doc bullet, and docs/03 prose. Deliverable: (a) docs/10-memory-context-growth.md (new) — the report's ONE home: the memory model (event store = append-only full fidelity, linear by design; derived state = reducer projection, registry growth exactly linear; working context = bounded projection with the six DEFAULT_CONTEXT_BUDGET caps cited from packages/core/src/context/budget.ts), the measured facts table (soak numbers with the soak test cited as the machine evidence home — link, do not duplicate the formulas), the fold-cost scaling section (~4.4x per-event growth, cause, correctness unaffected, 10k full refold ~1.0s, tripwire law), the deterministic-compaction accounting law (dropped+retained exact, recap honest per-role counts), and operational implications (model-request cost stays flat regardless of session length; replay cost linear; storage linear); (b) docs/03-project-plan.md — tick the row with provenance; (c) docs/subsystems/core.md — add the report link to the soak entry (one line, no duplication). No production code, no test changes: the soak test is and stays the machine home of every number; the report interprets and links."
 evidence: 
@@ -10,7 +10,7 @@ evidence:
     - "docs/03 M7 row 'memory/context growth report' unchecked; no doc in docs/ or docs/subsystems/ answers the growth question coherently"
     - "tests/soak/turn-soak.test.ts pins every number: TURNS=10000, CHECKPOINTS=[2000..10000], expectedCounts closed-form formulas, context 1+64 messages, tokens <=32k, registry equality, tripwire <=10x"
     - "DEFAULT_CONTEXT_BUDGET (packages/core/src/context/budget.ts:27-34): maxRecentMessages 64, maxFragmentBytes 16KiB, maxToolResultBytes 8KiB, maxActiveObservations 8, maxActiveHypotheses 8, maxEstimatedTokens 32k"
-    - "docs/02 section 12.3 owns the budget/compaction law; docs/subsystems/core.md soak entry records the ~4.4x per-event fold-cost characteristic and defers the optimization"
+    - docs/02 section 12.3 owns the budget/compaction law; docs/subsystems/core.md soak entry records the ~4.4x per-event fold-cost characteristic and defers the optimization
     - "measured fold timings vary run to run (55ms@2k .. 1025ms@10k first soak, 102ms@2k .. 1139ms@10k later runs) — timings are recorded as ranges/observations, never pinned as constants; only structural facts (counts, caps, linearity) are machine-pinned"
   expected: 
     - "docs/10-memory-context-growth.md (new): memory model + measured facts table (soak linked) + fold-cost scaling + compaction accounting + operational implications"
@@ -80,11 +80,11 @@ acceptance:
   scenarios: 
     - "the report exists, cites the soak suite and budget constants as the homes of every number, and states the growth model (store linear, derived state exactly linear, context bounded, fold cost tripwired)"
     - "full unit gate green with the soak suite in it (the report's evidence re-proves itself every verify run)"
-    - "docs/03 row ticked with provenance; subsystem core.md links the report"
+    - docs/03 row ticked with provenance; subsystem core.md links the report
   failure_cases: 
     - "a number in the report that contradicts the soak test or the budget constants (drift) — the report must quote from the pinned sources, and any discrepancy stops acceptance for investigation, not for editing the test to match prose"
     - "the report duplicating the closed-form formulas or cap values as its own authority instead of linking (one fact, one home)"
-    - "inventing a measurement the soak does not produce (e.g. real-model token costs) — out of scope"
+    - inventing a measurement the soak does not produce (e.g. real-model token costs) — out of scope
   artifacts: 
     - docs/10-memory-context-growth.md
     - docs/03-project-plan.md M7 row tick
