@@ -2,7 +2,7 @@ schema_version: 1
 id: M6-T002
 title: implement telemetry observer extension
 milestone: M6
-status: plan_ready
+status: accepted
 risk_class: B
 objective: "Close docs/03 M6 'sample extension：只读 telemetry'（.praxis/milestones/M6.yaml required_deliverables 'telemetry extension'）by shipping the FIRST real consumer of the M6-T001 seams — proving M6 scenario acceptance 'extension adds tool/context/event observer without core edit' for the telemetry half with ZERO edits under packages/core and packages/contracts (enforced by forbidden_paths). Observed state: the seams exist and are pinned (M6-T001 accepted c605a82; ADR-0013; host/observing-store/deny-only beforeTool/all eight invocation points), but every extension in the tree is a test fixture — no product extension exists anywhere (grep createExtensionHost outside tests/core: only run-turn/tool-runtime wiring). docs/02 §19 fixes the failure-policy default for this exact class ('默认 telemetry 走 isolate') and docs/02 §20 fixes the redaction law ('禁止把秘密、完整敏感 Tool output 无条件写 telemetry'，line 1096; 'telemetry 必须 redaction'，line 1004) — neither is yet embodied in code. Deliverable: (1) new private workspace package @praxis/extension-telemetry (deps: @praxis/contracts ONLY — the extension is an app-owned value implementing the contracts interface; it must not depend on core, and core must not know it exists); (2) createTelemetryObserver(options?) returning an instance-scoped observer {extension, snapshot()} whose extension (name 'telemetry-observer', failurePolicy 'isolate' per docs/02 §19) implements the observe-only hooks: onTurnStart/onTurnEnd (turn counts, outcome histogram, turn duration), beforeModel/afterModel (request count, latency, provider errors, endedSilently, tool-call count), afterTool (per-tool-name per-status histogram over EXTENSION_TOOL_RESULT_STATUSES), onEvent (per-event-type histogram + total) — deliberately NOT contributeContext (observe-only extension adds no prompt bytes) and NOT beforeTool (telemetry must never sit on the veto path); closure-scoped counters only (AGENTS.md no-module-global law), injectable now() clock for determinism, optional sink callback per observed fact for later CLI wiring; (3) redaction made STRUCTURAL: TelemetrySnapshot's schema carries only counts/durations/enums/names — no field is capable of holding tool arguments, tool output, or model text — pinned by a marker test asserting the serialized snapshot contains none of the payload markers; (4) tests/extensions/telemetry.test.ts: full-turn accuracy against ScriptedModel + a real tools-local tool through runTurn (snapshot histograms exactly equal the folded stream, not merely ≥), REJECTED + providerError paths counted, injected-clock determinism, throwing sink leaves the turn unbroken (isolate at consumer level), snapshot readable and frozen after host.unload with counts stopped; (5) docs/subsystems/extension-telemetry.md + README.md index row; docs/03 M6 'sample extension' ticked with M6-T002 provenance."
 evidence: 
@@ -31,7 +31,10 @@ scope:
     - .praxis/tasks/M6-T002.yaml
     - .praxis/state.yaml
     - .praxis/handoffs/**
+    - .praxis/architecture.yaml
     - packages/extension-telemetry/**
+    - bun.lock
+    - package.json
     - tsconfig.json
     - tests/extensions/telemetry.test.ts
     - docs/03-project-plan.md
@@ -48,8 +51,6 @@ scope:
     - scripts/**
     - evals/**
     - mise.toml
-    - package.json
-    - bun.lock
     - docs/acceptance/**
     - tests/integration/**
     - tests/fault/**
@@ -68,6 +69,8 @@ scope:
     - "contributeContext and beforeTool are intentionally NOT implemented: observe-only extensions add zero prompt bytes and must never sit on the veto path (beforeTool is the deny seam; telemetry has no opinion). The context-contributor sample is M6-T003."
     - "External sinks are app wiring: the optional sink callback is the only integration point; wiring it into apps/cli is out of scope (apps/** forbidden). Default is in-memory snapshot only."
     - "M6-T004 audits unload/failure isolation adversarially across shipped extensions; this task pins consumer-level behavior (snapshot survives unload, throwing sink isolates) sufficient for the M6 scenario row."
+    - "Scope amendment (pre-implementation, disclosed): bun.lock and package.json moved from forbidden to allowed. The repo has no tsconfig path mappings and bun only creates node_modules/@praxis/* symlinks for packages referenced by an installed manifest — the established mechanism is a root package.json devDependencies entry (all six sibling packages are listed there, each with its bun.lock record, e.g. commits 01656cb). The package.json diff is one devDependency line; the lockfile diff is the mechanical workspace record. This is required for clean-clone reproducibility (M0-T004 gate) and the frozen-install CI workflow."
+    - "Scope amendment 2 (at first verify run, disclosed): .praxis/architecture.yaml added to allowed_paths. The test:architecture gate (docs/07) treats architecture.yaml as the authority and rejects any workspace package it does not declare (undeclared-package + manifest/import-direction violations for extension-telemetry -> contracts). Registering the new package there IS the architecture-change procedure; no dependency direction changes for existing packages, and extension-telemetry declares may_depend_on [contracts] only — no ADR trigger fires (adr_required_for lists core-direction/durable-event/capability/persistence/v1-goal changes, none of which this touches)."
 architecture_refs: 
   - .praxis/architecture.yaml
   - docs/02-system-design.md
