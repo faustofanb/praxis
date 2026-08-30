@@ -1,0 +1,12 @@
+{
+  "name": "@praxis/extension-standing-orders",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@praxis/contracts": "0.0.0"
+  }
+}

@@ -19,6 +19,9 @@ packages:
   extension-telemetry:
     responsibility: read-only telemetry observer extension over the ADR-0013 seams
     may_depend_on: [contracts]
+  extension-standing-orders:
+    responsibility: fail-closed operator policy extension contributing standing instructions and tool denials
+    may_depend_on: [contracts]
   testkit:
     responsibility: scripted model fault model fake tools deterministic ids clocks fixtures
     may_depend_on: [contracts, core]
@@ -39,6 +42,7 @@ tiers:
     - packages/provider-openai/src/**
     - packages/tools-local/src/**
     - packages/extension-telemetry/src/**
+    - packages/extension-standing-orders/src/**
   tier2:
     - apps/**
     - docs/**
