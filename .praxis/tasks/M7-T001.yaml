@@ -1,0 +1,98 @@
+schema_version: 1
+id: M7-T001
+title: complete property and state-machine hardening suite
+milestone: M7
+status: plan_ready
+risk_class: C
+objective: "Close the first M7 task row (.praxis/backlog.yaml M7-T001, prerequisites [M6] — accepted 2026-08-30) and the docs/03 M7 quality-gate row 'fast-check state machine suite'. Observed state: tests/property/ pins schema round-trips for the FULL vocabulary (contracts-events.property.test.ts, tool-events.property.test.ts), buildContext caps (context-builder.property.test.ts), and a session/turn-level state machine (reducer.property.test.ts over tests/helpers/random-session-streams.ts — six event types: SessionCreated/Resumed/Paused/Completed, TurnStarted/Completed, invariants on status/headSeq/openTurn/usedTurns only). Nothing property-level pins the state machines INSIDE a turn: the docs/02 §8.2 tool lifecycle (PROPOSED→AUTHORIZED→EXECUTING→SUCCEEDED/FAILED/INDETERMINATE, ToolRejected from PROPOSED|AUTHORIZED, reconcile only from INDETERMINATE with attempt counting), the model-request machine (pending set by Started, cleared by ResponseCompleted/RequestFailed, ToolProposed blocked while pending), or the epistemic machines (hypothesis legal-transition table with terminal statuses falsified/superseded absorbing, plan supersede-on-set + invalidate-from-active-only, challenge open→terminal with completion-target blocking SessionCompleted, GoalSet/VerificationRecorded latest-wins) — all are pinned only by example-based unit suites (tests/reducer-*.test.ts). Also unpinned: fold-resume equivalence (fold(prefix) then step-reducing the suffix must equal fold(full stream) — the checkpoint/recovery algebra behind store parity), and rejection of PRECONDITION violations (as opposed to seq/stream perturbations already pinned). Deliverable: (1) tests/helpers/full-vocabulary-machine.ts — an INDEPENDENT shadow model of the documented transition tables (docs/02 §7/§8.2/§14/§16) translating generated command arrays into legal full-vocabulary event streams via the @praxis/testkit session-event factories, tracking expected projections (status, open turn, turn registry, pending model, per-execution tool snapshots incl. reconciliationCount, goal, observations, hypothesis statuses, plan statuses + active plan, challenge statuses + open list, last verification); (2) tests/property/state-machine.property.test.ts — the hardening suite: (a) reducer agrees with the independent model on every projected field for arbitrary legal streams (deep comparison via normalized summaries); (b) every machine-emitted event is schema-valid (SessionEventUnionSchema.parse identity — generator drift guard); (c) at every prefix, structural invariants hold: headSeq === event count, turn registry matches distinct TurnStarted, openChallenges exactly the open-status challenges, activePlan is the unique active-status plan; (d) fold-resume equivalence at arbitrary split points; (e) a precondition-violating append (illegal-event repertoire derived from the machine's current state: pause/complete with open turn or blocking completion challenge, duplicate turn/tool/observation/hypothesis/plan/challenge ids, tool transition from wrong current status, reconcile from non-INDETERMINATE, hypothesis change out of a terminal status, unknown-id references, epistemic event while PAUSED, model request while one is pending) is ALWAYS rejected with IllegalTransitionError; (f) terminal statuses are absorbing — no repertoire command can move a falsified/superseded hypothesis or a terminal tool execution. Tick the docs/03 M7 row with provenance."
+evidence: 
+  observed: 
+    - ".praxis/backlog.yaml M7-T001 (risk C, prerequisites [M6]) is the first M7 task; docs/03-project-plan.md M7 Quality Gates row 'fast-check state machine suite' is unchecked; M7.yaml machine_gates include property"
+    - "tests/property/reducer.property.test.ts + tests/helpers/random-session-streams.ts cover only the six session/turn event types; the in-turn machines (tool lifecycle, model request) and the epistemic machines (hypothesis transition table, plan supersede/invalidate, challenge lifecycle + completion blocking, latest-wins fields) have no property-level coverage — only example-based tests/reducer-{tools,model,epistemic}.test.ts"
+    - "packages/core/src/state/reducer.ts is the single transition authority (foldSessionEvents/reduceSession exported from @praxis/core); packages/testkit/src/session-events.ts provides factories for the full vocabulary with stable numeric id schemes (tool-exec-N, hyp-N, plan-N, challenge-N, obs-N, turn-N) usable with small bounded id spaces to force id-collision paths"
+    - no property pins fold-resume equivalence (checkpoint algebra) or precondition-violation rejection (existing perturbation properties cover only seq corruption and adjacent swaps)
+  expected: 
+    - "tests/helpers/full-vocabulary-machine.ts (new): command union over the full vocabulary with bounded numeric ids (collisions exercised), shadow model of the documented tables, translateFullCommands() → legal streams, machineProjection() → expected derived-state summary, illegalEventCandidates() → schema-valid events violating exactly one precondition at the current state"
+    - "tests/property/state-machine.property.test.ts (new, ~6 tests): model agreement (a), generator schema-validity (b), prefix invariants (c), fold-resume equivalence (d), precondition-violation rejection (e), absorbing terminals (f)"
+    - "docs/03-project-plan.md: tick '- [ ] fast-check state machine suite' → - [x] with (M7-T001: ...) provenance"
+    - "docs/subsystems/core.md: one test-entry line for the state-machine property suite (the reducer owns the laws under test)"
+    - "NO changes under packages/**, apps/**, scripts/** — test-only hardening; a genuine model/reducer disagreement caused by a REDUCER defect STOPS the task per falsified_if (the fix needs its own contract; a MODEL bug is fixable in-scope since the model is the test instrument)"
+  references: 
+    - docs/02-system-design.md
+    - .praxis/milestones/M7.yaml
+    - packages/core/src/state/reducer.ts
+    - packages/testkit/src/session-events.ts
+    - tests/property/reducer.property.test.ts
+    - tests/helpers/random-session-streams.ts
+hypothesis: "The v1 transition tables are complete and machine-checkable: an independent shadow model built only from the documented tables (docs/02 §7/§8.2/§14/§16) agrees with foldSessionEvents on every projected field across arbitrary legal full-vocabulary streams, every precondition violation is rejected with IllegalTransitionError, terminals are absorbing, and folding is resume-invariant at every split point. If the reducer disagrees with the documented tables, that is a Core correctness defect — evidence and a new contract, never an in-scope Core patch."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T001.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - tests/helpers/full-vocabulary-machine.ts
+    - tests/property/state-machine.property.test.ts
+    - docs/03-project-plan.md
+    - docs/subsystems/core.md
+  forbidden_paths: 
+    - packages/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - mise.toml
+    - docs/acceptance/**
+    - docs/02-system-design.md
+    - docs/decisions/**
+    - tests/property/reducer.property.test.ts
+    - tests/property/contracts-events.property.test.ts
+    - tests/property/context-builder.property.test.ts
+    - tests/property/tool-events.property.test.ts
+    - tests/helpers/random-session-streams.ts
+    - tests/helpers/session-events.ts
+    - tests/reducer.test.ts
+    - tests/reducer-epistemic.test.ts
+    - tests/reducer-model.test.ts
+    - tests/reducer-tools.test.ts
+    - tests/integration/**
+    - tests/replay/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/extensions/**
+  scope_notes: 
+    - "Test-only task: the existing four property suites, the existing shadow-model helper, and all example-based reducer suites are explicitly forbidden — this task ADDS a full-vocabulary machine, it must not restate or weaken existing properties"
+    - "The shadow model is a test INSTRUMENT (like M6-T004 fixtures): a model bug is fixed in-scope; a reducer bug falsifies the task (scope expansion requires a new contract per AGENTS.md)"
+    - New files only under tests/; docs/03 tick + core.md entry are the owning-doc updates in the same change
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+acceptance: 
+  scenarios: 
+    - "arbitrary legal full-vocabulary streams: foldSessionEvents agrees with the independent shadow model on status, open turn, turn registry, pending model request, tool snapshots (status/result/reconciliationCount), goal, observations, hypothesis statuses, plan statuses + active plan, challenge statuses + open list, last verification"
+    - "fold-resume equivalence: fold(prefix) then reduceSession over the suffix equals fold(full stream) at every split point"
+    - "prefix structural invariants: headSeq === count, openChallenges exactly the open challenges, activePlan unique active plan"
+  failure_cases: 
+    - "a legal machine stream failing to fold, or folding to a state that disagrees with the model on any projected field"
+    - a precondition-violating append being ACCEPTED by the reducer (wrong direction — silently corrupting state)
+    - "a terminal status (falsified/superseded hypothesis, terminal tool execution) being movable by any repertoire event"
+    - fold(prefix)+suffix diverging from fold(all)
+    - the machine emitting an event that fails SessionEventUnionSchema (generator drift)
+  artifacts: 
+    - tests/helpers/full-vocabulary-machine.ts
+    - tests/property/state-machine.property.test.ts
+    - docs/03-project-plan.md M7 row tick
+    - docs/subsystems/core.md test entry
+falsified_if: "Any property in the suite fails BECAUSE OF REDUCER BEHAVIOR (a legal documented stream rejected, an illegal append accepted, a terminal moved, resume-divergence): that is a Core correctness defect — stop, record evidence, open a new contract (any packages/core fix needs its own task and gates; event/schema changes would additionally trigger ADR). Failures caused by the model itself are instrument bugs fixed in-scope. Weakening or duplicating existing property/example suites instead of adding the machine also falsifies the contract."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk C per backlog (the suite encodes the Core transition laws, but ships zero production code). requires_human_acceptance FALSE (precedent M6-T002/T003 for mid-milestone tasks): the deliverable IS a machine-verifiable test suite — the property gate passing is the acceptance evidence; M7 milestone promotion remains human-gated regardless (promotion_requires_independent_or_human_acceptance), and the follow-up M7-T002 (risk D) is human-gated by risk class. The M7 rows NOT in this task: coverage target, fault/security suites (M7-T002), soak, knip, memory report — untouched."

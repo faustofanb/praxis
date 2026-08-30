@@ -1,22 +1,23 @@
 schema_version: 1
 current_milestone: M7
 last_accepted_milestone: M6
-active_task: null
-development_state: ACCEPTED
-blockers:
+active_task: M7-T001
+development_state: PLAN_READY
+blockers: 
   []
-open_adrs:
+open_adrs: 
   []
-known_risks:
+known_risks: 
   []
-last_acceptance:
+last_acceptance: 
   milestone: M6
   result: ACCEPTED
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-30
-next_legal_actions:
-  - author the M7-T001 Task Contract (property and state-machine hardening suite)
-  - run ai:plan on the M7-T001 contract
+next_legal_actions: 
+  - implement only within Task Contract scope
+  - run ai:guard
+  - run ai:verify
 last_verification: 
   task: M6-T004
   at: 2026-08-30T06:54:02.340Z
