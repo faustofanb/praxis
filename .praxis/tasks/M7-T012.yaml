@@ -1,0 +1,90 @@
+schema_version: 1
+id: M7-T012
+title: fix wire-invalid duplicate tool responses for reconciled executions
+milestone: M7
+status: planned
+risk_class: B
+objective: "Operator directive 2026-08-30: 'harness 不能因为模型能力低就没法工作啊，有问题就修复'. Root-caused with a reproduced 400: any session whose durable history contains an execution that went INDETERMINATE and was later Reconciled produces a wire-INVALID chat-completions request — projectConversation honestly emits TWO tool facts for one execution (indeterminate, then reconciled; docs/02 s12 law: the model sees the settled outcome verbatim AFTER the earlier indeterminate message — never instead of it) and packages/provider-openai toChatMessages renders each as its own role:'tool' message with the SAME tool_call_id. Strict OpenAI-wire validators (reproduced on the operator's deepseek gateway; HTTP 400 'Messages with role role tool must be a response to a preceding message with tool_calls', bisected via curl: single tool response 200, duplicate-id second response 400) reject the second response for the same id — every model request of such a turn fails invalidRequest (non-retryable), the turn honestly pauses after 3 consecutive failures, and the session is effectively unusable on strict gateways for reconciled histories. This is a provider wire-law adaptation gap (docs/02 s10: the adapter maps port to wire), NOT a projection bug. Deliverable: (a) packages/provider-openai/src/chat-provider.ts toChatMessages — merge CONSECUTIVE tool messages that share a toolCallId into ONE wire message whose content is a JSON array of the fact bodies in event order (indeterminate first, reconciled second — verbatim facts preserved, ordering law intact, wire-valid single response per id); non-adjacent or different-id tool messages (parallel tool calls) stay separate; single-fact case renders EXACTLY as before (content stays the bare body, not wrapped in an array — zero-change identity for every existing conversation shape). (b) tests/provider-openai/chat-provider.test.ts — new cases: (1) assistant(tool_calls) + two same-id tool facts => ONE wire tool message, content JSON array [indeterminate, reconciled] in order; (2) parallel calls (two distinct ids interleaved) => separate messages unchanged; (3) single indeterminate fact alone (M4 pending state, never reconciled) => bare content unchanged. (c) a fault-style end-to-end proof lives in the existing diag (operator /tmp script): after the fix the resolved-indeterminate turn completes against the strict gateway — recorded in the acceptance evidence, the durable repro being the curl bisect + the diag script output."
+evidence: 
+  observed: 
+    - "operator diag run (bun /tmp/praxis-repro/diag-deepseek-pause.ts, captured-fetch): resolved-indeterminate scenario vs ai.ifckj.com => HTTP 400 x3 (identical validator error), honest outcome paused 'model failed 3 times in a row (invalidRequest)', FAIL-FACTs ModelRequestFailed {kind: invalidRequest, retryable: false}"
+    - "curl bisect: [user, assistant(tool_calls call-1), tool(call-1), tool(call-1), user] => 400; same minus the second tool message => 200 — the duplicate tool_call_id response is the trigger, not the assistant shape or the count of messages"
+    - "projectConversation (core) emits both facts by law (comment: 'never instead of it'); toChatMessages (provider) maps 1:1 with no id de-duplication — the gap is wire-side only"
+    - "all four real-model baselines hit variations of this family; deepseek's resolved-indeterminate pause and GLM's completion-blocked 400-loop (if retried) stem from histories the strict gateways reject"
+  expected: 
+    - "toChatMessages merges consecutive same-id tool messages into one wire message with content = JSON array; all other shapes byte-identical"
+    - "3 new provider unit tests green; all existing 16 provider tests unaffected (zero-change identity for single-fact shapes)"
+    - "diag script vs strict gateway: resolved-indeterminate turn reaches completed (or an honest model-level failure unrelated to wire shape)"
+    - "deepseek-v4-flash xhigh baseline then runs all 8 scenarios with no invalidRequest pauses"
+  references: 
+    - packages/provider-openai/src/chat-provider.ts
+    - packages/core/src/agent-loop/conversation.ts
+    - docs/02-system-design.md
+    - evals/development-models/scenarios.ts
+hypothesis: "The wire-invalidity is fully explained by duplicate tool_call_id responses, and merging consecutive same-id tool facts at the adapter boundary fixes every strict-gateway rejection while keeping the core projection law and all single-fact shapes byte-identical. If strict gateways also reject other shapes our projection produces (the bisect says they do not for this history), further cells would surface on the baseline re-run and would be new findings, not silent re-scopes."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M7-T012.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - packages/provider-openai/src/chat-provider.ts
+    - tests/provider-openai/chat-provider.test.ts
+  forbidden_paths: 
+    - packages/core/**
+    - packages/contracts/**
+    - packages/store-sqlite/**
+    - packages/testkit/**
+    - packages/tools-local/**
+    - packages/extension-*/**
+    - apps/**
+    - tests/integration/**
+    - tests/property/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/replay/**
+    - tests/soak/**
+    - tests/helpers/**
+    - evals/**
+    - mise.toml
+    - package.json
+    - bun.lock
+    - vitest.config.ts
+    - knip.json
+    - .github/**
+    - .praxis/quality-gates.yaml
+    - .praxis/milestones/**
+    - docs/**
+    - AGENTS.md
+  scope_notes: 
+    - "core/contracts FORBIDDEN: the projection's two-fact honesty is a LAW (docs/02 s12, M3-T001 replay fixture pins checkpoint 'reconciled after indeterminate'), and the port shape is fine — only the adapter's wire rendering needs the merge"
+    - "The merge is adapter-boundary wire-law adaptation exactly per docs/02 s10; the model still sees both facts verbatim and in order (array content), satisfying 'after, never instead of' at the message-content level"
+    - "risk B not A: wire behavior changes for a shape that previously produced 400s on strict gateways — behavior-changing but strictly from broken-to-valid; gateways that tolerated duplicates accept the merged form (single response per id is the standard shape)"
+    - "BASELINE registration of the deepseek xhigh re-run happens after acceptance, as operator evidence"
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+required_gates: 
+  - unit
+  - property
+  - integration
+  - replay
+  - build
+  - fault
+  - security
+acceptance: 
+  scenarios: 
+    - "provider unit tests: two same-id consecutive tool facts => one wire message with JSON-array content in event order; distinct ids stay separate; single fact stays bare"
+    - "all existing provider unit tests byte-unaffected (zero-change identity for non-duplicate shapes)"
+    - "operator diag vs strict gateway: resolved-indeterminate no longer produces HTTP 400 loops; the turn reaches a legal terminal outcome"
+    - "required_gates incl. fault+security green (provider rule)"
+  failure_cases: 
+    - "merging non-adjacent tool messages or different-id messages (parallel calls must stay separate)"
+    - "changing the single-fact content shape (would break zero-change identity and existing tests)"
+    - "touching core projection or contracts to 'fix' the wire issue (law lives there; the adapter adapts)"
+  artifacts: 
+    - packages/provider-openai/src/chat-provider.ts (merge in toChatMessages)
+    - tests/provider-openai/chat-provider.test.ts (3 new cases)
+falsified_if: "Strict-gateway rejection persists after the merge (the bisect says duplicate id is the only trigger for this history), or the merge cannot preserve both facts verbatim and in order — then the wire law needs a different adaptation and the contract re-plans. Also falsified if any existing test breaks (the single-fact identity must hold)."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk B: wire behavior changes from broken-to-valid for reconciled histories on strict gateways; machine-acceptable (flags false). Direct operator authorization 2026-08-30 ('有问题就修复'). This was found BY the eval harness doing its job — the diag evidence (captured fetch + curl bisect) is the durable repro."

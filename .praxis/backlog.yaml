@@ -236,6 +236,11 @@ milestones:
       title: add providerOptions passthrough for reasoning control
       prerequisites: [M7-T005]
       risk_class: A
+    - id: M7-T012
+      order: 120
+      title: fix wire-invalid duplicate tool responses for reconciled executions
+      prerequisites: [M7-T002]
+      risk_class: B
   M8:
     - id: M8-T001
       order: 10
