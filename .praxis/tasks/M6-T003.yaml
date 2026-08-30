@@ -1,0 +1,102 @@
+schema_version: 1
+id: M6-T003
+title: implement sample context/tool extension without Core modification
+milestone: M6
+status: plan_ready
+risk_class: B
+objective: "Close docs/03 M6 'tool registration'（unticked, annotated 'M6-T003：v1 无注册新工具的 hook——extension 走 tool 生命周期 seam（deny/observe），工具由应用持有'）by shipping the second product consumer of the M6-T001 seams: an operator-policy extension that demonstrates the context-contributor seam AND the tool-lifecycle (deny) seam in one coherent extension, with ZERO edits under packages/core and packages/contracts (enforced by forbidden_paths; M6.yaml scenario 'extension adds tool/context/event observer without core edit' — this task covers the context + tool halves; the event half closed in M6-T002). Design: docs/02 §19's failure-policy table fixes TWO cells — telemetry defaults 'isolate' (embodied by M6-T002's telemetry-observer) and 'security/policy 走 fail_closed' (embodied by NOTHING yet). Deliverable: new private workspace package @praxis/extension-standing-orders (deps: @praxis/contracts ONLY) with createStandingOrdersExtension(options?: {instructions?: string; deniedTools?: readonly string[]}): PraxisExtension — name 'standing-orders', failurePolicy 'fail_closed' (the §19 policy cell, first shipped instance): contributeContext returns one fragment {text: instructions} when non-empty standing instructions are configured (the host stamps source and the M5-T001 composition law caps it — an app injects operator standing orders into every turn's system fragment WITHOUT owning a fork of the context builder); beforeTool returns {decision:'deny', reason} when the proposed tool name is on the configured deny-list (the ADR-0013 deny-only lifecycle seam: policy restriction composed AFTER the capability authorizer); both hooks return undefined when unconfigured so an empty-configured extension is inert (request byte-identity). Factory validates configuration loudly (fail-closed philosophy: whitespace-only instructions or empty/duplicate-ish tool names throw at construction, never silently misbehave mid-turn). Tests pin: fragment renders as '## Extension: standing-orders' section after the base prompt; zero-config identity (request byte-identical to a bare run); deny produces ToolRejected citing the extension with no ToolStarted/ToolSucceeded and the turn still completes; cross-extension composition with the telemetry observer (deny counted REJECTED in its snapshot — M6-T004 prep); fail_closed declared + validatePraxisExtension passes + factory config validation; unload stops both contributions immediately."
+evidence: 
+  observed: 
+    - "docs/03 M6 checklist 'tool registration' is the last unticked M6 seam row; ADR-0013's refusal list fixed its meaning: v1 has NO tool-injection hook, tools are app-owned, extensions exercise the lifecycle seam (deny/observe) — the sample must demonstrate exactly that reinterpretation"
+    - "docs/02 §19 failure-policy table has two shipped-policy cells: telemetry→isolate (M6-T002 telemetry-observer exists) and security/policy→fail_closed (no shipped instance exists anywhere in the tree)"
+    - "M6-T002 proved the registration cost model: a new workspace package requires root package.json devDependency (bun creates node_modules links only for referenced packages), bun.lock record, root tsconfig.json project reference, and a .praxis/architecture.yaml declaration or test:architecture fails — all four are in this contract's allowed_paths from the start"
+    - "packages/core/src/extensions/host.ts stamps ContextFragment.source itself (anti-spoofing, M6-T001 test 'host stamps source') and rejects non-array/malformed returns as InvalidExtensionError — the sample only supplies {text}"
+  expected: 
+    - "packages/extension-standing-orders/package.json (private, exports '.', deps @praxis/contracts 0.0.0 only) + tsconfig.json (extends tsconfig.base.json, composite, include src); root tsconfig.json reference; root package.json one devDependency line; bun.lock mechanical record; .praxis/architecture.yaml declares extension-standing-orders (may_depend_on [contracts], tier1)"
+    - "packages/extension-standing-orders/src/standing-orders.ts: createStandingOrdersExtension(options?) → PraxisExtension {name:'standing-orders', failurePolicy:'fail_closed', contributeContext, beforeTool}; construction-time validation throwing Error ('standing-orders: …') on whitespace-only instructions, empty/whitespace tool names, or non-string entries; contributeContext → [{text: instructions}] only when instructions configured, else undefined; beforeTool → {decision:'deny', reason:\"standing orders forbid tool '<name>'\"} only for configured names, else undefined"
+    - "tests/extensions/standing-orders.test.ts: (a) instructions render as a '## Extension: standing-orders' section after the base prompt through runTurn; (b) zero-config identity — request and stream byte-identical to a bare run; (c) deniedTools deny → ToolRejected citing standing-orders, no ToolStarted/ToolSucceeded, turn completes; (d) composed with @praxis/extension-telemetry observer in one host: deny counted REJECTED in the telemetry snapshot; (e) failurePolicy 'fail_closed' + validatePraxisExtension passes + factory validation rejects bad config; (f) host.unload → next turn's request carries no section and no deny fires"
+    - "docs/subsystems/extension-standing-orders.md (current behavior, links to docs/02 §19 + ADR-0013, no law duplication) + README.md index row; docs/03 M6 'tool registration' ticked with the ADR-0013 reinterpretation provenance"
+  references: 
+    - docs/02-system-design.md
+    - docs/03-project-plan.md
+    - .praxis/milestones/M6.yaml
+    - packages/contracts/src/extensions.ts
+    - packages/core/src/extensions/host.ts
+    - docs/decisions/ADR-0013-extension-seams-v1.md
+    - docs/subsystems/extension-telemetry.md
+hypothesis: "The M6-T001 surface is complete for policy consumers too: an operator-policy extension (context contribution + tool denial) is pure composition over contributeContext/beforeTool with zero Core edits. The §19 failure-policy table is honest: this extension declares fail_closed because its contributions are load-bearing operator policy — if its hooks crash, the turn must crash into the existing §17 recovery rather than silently run without the operator's standing orders. Empty configuration must be inert (byte-identity), because a registered-but-unconfigured policy extension must not cost a single prompt byte."
+scope: 
+  allowed_paths: 
+    - .praxis/tasks/M6-T003.yaml
+    - .praxis/state.yaml
+    - .praxis/handoffs/**
+    - .praxis/architecture.yaml
+    - packages/extension-standing-orders/**
+    - package.json
+    - bun.lock
+    - tsconfig.json
+    - tests/extensions/standing-orders.test.ts
+    - docs/03-project-plan.md
+    - docs/subsystems/extension-standing-orders.md
+    - docs/subsystems/README.md
+  forbidden_paths: 
+    - packages/contracts/**
+    - packages/core/**
+    - packages/store-sqlite/**
+    - packages/provider-openai/**
+    - packages/tools-local/**
+    - packages/testkit/**
+    - packages/extension-telemetry/**
+    - apps/**
+    - scripts/**
+    - evals/**
+    - mise.toml
+    - docs/acceptance/**
+    - tests/integration/**
+    - tests/fault/**
+    - tests/security/**
+    - tests/replay/**
+    - tests/property/**
+    - tests/fixtures/**
+    - tests/helpers/**
+    - tests/store/**
+    - tests/cli/**
+    - tests/extensions/host.test.ts
+    - tests/extensions/telemetry.test.ts
+    - tests/praxis-dev.test.ts
+  scope_notes: 
+    - "risk B: additive out-of-core package; 'without Core modification' enforced mechanically via forbidden_paths (packages/core/**, packages/contracts/**) — a seam gap stops the task for evidence rather than a Core patch"
+    - "Registration paths (package.json devDependency line, bun.lock record, tsconfig reference, architecture.yaml tier1 entry) are allowed from the start this time — the M6-T002 lesson, recorded there as two scope amendments, is now budgeted as known cost, not a boundary move"
+    - "fail_closed is the point of this sample: it embodies the OTHER cell of the §19 failure table (M6-T002 embodied isolate). Its crash-rides-§17 behavior is already pinned by M6-T001 fault tests; this task pins the declaration, not a new failure path"
+    - The deny-list matches on tool NAME only; argument-aware policy (e.g. path prefixes) is deliberately out of scope for the sample and would not change the seam
+    - Importing @praxis/extension-telemetry in the composition TEST is allowed use (dependency direction tests→packages); editing that package is not
+architecture_refs: 
+  - .praxis/architecture.yaml
+  - docs/02-system-design.md
+  - docs/decisions/ADR-0013-extension-seams-v1.md
+required_gates: 
+  - unit
+  - integration
+  - replay
+  - fault
+  - security
+  - build
+acceptance: 
+  scenarios: 
+    - "standing instructions render as a capped '## Extension: standing-orders' section after the base prompt through the real host in runTurn deps, without any Core edit"
+    - "a denied tool produces ToolRejected citing the extension, never ToolStarted/ToolSucceeded, and the turn completes — composed in one host with the telemetry observer, which counts it REJECTED"
+    - "zero-config identity: a registered-but-unconfigured standing-orders extension leaves request and stream byte-identical to a bare run"
+    - "unload stops both contributions immediately: the next turn's request carries no section and no deny fires"
+  failure_cases: 
+    - "bad configuration discovered at construction (whitespace instructions, blank tool names) — loud throw, never silent misbehavior mid-turn"
+    - "the extension attempting anything besides deny/contribute — structurally absent (no observe hooks, no allow path)"
+    - "mis-rendering or mis-capping — pinned by section-order assertion; budget law is M5-T001's and unchanged"
+  artifacts: 
+    - "packages/extension-standing-orders (package.json, tsconfig.json, src/index.ts, src/standing-orders.ts)"
+    - registration: "root package.json line, bun.lock record, tsconfig reference, architecture.yaml entry"
+    - tests/extensions/standing-orders.test.ts
+    - docs/subsystems/extension-standing-orders.md + README row + docs/03 M6 tick
+falsified_if: "A realistic operator-policy extension needs more than contributeContext/beforeTool (any Core edit falsifies the M6 'without core edit' scenario); or a fail_closed policy extension behaves differently under the M5-T001 composition law than an isolate one (it must not); or empty configuration cannot be byte-inert; or deny composition with a second registered extension miscounts/misorders."
+requires_adr: false
+requires_human_acceptance: false
+notes: "Risk B per backlog (prerequisite M6-T001 accepted c605a82). No ADR: ADR-0013 owns the seam decisions; this task ships its second consumer and must not move any boundary. Machine acceptance per ai-policy for risk B. After this task M6 has both §19 failure-policy cells embodied in shipped code, which is exactly the surface M6-T004 (unload/failure isolation audit, risk C) needs."
