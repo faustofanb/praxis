@@ -1,6 +1,6 @@
 schema_version: 1
 id: M7
-status: planned
+status: accepted
 goal: 'Quality hardening: fault, security, soak, performance and dependency/maintenance
   gates for release readiness.'
 prerequisites:
