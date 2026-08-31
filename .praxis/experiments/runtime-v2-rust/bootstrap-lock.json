@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "reference_commit": "14c905c29299c6b2d7d1957208e84536ba707a1d",
+  "branch": "spike/runtime-v2-rust-core",
+  "generated_by": "RUST-SPIKE-001-baseline",
+  "protected_files": {
+    "README.md": "5c8e3833a1246868092b4297d9ab5ce15f5dc2b06e81c11693efefa7d51c9e97",
+    "AGENTS.md": "db433906ae2a89babcc91a9c3f6797d5125d8689f56bd1073f0f8c487e60fb4f",
+    "mise.toml": "1f521938aacce3cc072bc92480adb042642521f0156ba05b2f5183579a4674f8",
+    ".praxis/project.yaml": "b5d16b1bcb844ac10cf7f54ce54a74fa656e26a1d4ad9ccb48f9d1d759362433",
+    ".praxis/state.yaml": "8aa5ae59781fe66852f273c30d941c2816cbb3ced0d282f686e771b1e942e891",
+    ".praxis/experiments/runtime-v2-rust/spike.json": "becf0181590637da7ffbd52f4f45d0316238e2e3745efeae13f6f1b595a9ef63",
+    ".praxis/experiments/runtime-v2-rust/ai-policy.json": "2a8cdc121a2aae49bff1b4b3413cef4f3cf799b18d74f42691bb16ce3ec69454",
+    ".praxis/experiments/runtime-v2-rust/quality-gates.json": "130b98ed3167f3f4d494f24487e449c1f47f8fe3f2145c66d1f68d54d08cb68d",
+    ".praxis/experiments/runtime-v2-rust/tasks.json": "94a0a7d604a3d89b2b0d6bb3ee34f9df3d5bc156cec732ca6c0a35b577438c9f",
+    "scripts/spike/runtime-v2-rust.ts": "bb6dd092e48d3b33da0c6eef2a6b43aa2f7792c8bc5eff8e8b5bac1f7e8b85c5",
+    "docs/spikes/runtime-v2-rust/00-charter.md": "f6cfd00cc165095b3389747af1f0173da461b7d887a138fd1699641c02fb1320",
+    "docs/spikes/runtime-v2-rust/01-conformance-spec.md": "5de0ec564e17f5f7aa901f892e8cc1d99dca5ffdba14184b7750343d5598250e",
+    "docs/spikes/runtime-v2-rust/02-compatibility-spec.md": "642dbf34cd8cf70af11ff5add3fb7cbd7035d8eb568ac23f8ac163d84813b332",
+    "docs/spikes/runtime-v2-rust/03-benchmark-spec.md": "717135f8e3ea156052d5a1cf23b6e824029abe160f06ac89d140c15b8c9d7a1b",
+    "docs/spikes/runtime-v2-rust/05-review-rubric.md": "7d39bcf9c16f7a13362c83583545b5a231edf83b7c0aaef2f044f21beb2bf411"
+  }
+}

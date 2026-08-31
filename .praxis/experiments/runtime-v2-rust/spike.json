@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "RUST-SPIKE-001",
+  "kind": "post_rc_architecture_experiment",
+  "question": "Should the post-v1 authoritative deterministic core migrate from TypeScript/Bun to Rust?",
+  "reference": {
+    "branch": "v1-rc",
+    "commit": "14c905c29299c6b2d7d1957208e84536ba707a1d",
+    "tag": "runtime-v1-reference-20260830",
+    "runtime_status": "v1-rc-accepted"
+  },
+  "branch": "spike/runtime-v2-rust-core",
+  "timebox": {
+    "working_days": 5,
+    "starts_after": "bootstrap_commit_human_approved"
+  },
+  "allowed_decisions": [
+    "KEEP_TS_CORE",
+    "MIGRATE_DETERMINISTIC_CORE_TO_RUST"
+  ],
+  "forbidden_decisions": [
+    "CONTINUE_EXPLORING",
+    "PARTIAL_UNDECIDED_DUAL_CORE"
+  ],
+  "permanent_allowed_paths": [
+    "README.md",
+    "AGENTS.md",
+    "mise.toml",
+    ".praxis/project.yaml",
+    ".praxis/state.yaml",
+    ".praxis/experiments/runtime-v2-rust/**",
+    "scripts/spike/runtime-v2-rust.ts",
+    "docs/spikes/runtime-v2-rust/**",
+    "docs/decisions/ADR-0014-runtime-v2-core-language.md",
+    "spikes/runtime-v2-rust/**"
+  ],
+  "forbidden_reference_paths": [
+    "packages/**",
+    "apps/**",
+    ".praxis/architecture.yaml",
+    ".praxis/quality-gates.yaml",
+    ".praxis/milestones/**",
+    ".praxis/tasks/**",
+    ".praxis/schemas/**",
+    "scripts/ai/**",
+    "docs/01-technical-baseline.md",
+    "docs/02-system-design.md",
+    "docs/03-project-plan.md",
+    "docs/12-architecture-current-state.md",
+    "CHANGELOG.md"
+  ],
+  "protected_after_bootstrap": [
+    "README.md",
+    "AGENTS.md",
+    "mise.toml",
+    ".praxis/project.yaml",
+    ".praxis/state.yaml",
+    ".praxis/experiments/runtime-v2-rust/spike.json",
+    ".praxis/experiments/runtime-v2-rust/ai-policy.json",
+    ".praxis/experiments/runtime-v2-rust/quality-gates.json",
+    ".praxis/experiments/runtime-v2-rust/tasks.json",
+    "scripts/spike/runtime-v2-rust.ts",
+    "docs/spikes/runtime-v2-rust/00-charter.md",
+    "docs/spikes/runtime-v2-rust/01-conformance-spec.md",
+    "docs/spikes/runtime-v2-rust/02-compatibility-spec.md",
+    "docs/spikes/runtime-v2-rust/03-benchmark-spec.md",
+    "docs/spikes/runtime-v2-rust/05-review-rubric.md"
+  ]
+}

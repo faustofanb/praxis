@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "RS-D1-CONFORMANCE",
+      "day": 1,
+      "title": "Extract language-neutral conformance pack",
+      "objective": "Use v1 as oracle and create language-neutral fixtures before implementing Rust semantics.",
+      "entry": [
+        "bootstrap_commit_human_approved"
+      ],
+      "allowed_paths": [
+        "spikes/runtime-v2-rust/fixtures/**",
+        "spikes/runtime-v2-rust/reference-ts/**",
+        "spikes/runtime-v2-rust/reports/conformance.json",
+        ".praxis/experiments/runtime-v2-rust/state.json",
+        "docs/spikes/runtime-v2-rust/04-oss-capability-map.md"
+      ],
+      "acceptance": [
+        "ts_reference_pass_ratio_1_0",
+        "fixtures_cover_transition_capability_completion_crash_unknown_reconciliation_replay_persistence"
+      ],
+      "stop_if": [
+        "requires_reference_semantic_change"
+      ]
+    },
+    {
+      "id": "RS-D2-KERNEL",
+      "day": 2,
+      "title": "Implement minimal Rust deterministic kernel",
+      "objective": "Implement domain types, command validation, transition reducer, capability authority and operation/UNKNOWN semantics without LLM/provider/MCP.",
+      "entry": [
+        "G1_TS_REFERENCE_BASELINE_PASS"
+      ],
+      "allowed_paths": [
+        "spikes/runtime-v2-rust/crates/**",
+        "spikes/runtime-v2-rust/Cargo.toml",
+        "spikes/runtime-v2-rust/Cargo.lock",
+        "spikes/runtime-v2-rust/reports/conformance.json",
+        ".praxis/experiments/runtime-v2-rust/state.json",
+        "docs/spikes/runtime-v2-rust/04-oss-capability-map.md"
+      ],
+      "acceptance": [
+        "rust_mandatory_conformance_pass_ratio_1_0"
+      ],
+      "stop_if": [
+        "giant_json_value_kernel",
+        "requires_changing_fixtures_to_match_rust"
+      ]
+    },
+    {
+      "id": "RS-D3-PERSISTENCE",
+      "day": 3,
+      "title": "SQLite compatibility and crash/reconciliation",
+      "objective": "Use rusqlite to prove transaction, reopen, v1 event JSON/SQLite compatibility, crash-before-effect, crash-after-dispatch and reconciliation.",
+      "entry": [
+        "RS-D2-KERNEL_ACCEPTED"
+      ],
+      "allowed_paths": [
+        "spikes/runtime-v2-rust/**",
+        ".praxis/experiments/runtime-v2-rust/state.json",
+        "docs/spikes/runtime-v2-rust/04-oss-capability-map.md"
+      ],
+      "acceptance": [
+        "G2_PASS",
+        "G3_PASS"
+      ],
+      "stop_if": [
+        "breaking_v1_data_redesign_required"
+      ]
+    },
+    {
+      "id": "RS-D4-BOUNDARY-BENCH",
+      "day": 4,
+      "title": "Validate TS↔Rust authority boundary and benchmark",
+      "objective": "Use minimal NDJSON fake-agent/fake-worker boundary and collect 1k/10k/100k benchmark/RSS/reopen evidence.",
+      "entry": [
+        "G2_PASS",
+        "G3_PASS"
+      ],
+      "allowed_paths": [
+        "spikes/runtime-v2-rust/**",
+        ".praxis/experiments/runtime-v2-rust/state.json",
+        "docs/spikes/runtime-v2-rust/04-oss-capability-map.md"
+      ],
+      "acceptance": [
+        "benchmark_json_complete",
+        "authority_review_ready",
+        "boundary_review_ready"
+      ],
+      "stop_if": [
+        "cross_language_state_mirroring_required",
+        "whole_session_serialization_required"
+      ]
+    },
+    {
+      "id": "RS-D5-DECISION",
+      "day": 5,
+      "title": "Finalize comparative report and proposed ADR",
+      "objective": "Stop implementation, compare TS reference vs Rust candidate with frozen rubric, generate exactly one proposed recommendation.",
+      "entry": [
+        "RS-D4_EVIDENCE_COMPLETE_OR_TIMEBOX_END"
+      ],
+      "allowed_paths": [
+        "spikes/runtime-v2-rust/reports/**",
+        "docs/spikes/runtime-v2-rust/final-report.md",
+        "docs/decisions/ADR-0014-runtime-v2-core-language.md",
+        ".praxis/experiments/runtime-v2-rust/state.json"
+      ],
+      "acceptance": [
+        "recommendation_is_allowed_enum",
+        "adr_status_PROPOSED",
+        "human_decision_required"
+      ],
+      "stop_if": [
+        "none_after_finalize"
+      ]
+    }
+  ]
+}

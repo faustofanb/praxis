@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "RUST-SPIKE-001",
+  "status": "BOOTSTRAP_PREPARED",
+  "phase": "BOOTSTRAP_REVIEW",
+  "active_task": "BOOTSTRAP-REVIEW",
+  "reference": {
+    "commit": "14c905c29299c6b2d7d1957208e84536ba707a1d",
+    "tag": "runtime-v1-reference-20260830"
+  },
+  "timebox": {
+    "working_days": 5,
+    "started_at": null,
+    "working_day": 0
+  },
+  "decision": "PENDING",
+  "hard_gates": {
+    "G1_SEMANTIC_PARITY": "PENDING",
+    "G2_V1_DATA_COMPATIBILITY": "PENDING",
+    "G3_FAILURE_PARITY": "PENDING",
+    "G4_AUTHORITY_CLARITY": "PENDING",
+    "G5_BOUNDARY_COST": "PENDING"
+  },
+  "blockers": [],
+  "scope_violations": [],
+  "next_legal_actions": [
+    "human_review_bootstrap_diff",
+    "human_approve_bootstrap_commit"
+  ],
+  "last_updated_at": "2026-08-31"
+}

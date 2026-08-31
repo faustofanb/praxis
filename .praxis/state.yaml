@@ -15,9 +15,9 @@ last_acceptance:
   accepted_by: 樊彪 (human)
   accepted_at: 2026-08-30
   evidence: docs/acceptance/M8.md
-next_legal_actions: 
-  - generate handoff
-  - select next eligible task in current milestone
+next_legal_actions:
+  - run mise run spike:status
+  - run mise run spike:brief
 last_verification: 
   task: M8-T005
   at: 2026-08-30T12:57:53.169Z
@@ -41,3 +41,13 @@ last_verification:
       result: PASS
     - gate: unit
       result: PASS
+post_rc_track:
+  kind: architecture_spike
+  id: RUST-SPIKE-001
+  status: BOOTSTRAP_PREPARED
+  charter: docs/spikes/runtime-v2-rust/00-charter.md
+  state: .praxis/experiments/runtime-v2-rust/state.json
+  adr: docs/decisions/ADR-0014-runtime-v2-core-language.md
+  reference:
+    ref: runtime-v1-reference-20260830
+    commit: 14c905c29299c6b2d7d1957208e84536ba707a1d

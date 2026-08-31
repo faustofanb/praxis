@@ -1,0 +1,12 @@
+[package]
+name = "praxis-store-spike"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+praxis-kernel-spike = { path = "../kernel" }
+
+[lints]
+workspace = true

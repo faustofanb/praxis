@@ -109,3 +109,28 @@ depends = ["format:check", "lint", "typecheck", "test", "knip", "test:architectu
 
 [tasks."check:all"]
 depends = ["check", "test:coverage"]
+
+# RUST-SPIKE-001 post-RC experiment control plane.
+[tasks."spike:status"]
+run = "bun scripts/spike/runtime-v2-rust.ts status"
+
+[tasks."spike:brief"]
+run = "bun scripts/spike/runtime-v2-rust.ts brief"
+
+[tasks."spike:guard"]
+run = "bun scripts/spike/runtime-v2-rust.ts guard"
+
+[tasks."spike:verify"]
+run = "bun scripts/spike/runtime-v2-rust.ts verify"
+
+[tasks."spike:start"]
+run = "bun scripts/spike/runtime-v2-rust.ts start --human-approved"
+
+[tasks."spike:complete"]
+run = "bun scripts/spike/runtime-v2-rust.ts complete"
+
+[tasks."spike:human-gate"]
+run = "bun scripts/spike/runtime-v2-rust.ts human-gate --human-approved"
+
+[tasks."spike:finalize"]
+run = "bun scripts/spike/runtime-v2-rust.ts finalize"

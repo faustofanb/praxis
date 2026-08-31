@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "hard_gates": {
+    "G1_SEMANTIC_PARITY": {
+      "required": true,
+      "machine_check": "reports/conformance.json rust.pass_ratio == 1.0 and ts_reference.pass_ratio == 1.0"
+    },
+    "G2_V1_DATA_COMPATIBILITY": {
+      "required": true,
+      "machine_check": "reports/compatibility.json event_json == PASS and sqlite_fixture == PASS"
+    },
+    "G3_FAILURE_PARITY": {
+      "required": true,
+      "machine_check": "reports/failure-parity.json all_required_cases == PASS"
+    },
+    "G4_AUTHORITY_CLARITY": {
+      "required": true,
+      "human_review": true,
+      "criteria": [
+        "rust_is_only_candidate_durable_writer",
+        "ts_does_not_mirror_authoritative_execution_state",
+        "no_hidden_second_writer"
+      ]
+    },
+    "G5_BOUNDARY_COST": {
+      "required": true,
+      "human_review": true,
+      "criteria": [
+        "no_whole_session_copy_per_step",
+        "no_duplicate_state_machine",
+        "proposal_decision_observation_boundary_is_small_and_typed"
+      ]
+    }
+  },
+  "failure_policy": {
+    "any_hard_gate_failed": "FORCE_KEEP_TS_CORE_RECOMMENDATION"
+  },
+  "finalization_requires": [
+    "final-report.md",
+    "ADR-0014 Proposed",
+    "benchmark.json",
+    "conformance.json",
+    "compatibility.json",
+    "failure-parity.json"
+  ]
+}

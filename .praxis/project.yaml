@@ -1,7 +1,7 @@
 schema_version: 1
 project: praxis-harness
 release_line: v1
-status: pre-code-baseline
+status: v1-rc-accepted
 canonical_docs:
   system_design: docs/02-system-design.md
   technical_baseline: docs/01-technical-baseline.md

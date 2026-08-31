@@ -7,6 +7,24 @@ fail closed、崩溃可恢复、完成须验证。
 **当前状态：v1 Release Candidate（M0–M8 全部里程碑已验收，2026-08-30）。**
 v1 非目标已冻结（`docs/02` §1.1）；发布清单见 `docs/14-release-checklist.md`。
 
+<!-- RUST-SPIKE-001:START -->
+## Active post-RC architecture experiment
+
+当前分支只用于 **RUST-SPIKE-001**。Runtime v1 仍是已验收 reference implementation；尚未作出 Rust 迁移决定。
+
+Reference: `14c905c29299c6b2d7d1957208e84536ba707a1d` / local tag `runtime-v1-reference-20260830`  
+Experiment truth: `.praxis/experiments/runtime-v2-rust/state.json`
+
+进入本分支先运行：
+
+```bash
+mise run spike:status
+mise run spike:brief
+```
+
+不要使用 `ai:plan` 创建新的 M8 工作，也不要创建 M9。
+<!-- RUST-SPIKE-001:END -->
+
 ## 快速上手
 
 前置 [mise](https://mise.jdx.dev)（`mise install` 装好锁定的 Bun 1.3.14）：

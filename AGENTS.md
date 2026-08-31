@@ -1,5 +1,21 @@
 # AGENTS.md — Praxis Harness Standing Orders
 
+<!-- RUST-SPIKE-001:START -->
+## Active Post-RC Architecture Experiment (higher-priority branch entry)
+
+On branch `spike/runtime-v2-rust-core`, the active engineering track is `RUST-SPIKE-001`. Before any development, run `mise run spike:status` and `mise run spike:brief`.
+
+- Runtime v1 is an accepted reference implementation.
+- Do NOT use `ai:plan` to invent new M8 work. Do NOT create M9.
+- Do NOT modify accepted v1 semantics/tests/contracts to make Rust pass.
+- Do NOT migrate Provider/MCP/DBX/SSH/TUI/Desktop/Git Workbench in this spike.
+- Do NOT modify hard gates, stop conditions, bootstrap-locked files, or production architecture docs.
+- Final architecture decision requires human approval; ADR-0014 must remain Proposed until then.
+- On ambiguity, stop and report rather than widening scope.
+
+The standing orders below still protect the accepted v1/reference code unless the spike charter explicitly narrows access.
+<!-- RUST-SPIKE-001:END -->
+
 Read `docs/02-system-design.md` before changing `packages/contracts` or `packages/core`. Use the relevant `.agents/skills/*/SKILL.md` for high-risk recurring tasks.
 
 ## Scope

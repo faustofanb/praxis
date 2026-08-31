@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "planning": {
+    "allowed": true,
+    "scope": "current_active_task_only"
+  },
+  "scope_expansion": {
+    "allowed": false,
+    "on_need": "STOP_AND_REQUEST_HUMAN"
+  },
+  "reference_runtime": {
+    "modify_semantics": false,
+    "modify_tests_to_help_rust": false,
+    "modify_durable_contracts": false
+  },
+  "control_plane": {
+    "modify_hard_gates": false,
+    "modify_stop_conditions": false,
+    "modify_bootstrap_locked_files": false
+  },
+  "dependencies": {
+    "exact_pin_required": true,
+    "oss_assessment_required_before_add": true
+  },
+  "self_accept": {
+    "allowed": [
+      "format",
+      "compile",
+      "unit_test",
+      "benchmark_execution"
+    ],
+    "forbidden": [
+      "G4_AUTHORITY_CLARITY",
+      "G5_BOUNDARY_COST",
+      "FINAL_ADR_ACCEPTANCE"
+    ]
+  },
+  "git": {
+    "push": false,
+    "merge": false,
+    "force_push": false,
+    "auto_commit": false
+  },
+  "final_decision": {
+    "proposal_allowed": true,
+    "human_acceptance_required": true
+  }
+}
