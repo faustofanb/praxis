@@ -72,6 +72,9 @@ def test_agent_guidance_preserves_custom_content_and_refreshes_managed_block(
     assert "codegraph-impact-analysis" in agents
     assert "显式绕过 Praxis" in agents
     assert "不调用 Praxis MCP/CLI" in agents
+    assert "一旦命中，立即终止解析和执行下文" in agents
+    assert "binding、worktree、retry budget、fail-closed" in agents
+    assert "不得要求用户先修改 `AGENTS.md`" in agents
     assert "快速修复”“只改这里”“不要跑测试”不等于绕过" in agents
     assert agents.index("显式绕过 Praxis") < agents.index("入口：Praxis")
     assert claude.startswith("# Claude Code 项目规则")

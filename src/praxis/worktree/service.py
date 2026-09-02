@@ -37,6 +37,11 @@ _STAGES = {
 }
 _GIT_REF_UNSAFE = re.compile(r"[\x00-\x20\x7f~^:?*\[\]\\]+")
 _PNPM_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$")
+_WORKTREE_CREATION_FAILURE_CODES = {
+    "WORKTRUNK_FAILED",
+    "WORKTRUNK_NOT_AVAILABLE",
+    "WORKTRUNK_OUTPUT_INVALID",
+}
 
 _COMMIT_HOOK_NOTE = (
     "提交钩子触发的校验（lint/测试）属于提交流程的一部分，不视为未授权运行；"
@@ -1284,16 +1289,13 @@ class WorktreeService:
                 "attempts": 0,
                 "limit": 2,
             }
-            if not (existing and existing[1].get("status") == "active"):
-                if int(attempt["attempts"]) >= int(attempt["limit"]):
-                    return repository_id, Result(
-                        False,
-                        "WORKTREE_RETRY_BUDGET_EXHAUSTED",
-                        data=attempt,
-                    )
-                attempt["attempts"] = int(attempt["attempts"]) + 1
-                attempt["updated_at"] = datetime.now(UTC).isoformat()
-                store.set("worktree_ensure_attempt", attempt_key, attempt)
+            binding_active = bool(existing and existing[1].get("status") == "active")
+            if not binding_active and int(attempt["attempts"]) >= int(attempt["limit"]):
+                return repository_id, Result(
+                    False,
+                    "WORKTREE_RETRY_BUDGET_EXHAUSTED",
+                    data=attempt,
+                )
             try:
                 result = self.create_for_requirement(
                     requirement_id, repository_id, "development"
@@ -1304,6 +1306,14 @@ class WorktreeService:
                     "WORKTREE_ENSURE_REPOSITORY_FAILED",
                     data={"message": str(error)},
                 )
+            if (
+                not binding_active
+                and not result.ok
+                and result.code in _WORKTREE_CREATION_FAILURE_CODES
+            ):
+                attempt["attempts"] = int(attempt["attempts"]) + 1
+                attempt["updated_at"] = datetime.now(UTC).isoformat()
+                store.set("worktree_ensure_attempt", attempt_key, attempt)
             return repository_id, result
 
         results: dict[str, Result] = {}

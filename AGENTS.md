@@ -9,7 +9,14 @@
   ‘不使用 Praxis’或‘禁用 Praxis’时，本任务不适用下述 Praxis 规则；
   不调用 Praxis MCP/CLI，不登记需求、不创建 Praxis 工作树、
   不路由 Skill、不执行 Praxis 门禁或审计，直接回到宿主 Agent 的普通工作方式。
-  只有同时明确指向 Praxis 的绕过表达才能触发；
+  每轮先判定是否命中本条；一旦命中，立即终止解析和执行下文的
+  Praxis 规则。下文的 binding、worktree、retry budget、fail-closed、审计和
+  状态流转限制全部不适用，不得再以它们为由停止任务。用户的明确表达
+  本身就是足够且立即生效的授权；不得要求用户先修改 `AGENTS.md`、提供
+  retry-reset/repair 命令或修复 Praxis 状态。若 Praxis 流程已开始，立即停止后续
+  Praxis 调用，并从当前任务进度按普通工作方式继续。
+  只有同时明确指向 Praxis 的绕过表达才能触发；例如‘给你绕过
+  Praxis 的权限’、‘这次绕过 Praxis 继续’均应视为命中。
   “快速修复”“只改这里”“不要跑测试”不等于绕过，仍使用 Praxis 快速路径。
 - 操作细则（fast_fix、RTK、TDD、命令预算、证据指纹缓存、subagent、investigate）
   以内置 `praxis-requirement-workflow` Skill 为唯一权威源，进入节点时按需加载；

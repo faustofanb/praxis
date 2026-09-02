@@ -461,6 +461,96 @@ def test_worktree_preview_and_ensure_fail_closed_for_invalid_confirmation(
     assert exhausted.data["items"][0]["code"] == "WORKTREE_RETRY_BUDGET_EXHAUSTED"
 
 
+def test_worktree_ensure_preflight_failures_do_not_consume_retry_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("创建预检", "基础设施失败不消耗重试次数", ["demo"], [])
+    requirement_id = requirement["requirement_id"]
+    service = WorktreeService(tmp_path)
+    results = iter(
+        [
+            Result(False, "WORKTREE_TEMPLATE_FETCH_FAILED"),
+            Result(False, "WORKTREE_TEMPLATE_MERGE_FAILED"),
+            Result(True, data={"repository_id": "app", "status": "active"}),
+        ]
+    )
+    calls = 0
+
+    def create(*args: object) -> Result:
+        nonlocal calls
+        calls += 1
+        return next(results)
+
+    monkeypatch.setattr(service, "create_for_requirement", create)
+
+    for expected_code in (
+        "WORKTREE_TEMPLATE_FETCH_FAILED",
+        "WORKTREE_TEMPLATE_MERGE_FAILED",
+    ):
+        preview = service.preview_for_requirement(requirement_id, ["app"])
+        ensured = service.ensure_for_requirement(
+            requirement_id, ["app"], preview_id=preview.data["preview_id"]
+        )
+        assert ensured.data["items"][0]["code"] == expected_code
+
+    preview = service.preview_for_requirement(requirement_id, ["app"])
+    ensured = service.ensure_for_requirement(
+        requirement_id, ["app"], preview_id=preview.data["preview_id"]
+    )
+
+    assert ensured.ok
+    assert calls == 3
+    assert store.get("worktree_ensure_attempt", f"{requirement_id}:app") is None
+
+
+def test_worktree_ensure_creation_failures_consume_retry_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    WorkspaceService(tmp_path).init(
+        "demo",
+        "演示工作空间",
+        projects=[Project("app", "python", "repo", "local")],
+    )
+    store = StateStore(tmp_path)
+    requirement = store.create_requirement("创建重试", "真实创建失败消耗重试次数", ["demo"], [])
+    requirement_id = requirement["requirement_id"]
+    service = WorktreeService(tmp_path)
+    calls = 0
+
+    def fail_creation(*args: object) -> Result:
+        nonlocal calls
+        calls += 1
+        return Result(False, "WORKTRUNK_FAILED")
+
+    monkeypatch.setattr(service, "create_for_requirement", fail_creation)
+
+    for _ in range(2):
+        preview = service.preview_for_requirement(requirement_id, ["app"])
+        service.ensure_for_requirement(
+            requirement_id, ["app"], preview_id=preview.data["preview_id"]
+        )
+
+    preview = service.preview_for_requirement(requirement_id, ["app"])
+    exhausted = service.ensure_for_requirement(
+        requirement_id, ["app"], preview_id=preview.data["preview_id"]
+    )
+
+    attempt = store.get("worktree_ensure_attempt", f"{requirement_id}:app")
+    assert attempt is not None and attempt["attempts"] == 2
+    assert calls == 2
+    assert exhausted.data["items"][0]["code"] == "WORKTREE_RETRY_BUDGET_EXHAUSTED"
+
+
 def test_worktree_prepare_runs_deferred_setup_once(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     worktree = tmp_path / "worktree"
